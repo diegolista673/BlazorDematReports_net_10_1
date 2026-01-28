@@ -42,7 +42,7 @@
             </MudItem>
 
             @* Solo Lavorazione *@
-            <MudItem xs="12" md="6">
+            <MudItem xs="12" >
                 <MudAutocomplete T="string"
                                  Label="Lavorazione"
                                  SearchFunc="@((string arg, CancellationToken ct) => SearchFromSelect(base.SelectLavorazione, arg))"
@@ -56,6 +56,15 @@
                                  Variant="Variant.Outlined"
                                  Adornment="Adornment.Start"
                                  AdornmentIcon="@Icons.Material.Filled.Assignment" />
+
+                @* Codice Univoco (calcolato dalla fase del mapping) *@
+                <MudItem xs="12" >
+                    <MudTextField @bind-Value="_config.CodiceConfigurazione"
+                                  Label="Codice Univoco"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Dense="true" />
+                </MudItem>
             </MudItem>
 
             <MudItem xs="12"><MudDivider /></MudItem>
@@ -248,15 +257,6 @@
                 <MudItem xs="12">
                     <MudPaper Class="pa-3" Elevation="1">
                         <MudGrid>
-                            @* Codice Univoco (calcolato dalla fase del mapping) *@
-                            <MudItem xs="12" md="3">
-                                <MudTextField Value="@GenerateCodiceFromMapping(mapping)"
-                                              Label="Codice Univoco"
-                                              Variant="Variant.Outlined"
-                                              ReadOnly="true"
-                                              Dense="true"
-                                              HelperText="Generato da Procedura + Fase" />
-                            </MudItem>
 
                             <MudItem xs="12" md="3">
                                 <MudSelect T="int" 
@@ -349,6 +349,7 @@
 
 @code {
 
+
     [Parameter] public int? IdConfigurazione { get; set; }
     [SupplyParameterFromQuery(Name = "idProcedura")]
 
@@ -412,10 +413,10 @@
         // Usa i service wrapper invece di query dirette
         _fasi = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
         _centri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
-        
+
         // Carica le procedure già disponibili dalla base
         _procedure = ListProcedureLavorazioni ?? new List<ProcedureLavorazioni>();
-        
+
         // Per ConfigurazioneFontiDati usiamo il context direttamente (non c'è ancora un service wrapper)
         await using var context = await DbFactory.CreateDbContextAsync();
 
@@ -468,6 +469,9 @@
 
                 // Estrai il centro dalla procedura
                 _selectedCentroId = procedura.Idcentro;
+
+                _config.CodiceConfigurazione = $"Config{_selectedIdProcedura:D4}";
+                _config.DescrizioneConfigurazione = $"Configurazione_{lavorazione}";
 
                 // Carica fasi associate a questa procedura utilizzando la tabella di mapping LavorazioniFasiDataReadings
                 await using var _ctx = await DbFactory.CreateDbContextAsync();
@@ -531,7 +535,7 @@
 
         ClearCurrentConfig();
         _config.TipoFonte = newTipoFonte;
-        
+
         // Pulisci solo i campi specifici del tipo fonte
         _config.ConnectionStringName = null;
         _config.TestoQuery = null;
@@ -539,17 +543,13 @@
         _config.HandlerClassName = null;
         _validationMessage = null;
         _validationSeverity = Severity.Info;
-        
+
         await InvokeAsync(StateHasChanged);
     }
 
-    private string GenerateCodiceFromMapping(ConfigurazioneFaseCentro mapping)
-    {
-        // Genera il codice univoco basato su IdProcedura + IdFase del mapping
-        // Formato: P{IdProc:D4}F{IdFase:D4}
-        _config.CodiceConfigurazione = $"P{_selectedIdProcedura:D4}F{mapping.IdFaseLavorazione:D4}";
-        return _config.CodiceConfigurazione;
-    }
+
+
+
 
     private void AggiungiMapping()
     {
@@ -559,7 +559,7 @@
             Snackbar.Add("Seleziona prima una lavorazione", Severity.Warning);
             return;
         }
-        
+
         _mappingFasi.Add(new ConfigurazioneFaseCentro 
         { 
             IdProceduraLavorazione = _selectedIdProcedura,
@@ -568,11 +568,13 @@
         });
     }
 
+
     private void RimuoviMapping(ConfigurazioneFaseCentro mapping)
     {
         _mappingFasi.Remove(mapping);
     }
-    
+
+
     /// <summary>
     /// Estrae il cron dai ParametriExtra JSON del mapping.
     /// Se non presente, restituisce il default "0 5 * * *".
@@ -580,11 +582,11 @@
     private string GetCronFromMapping(int index)
     {
         if (index >= _mappingFasi.Count) return "0 5 * * *";
-        
+
         var mapping = _mappingFasi[index];
         if (string.IsNullOrWhiteSpace(mapping.ParametriExtra))
             return "0 5 * * *";
-        
+
         try
         {
             var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(mapping.ParametriExtra);
@@ -597,10 +599,10 @@
         {
             // JSON malformato o chiave 'cron' non presente
         }
-        
+
         return "0 5 * * *";
     }
-    
+
     /// <summary>
     /// Imposta il cron nei ParametriExtra JSON del mapping, preservando altri parametri.
     /// </summary>
@@ -608,10 +610,10 @@
     {
         if (index >= _mappingFasi.Count) return;
         if (string.IsNullOrWhiteSpace(cronValue)) cronValue = "0 5 * * *";
-        
+
         var mapping = _mappingFasi[index];
         Dictionary<string, object> json;
-        
+
         // Leggi JSON esistente o crea nuovo
         if (!string.IsNullOrWhiteSpace(mapping.ParametriExtra))
         {
@@ -629,14 +631,14 @@
         {
             json = new Dictionary<string, object>();
         }
-        
+
         // Aggiorna/aggiungi cron
         json["cron"] = cronValue;
-        
+
         // Serializza e salva
         mapping.ParametriExtra = System.Text.Json.JsonSerializer.Serialize(json);
     }
-    
+
     /// <summary>
     /// Verifica se il cron è uno dei preset disponibili.
     /// </summary>
@@ -678,7 +680,7 @@
                 _validationSeverity = Severity.Error;
                 return; // Blocca salvataggio se SQL injection rilevato
             }
-            
+
             // Mostra warning ma NON bloccare
             if (queryValidation.Severity == ValidationSeverity.Warning)
             {
@@ -691,12 +693,14 @@
         try
         {
             await using var context = await DbFactory.CreateDbContextAsync();
-            
+
             if (_isEdit)
             {
                 _config.ModificatoIl = DateTime.Now;
-                context.ConfigurazioneFontiDatis.Update(_config);
+                _config.ModificatoDa = ConfigUser?.Utente ?? string.Empty;
                 
+                context.ConfigurazioneFontiDatis.Update(_config);
+
                 var oldMappings = await context.ConfigurazioneFaseCentros
                     .Where(fc => fc.IdConfigurazione == _config.IdConfigurazione)
                     .ToListAsync();
@@ -705,6 +709,8 @@
             else
             {
                 _config.CreatoIl = DateTime.Now;
+                _config.CreatoDa = ConfigUser?.Utente ?? string.Empty;
+                
                 context.ConfigurazioneFontiDatis.Add(_config);
             }
             

@@ -54,7 +54,7 @@
                                     <MudChip T="string" Size="Size.Small" Color="@GetTipoColor(config.TipoFonte)">
                                         @GetTipoIcon(config.TipoFonte) @config.TipoFonte
                                     </MudChip>
-                                    <MudText Typo="Typo.h6">@config.NomeConfigurazione</MudText>
+                                    <MudText Typo="Typo.h6">@config.DescrizioneConfigurazione</MudText>
                                 </div>
                                 <MudText Typo="Typo.caption" Class="text-muted">@config.CodiceConfigurazione</MudText>
                             </CardHeaderContent>
@@ -333,7 +333,6 @@
     private class ConfigDto
     {
         public int IdConfigurazione { get; set; }
-        public string NomeConfigurazione { get; set; } = "";
         public string CodiceConfigurazione { get; set; } = "";
         public string? DescrizioneConfigurazione { get; set; }
         public string TipoFonte { get; set; } = "";

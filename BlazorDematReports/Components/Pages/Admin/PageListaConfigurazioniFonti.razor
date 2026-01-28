@@ -9,25 +9,28 @@
 @inject IDialogService DialogService
 @attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
 
-<PageTitle>Configurazioni Fonti Dati</PageTitle>
+<PageTitle >Configurazioni Fonti Dati</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <div class="d-flex justify-space-between align-center mb-4">
         <div>
-            <MudText Typo="Typo.h4">
+            <MudText Typo="Typo.h4" Class="titolo ">
                 Configurazioni Fonti Dati
             </MudText>
             <MudText Typo="Typo.body2" Class="text-muted">
                 Gestione centralizzata delle sorgenti dati per produzione
             </MudText>
         </div>
+        
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
                    OnClick="@(() => Navigation.NavigateTo("/admin/configura-fonte-dati"))">
             Nuova Configurazione
         </MudButton>
+
     </div>
+    
 
     @if (_loading)
     {
@@ -41,6 +44,8 @@
     }
     else
     {
+        <MudDivider Class="border-solid border-1 mud-border-primary mb-2"></MudDivider>
+
         <MudDataGrid T="ConfigurazioneRiepilogoDto"
                      Items="@_configurazioni"
                      Filterable="true"
@@ -51,7 +56,7 @@
                      Striped>
             <Columns>
                 <PropertyColumn Property="x => x.CodiceConfigurazione" Title="Codice" />
-                <PropertyColumn Property="x => x.NomeConfigurazione" Title="Nome" />
+                <PropertyColumn Property="x => x.Descrizione" Title="Descrizione" />
                 
                 <TemplateColumn Title="Tipo">
                     <CellTemplate>
@@ -193,6 +198,7 @@
             {
                 IdConfigurazione = c.IdConfigurazione,
                 CodiceConfigurazione = c.CodiceConfigurazione,
+                Descrizione = c.DescrizioneConfigurazione!,
                 TipoFonte = c.TipoFonte,
                 FlagAttiva = c.FlagAttiva,
                 CreatoIl = c.CreatoIl,
@@ -423,7 +429,6 @@
     }
 
 
-
     private async Task EliminaConfigAsync(ConfigurazioneRiepilogoDto config)
     {
         // Doppio controllo: verifica task attivi
@@ -436,7 +441,7 @@
         // Dialog di conferma
         var parameters = new DialogParameters
         {
-            ["ContentText"] = $"Sei sicuro di voler disattivare la configurazione '{config.NomeConfigurazione}'? I mapping verranno mantenuti ma la configurazione non sarà più utilizzabile.",
+            ["ContentText"] = $"Sei sicuro di voler disattivare la configurazione '{config.CodiceConfigurazione}'? I mapping verranno mantenuti ma la configurazione non sarà più utilizzabile.",
             ["ButtonText"] = "Disattiva",
             ["Color"] = Color.Error
         };
@@ -478,7 +483,7 @@
         // Dialog di conferma
         var parameters = new DialogParameters
         {
-            ["ContentText"] = $"Sei sicuro di voler ELIMINARE DEFINITIVAMENTE la configurazione '{config.NomeConfigurazione}'?",
+            ["ContentText"] = $"Sei sicuro di voler ELIMINARE DEFINITIVAMENTE la configurazione '{config.CodiceConfigurazione}'?",
             ["ButtonText"] = "Elimina definitivamente",
             ["Color"] = Color.Error
         };
@@ -530,7 +535,7 @@
     {
         public int IdConfigurazione { get; set; }
         public string CodiceConfigurazione { get; set; } = null!;
-        public string NomeConfigurazione { get; set; } = null!;
+        public string Descrizione { get; set; } = null!;
         public string TipoFonte { get; set; } = null!;
         public bool FlagAttiva { get; set; }
         public DateTime CreatoIl { get; set; }

@@ -16,7 +16,6 @@ BEGIN
     CREATE TABLE [dbo].[ConfigurazioneFontiDati] (
         [IdConfigurazione] INT IDENTITY(1,1) NOT NULL,
         [CodiceConfigurazione] VARCHAR(100) NOT NULL,
-        [NomeConfigurazione] NVARCHAR(200) NOT NULL,
         [DescrizioneConfigurazione] NVARCHAR(500) NULL,
         [TipoFonte] VARCHAR(50) NOT NULL,
         [TestoQuery] NVARCHAR(MAX) NULL,
