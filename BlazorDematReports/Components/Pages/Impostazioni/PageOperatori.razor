@@ -1,0 +1,346 @@
+﻿@page "/operatori"
+
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageOperatori,OperatoriDto,OperatoriDto>
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Operatori</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+        <MudItem  xs="12" sm="12" md="12" lg="4" xl="4">
+            <MudCard Style="height: 100%">
+                <MudCardContent  >
+
+                    <MudCardContent Class="pa-0">
+                        <MudText Typo="Typo.h6" >Nuovo Operatore</MudText>
+                    </MudCardContent>
+
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmit">
+                        <PageOperatoriValidationProvider />
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                            <MudTextField @bind-Value="@Model!.Operatore" Label="Operatore" Variant="Variant.Text"
+                                        Required=true
+                                        For="(() => Model!.Operatore)"
+                                        Clearable=true Class="mt-4">
+                            </MudTextField>
+
+                            <MudSelect T=int? @bind-Value="@Model.IdRuolo" Label="Ruolo" Required=true For="(() => Model.IdRuolo)" Clearable=true >
+                                @if (ListRuoli != null)
+                                {
+                                    @foreach (Ruoli item in ListRuoli)
+                                    {
+                                        <MudSelectItem T=int? Value="@item.IdRuolo">@item.Ruolo</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+
+                            <MudSelect T="string" Label="Azienda" Variant="Variant.Text" @bind-Value=@Model.Azienda Required=true For="(() => Model.Azienda)" Clearable=true>
+                                <MudSelectItem Value="@("POSTEL")" />
+                                <MudSelectItem Value="@("ESTERNO")" />
+                            </MudSelect>
+
+                            <MudSelect T=int? @bind-Value="Model.Idcentro" Label="Select Centro appartenenza" Style="width:200px"
+                            Required=true
+                            For="(() => Model.Idcentro)"
+                            Clearable=true>
+
+                                @if(ListCentri != null){
+                                    @foreach (CentriLavorazione item in ListCentri)
+                                    {
+                                        <MudSelectItem T=int? Value="@item.Idcentro">@item.Centro</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+
+
+                            <MudText Class="mt-6">Seleziona centri visibili per dati produzione</MudText>
+
+                            <MudDataGrid Items="@Model.CentriVisibiliDto" Class="mt-4" Hover="true" FixedHeader=true Outlined=true Breakpoint=Breakpoint.Sm Dense=true Height="200px">
+                                <Columns>
+                                    <PropertyColumn Property="x => x.Centro" Title="Centro" Editable=false Sortable="false" Filterable="false" />
+                                    <TemplateColumn CellClass="d-flex justify-start" Title="Visibile">
+                                        <CellTemplate Context="context2">
+                                            <MudCheckBox @bind-Value="@context2.Item.FlagVisibile" For="(() => context2.Item.FlagVisibile)">
+                                            </MudCheckBox>
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                </Columns>
+                            </MudDataGrid>
+
+
+                            <div class="justify-end mt-5 d-flex align-center ">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" Disabled="@(!IsFormValid)" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                        </MudFocusTrap>
+                    </EditForm>
+
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem  xs="12" sm="12" md="12" lg="8" xl="8">
+            <MudDataGrid T="OperatoriDto" Items="@ListOperatoriDto" ReadOnly="false" Filterable="true" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+            Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Dense=true EditDialogOptions="@maxWidth" Breakpoint="Breakpoint.Sm"
+                         Outlined=false Height="100%" StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow" Striped="true">
+
+                <ToolBarContent >
+                    <MudText Typo="Typo.h6" >Operatori</MudText>
+                </ToolBarContent>
+
+                <Columns>
+
+                    <PropertyColumn Property="x => x!.Idoperatore" Title="ID" Editable=false Sortable="false" Filterable="false" Style="width:30px" />
+
+                    <PropertyColumn Property="x => x!.Operatore" Title="Operatore" Editable=true Sortable="true" >
+                        <EditTemplate>
+                            <MudTextField @bind-Value="@context.Item!.Operatore" Label="Operatore" Variant="Variant.Text"
+                            Required=true
+                            For="(() => Model!.Operatore)">
+                            </MudTextField>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+
+                    <PropertyColumn Property="x => x!.Ruolo" Title="Ruolo" Editable=true Sortable="true">
+                        <EditTemplate>
+
+                            <MudSelect T=int? @bind-Value="@context.Item!.IdRuolo" Label="Ruolo" Required=true For="(() => context.Item!.IdRuolo)" Clearable=true>
+                                @if (ListRuoli != null)
+                                {
+                                    @foreach (Ruoli item in ListRuoli)
+                                    {
+                                        <MudSelectItem T=int? Value="@item.IdRuolo">@item.Ruolo</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x!.FlagOperatoreAttivo" Title="Attivo" Editable=true Sortable="true">
+                        <EditTemplate>
+                            <MudSelect T="bool" Label="Attivo" Variant="Variant.Text" @bind-Value=@context.Item!.FlagOperatoreAttivo>
+                                <MudSelectItem Value="@(true)" />
+                                <MudSelectItem Value="@(false)" />
+                            </MudSelect>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+
+                    <PropertyColumn Property="x => x!.Azienda" Title="Azienda" Editable=true Sortable="true" >
+                        <EditTemplate>
+                            <MudSelect T="string" Label="Azienda" Variant="Variant.Text" @bind-Value=@context.Item!.Azienda>
+                                <MudSelectItem Value="@("POSTEL")" />
+                                <MudSelectItem Value="@("ESTERNO")" />
+                            </MudSelect>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x!.Centro" Title="Centro" Editable=false>
+                        <CellTemplate>
+                            @context.Item!.Centro
+                        </CellTemplate>
+
+                        <EditTemplate>
+
+                            @if (ConfigUser!.IsAdminRole == true)
+                            {
+                                <MudText Class="mt-6">Seleziona centri visibili per dati produzione</MudText>
+
+                                <MudDataGrid Items="@context.Item.CentriVisibiliDto" Class="mt-4" Hover="true" FixedHeader=true Outlined=true Breakpoint=Breakpoint.Sm Dense=true Height="200px">
+                                    <Columns>
+                                        <PropertyColumn Property="x => x.Centro" Title="Centro" Editable=false Sortable="false" Filterable="false" />
+                                        <TemplateColumn CellClass="d-flex justify-start" Title="Visibile">
+                                            <CellTemplate Context="context2">
+                                                <MudCheckBox @bind-Value="@context2.Item.FlagVisibile" For="(() => context2.Item.FlagVisibile)"></MudCheckBox>
+                                            </CellTemplate>
+                                        </TemplateColumn>
+                                    </Columns>
+                                </MudDataGrid>
+                            }
+
+
+@*                             <MudOverlay Visible="IsVisibleEditing" LightBackground="true">
+                                <div class="d-flex justify-space-around ">
+                                    <MudText Typo="Typo.h4">@TextEditOverlay</MudText>
+                                    <MudProgressCircular Size="Size.Large" Indeterminate="true" />
+                                </div>
+                            </MudOverlay> *@
+
+
+                        </EditTemplate>
+                    </PropertyColumn>
+
+
+                    <TemplateColumn CellClass="d-flex justify-end" HeaderStyle="width:50px" Filterable="false" Sortable="false" >
+                        <CellTemplate>
+                            <MudStack Row>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                                <MudDivider Vertical="true" FlexItem="true" />
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.Idoperatore!, @context.Item.Operatore!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                </MudTooltip>
+                            </MudStack>
+                        </CellTemplate>
+
+                    </TemplateColumn>
+
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="OperatoriDto" />
+                </PagerContent>
+
+            </MudDataGrid>
+        </MudItem>
+    </MudGrid>
+
+</MudContainer>
+
+
+
+@code {
+
+    DialogOptions maxWidth = new DialogOptions() { MaxWidth = MaxWidth.Medium };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+        {
+            SetEditContext();
+
+            // Avvia tutte le chiamate asincrone in parallelo
+            var centriVisibiliTask = ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+            var operatoriTask = ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
+            var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+            var ruoliTask = ServiceWrapper!.ServiceRuoli.GetRuoliByUserAsync();
+
+            await Task.WhenAll(centriVisibiliTask, operatoriTask, centriTask, ruoliTask);
+
+            Model!.CentriVisibiliDto = centriVisibiliTask.Result;
+            ListOperatoriDto = operatoriTask.Result;
+            ListCentri = centriTask.Result;
+            ListRuoli = ruoliTask.Result;
+
+
+        }, "Caricamento dati...");
+
+    }
+
+
+
+    protected async Task HandleValidSubmit()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.Operatore))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                Model.FlagOperatoreAttivo = true;
+                await ServiceWrapper!.ServiceOperatori.AddOperatoreAsync(Model);
+                ListOperatoriDto = await ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Nuovo Operatore inserit", Severity.Success);
+
+                base.ResetFormModel();
+                Model!.CentriVisibiliDto = await ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+
+                base.ErrorMessage = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            Model!.CentriVisibiliDto = await ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    protected async Task DeleteRecordAsync(int idOperatore, string operatore)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + operatore + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null)
+        {
+            if (!result.Canceled)
+            {
+                try
+                {
+                    UiState?.ShowOverlay("Eliminazione in corso...");
+                    UiState?.SetMenuDisabled(true);
+
+                    await ServiceWrapper!.ServiceOperatori.DeleteOperatoreAsync(idOperatore);
+                    ListOperatoriDto = await ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
+                
+                    Model!.CentriVisibiliDto = await ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+
+                    UiState?.HideOverlay();
+                    UiState?.SetMenuDisabled(false);
+                    UiState?.ShowSnackbar("Operatore eliminat", Severity.Success);
+
+                    base.ErrorMessage = "";
+
+                }
+                catch (Exception ex)
+                {
+                    await HandleExceptionFormAsync(ex);
+                }
+            }
+        }
+
+    }
+
+    protected async Task OnUpdateRow(OperatoriDto item)
+    {
+        try
+        {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowEditOverlay("Update in corso...");
+
+            if (!string.IsNullOrEmpty(item.Operatore))
+            {
+                await ServiceWrapper!.ServiceOperatori.UpdateOperatoreAsync(item);
+                ListOperatoriDto = await ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
+
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("Il campo operatore non può essere vuoto", "OK", Color.Error, "Error");
+                item.Operatore = ValueBeforeEdit!.Operatore;
+            }
+
+            UiState?.SetMenuDisabled(false);
+            UiState?.HideEditOverlay();
+
+        }
+        catch (Exception ex)
+        {
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+}

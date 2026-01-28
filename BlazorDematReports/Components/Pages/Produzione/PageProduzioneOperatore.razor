@@ -1,0 +1,980 @@
+﻿@page "/produzione-operatore"
+@page "/produzione-operatore/{StartDate:datetime}/{EndDate:datetime}/{ValueIdOperatore:int}/{IdCentro:int}/{TipoReport:int}"
+@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO, USER")]
+
+@inherits BaseComponentPage<PageProduzioneOperatore,ProduzioneOperatoriDto,ProduzioneOperatoriDto>
+
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Produzione operatore</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+
+    <MudGrid Class="mt-2 " >
+        <MudItem xs="12" xl="3" sm="3">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+                        <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmit">
+                            <PageProduzioneOperatoriValidationProvider CheckAltraUtenza="@CheckAltraUtenza"/>
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus.FirstChild">
+
+                            <MudDatePicker Label="Data" DateChanged="@OnChangeDataAsync" Date="@Model!.DataLavorazione" Required="true" Disabled=@isDisableDatePicker />
+
+                            <MudAutocomplete T="string"
+                                             Label="Operatore"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectOperatore,arg))"
+                                             MaxItems=null
+                                             Clearable=true
+                                             Required="true"
+                                             ResetValueOnEmptyText="true"
+                                             Dense=true
+                                             Value="@Model!.Operatore"
+                                             Text="@Model!.Operatore"
+                                             ValueChanged="@((string arg) => OnValueChangedOperatoreAsync(arg))"
+                                             For="(() => Model.Operatore)"
+                                             Disabled=@isDisableOperatore
+                                             SelectOnActivation="true">
+                            </MudAutocomplete>
+
+
+                            @*Altra Utenza*@
+                            <div class="d-flex flex-row flex-grow-1 align-baseline">
+
+                                <MudCheckBox T="bool" 
+                                             ValueChanged="@((bool arg) => OnChangeAltraUtenza(arg))"
+                                             Value=@CheckAltraUtenza
+                                             Size=Size.Small
+                                             Class="d-flex p-0 "
+                                             KeyboardEnabled=true 
+                                             For="(() => Model.CheckLavoratoConAltraUtenza)">
+                                </MudCheckBox>
+
+                                <MudAutocomplete @ref="@RefAltraUtenza"
+                                                 T="string"
+                                                 Label="Altra utenza"
+                                                 SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectOperatore,arg))"
+                                                 MaxItems=null
+                                                 Clearable=true
+                                                 ResetValueOnEmptyText="true"
+                                                 Dense=true
+                                                 Disabled=@(!CheckAltraUtenza)
+                                                 ValueChanged="@((string arg) => OnValueChangedAltraUtenza(arg))"
+                                                 ItemDisabledFunc="@OnItemDisabledFunc"
+                                                 For="(() => Model.AltraUtenza)" />
+                            </div>
+
+
+                            @*Turni*@
+                            <MudAutocomplete T="string" Label="Turno"
+                                            SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectTurno,arg))"
+                                            MaxItems=null
+                                            Clearable=true
+                                            Disabled="@IsDisabledTurno"
+                                            Required="true"
+                                            ResetValueOnEmptyText="true"
+                                            Dense=true
+                                            SelectOnActivation="true"
+                                            Value="@Model!.Turno"
+                                            Text="@Model!.Turno"
+                                            ValueChanged="@((string arg) => OnValueChangedTurno(arg))" 
+                                            For="(() => Model!.Turno)"/>
+
+
+
+                            @*TipoTurni*@
+                            <MudAutocomplete T="string" Label="Tipo Turno"
+                                                SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectTipoTurno,arg))"
+                                                MaxItems=null
+                                                Clearable=true
+                                                Disabled="@IsDisabledTipoTurno"
+                                                ResetValueOnEmptyText="true"
+                                                Dense=true
+                                                SelectOnActivation="true"
+                                                Value="@Model!.TipoTurno"
+                                                Text="@Model!.TipoTurno"
+                                                ValueChanged="@((string arg) => OnValueChangedTipoTurno(arg))" />
+
+
+                            @*Lavorazione*@
+                            <MudAutocomplete T="string" 
+                                                Label="Lavorazione"
+                                                SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectLavorazione,arg))"
+                                                MaxItems=null
+                                                Required="true"
+                                                Clearable=true
+                                                Disabled="@IsDisabledLavorazione"
+                                                ResetValueOnEmptyText="true"
+                                                Dense=true
+                                                SelectOnActivation="true"
+                                                Value="@Model!.Lavorazione"
+                                                Text="@Model!.Lavorazione"
+                                                ValueChanged="@((string arg) => OnValueChangedLavorazione(arg))"
+                                                For="(() => Model!.Lavorazione)" />
+
+
+                            @*Fase*@
+                            <MudAutocomplete T="string" Label="Fase"
+                                            SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectFase,arg))"
+                                            MaxItems=null
+                                            Required="true"
+                                            Clearable=true
+                                            Disabled="@IsDisabledFase"
+                                            ResetValueOnEmptyText="true"
+                                            Dense=true
+                                            SelectOnActivation="true"
+                                            Value="@Model!.Fase"
+                                            Text="@Model!.Fase"
+                                            ValueChanged="@((string arg) => OnValueChangedFaseAsync(arg))" 
+                                            For="(() => Model!.Fase)" />
+
+
+                            @*Reparto*@
+                            <MudAutocomplete T="string" Label="Reparto"
+                                            SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectReparto,arg))"
+                                            MaxItems=null
+                                            Clearable=true
+                                            Disabled="@IsDisabledReparto"
+                                            Required="true"
+                                            ResetValueOnEmptyText="true"
+                                            Dense=true
+                                            SelectOnActivation="true"
+                                            Value="@Model!.Reparto"
+                                            Text="@Model!.Reparto"
+                                            ValueChanged="@((string arg) => OnValueChangedReparto(arg))"
+                                            For="(() => Model!.Reparto)" />
+
+
+                            @*Note*@
+                            <MudTextField T="string" Label="Note" @bind-Value="@Model!.Note" Lines="3" />
+
+                            @*Doc lavorati da inserire se previsti dal tipo di lavorazione*@
+                            @if (ShowComponent)
+                            {
+                                foreach (var element in ListTipologieTotali!)
+                                {
+                                    <MudNumericField @bind-Value="@ListTipologieTotaliDto!.Find(x => x.TipoTotale == element.TipoTotale)!.Totale" Label="@element.TipoTotale" Min="0"></MudNumericField>
+                                }
+                            }
+
+
+                            <div class="d-flex align-center justify-space-between">
+
+                                @*Ore lavorate*@
+                                <MudNumericField Label="Ore" Min="0" Max="12" 
+                                    Value=@Model!.Ore
+                                    ValueChanged=@((int ore) => OnOreChanged(ore))
+                                    Required=true
+                                    Disabled=@IsDisabledOre
+                                    For="(() => Model!.Ore)">
+                                </MudNumericField>
+
+
+                                @*Minuti lavorati*@
+                                <MudNumericField Label="Minuti" Max="59" Min="0"
+                                    Value=@Model!.Minuti
+                                    Disabled=@IsDisabledMinuti
+                                    ValueChanged=@((int minuti) => OnMinutiChanged(minuti))
+                                    Required=true Class="ml-2"
+                                    For="(() => Model!.Minuti)">
+                                </MudNumericField>
+
+
+                                @*Ore cents*@
+                                <MudNumericField @bind-Value="@Model!.TempoLavOreCent" Min="0"
+                                    Label="OreCents" 
+                                    Disabled=true 
+                                    HideSpinButtons=true 
+                                    Class="ml-2" >
+                                </MudNumericField>
+
+                            </div>
+
+                            <div class="justify-end mt-5 d-flex align-center ">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto focus-visible-button" Disabled="@(!IsFormValid)" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                            </div>
+
+
+                            @*Link Gestione Operatori elenco completo*@
+                            @if (ShowLinkGestioneOperatori)
+                            {
+                                <div class="justify-start mt-5 d-flex">
+                                    <MudButton Href=@string.Format("gestione-operatori/{0}/{1}/{2}/{3}", StartDate!.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), EndDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), IdCentro, TipoReport)
+                                    Target="_self"
+                                    Variant="Variant.Text"
+                                    StartIcon="@Icons.Material.Filled.ArrowBack"
+                                    Color="Color.Primary"
+                                    Style="text-transform:none">
+                                        Gestione Operatori - Elenco completo
+                                    </MudButton>
+                                </div>
+                            }
+
+                            @*Link Gestione Operatori elenco non quadrato*@
+                            @if (ShowLinkOperatoriNonConformi)
+                            {
+                                <div class="justify-start mt-5 d-flex">
+                                    <MudButton Href=@string.Format("gestione-operatori/{0}/{1}/{2}/{3}", StartDate!.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), EndDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), IdCentro, TipoReport)
+                                    Target="_self"
+                                    Variant="Variant.Text"
+                                    StartIcon="@Icons.Material.Filled.ArrowBack"
+                                    Color="Color.Primary"
+                                    Style="text-transform:none">
+                                        Gestione Operatori - Quadratura assente
+                                    </MudButton>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                        </MudFocusTrap>
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" xl="9" sm="9" >
+            <MudCard Style="height:100%">
+                <MudCardContent>
+
+                    <MudDataGrid T="ProduzioneOperatoriDto" Items="@ListProduzioneOperatoriDto" ReadOnly="false" Filterable="true" FilterMode=DataGridFilterMode.ColumnFilterMenu FilterCaseSensitivity="DataGridFilterCaseSensitivity.CaseInsensitive"
+                        Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Breakpoint="Breakpoint.Sm" Elevation="1"
+                        StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow"  >
+                        <Columns>
+                            <HierarchyColumn T="ProduzioneOperatoriDto" />
+
+                            <PropertyColumn Property="x => x.DataLavorazione" Title="Data" Filterable="false" Editable=false Sortable="false" Style="width:20%">
+                                <CellTemplate>
+                                    @context.Item.DataLavorazione!.Value.ToShortDateString()
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.Operatore" Title="Operatore" Filterable="false" Editable=false Sortable="false" Style="width:20%" >
+                                <EditTemplate>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.AltraUtenza" Title="AltraUtenza" Filterable="false" Editable=false Sortable="false">
+                                <EditTemplate>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.Lavorazione" Title="Lavorazione" Filterable="false" Editable=false Sortable="false" >
+                                <EditTemplate>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.Fase" Title="Fase" Filterable="false" Editable=false Sortable="false" >
+                                <EditTemplate>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.Turno" Title="Turno" Filterable="false" Editable=false Style="width:50px" >
+                                <EditTemplate>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.TipoTurno" Title="TipoTurno" Filterable="false" Editable=false Style="width:30%" Sortable="false">
+                                <EditTemplate>
+                                </EditTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.TempoLavOreCent" Title="Ore" Filterable="false" Editable=true Style="width:20%" Sortable="false">
+                                <EditTemplate>
+                                    <MudNumericField @bind-Value="@context.Item.TempoLavOreCent" Required Min="0.25" Step="0.25" Max="12" FullWidth=true Variant="Variant.Outlined" Label="Ore" Class="mt-2" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <TemplateColumn Title="Stato" Filterable="false" Editable=false Style="width:40%" Sortable="false">
+                                <CellTemplate>
+                                    <MudStack Row>
+                                        <MudTooltip Text="Edit">
+                                            <MudIconButton Class="d-flex align-items: flex-end " Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                        </MudTooltip>
+                                        <MudDivider Vertical="true" FlexItem="true" />
+                                        <MudTooltip Text="Delete">
+                                            <MudIconButton Class="d-flex align-items: flex-end " OnClick="@((e) => DeleteRecordAsync(@context.Item.IdProduzione, @context.Item.Lavorazione!, (int)@context.Item.IdOperatore!, (DateTime)@context.Item.DataLavorazione!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                        </MudTooltip>
+                                    </MudStack>
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                        </Columns>
+                        <ChildRowContent>
+                            @if (context.Item.TipologieTotaliProduzioneDto != null)
+                            {
+                                @if (context.Item.TipologieTotaliProduzioneDto.Count > 0 )
+                                {
+                                    <MudCard Elevation="0">
+                                        <MudCardHeader>
+                                            <CardHeaderContent>
+                                                <MudText Typo="Typo.body1">Lavorazione: @context.Item.Lavorazione</MudText>
+                                            </CardHeaderContent>
+                                        </MudCardHeader>
+                                        <MudCardContent>
+                                            <MudDataGrid Items="@context.Item.TipologieTotaliProduzioneDto" Breakpoint="Breakpoint.Sm" Elevation="1">
+                                                <Columns>
+                                                    <PropertyColumn Property="x => x.IdproduzioneTotale" Title="ID" Filterable="false" Editable=false Style="width:50px" />
+                                                    <PropertyColumn Property="x => x.TipologiaTotale" Title="Tipo" Filterable="false" Editable=false Style="width:50px" />
+                                                    <PropertyColumn Property="x => x.Totale" Title="Totale" Filterable="false" Editable=false Style="width:50px" />
+                                                </Columns>
+                                            </MudDataGrid>
+                                        </MudCardContent>
+                                    </MudCard>
+                                }
+                            }
+                        </ChildRowContent>
+                        <PagerContent>
+                            <MudDataGridPager T="ProduzioneOperatoriDto" />
+                        </PagerContent>
+                    </MudDataGrid>
+
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+</MudContainer>
+
+
+@code {
+
+
+
+    [Parameter]
+    public int ValueIdOperatore { get; set; }
+
+    [Parameter]
+    public DateTime? StartDate { get; set; }
+
+    [Parameter]
+    public DateTime EndDate { get; set; }
+
+    [Parameter]
+    public int IdCentro { get; set; }
+
+    [Parameter]
+    public int TipoReport { get; set; }
+
+
+    MudAutocomplete<string>? RefAltraUtenza;
+
+    bool IsDisabledLavorazione { get; set; } = true;
+    bool IsDisabledFase { get; set; } = true;
+    bool IsDisabledTurno { get; set; } = true;
+    bool IsDisabledTipoTurno { get; set; } = true;
+    bool IsDisabledReparto { get; set; } = true;
+    bool IsDisabledOre { get; set; } = true;
+    bool IsDisabledMinuti { get; set; } = true;
+    bool isDisableDatePicker { get; set; } = false;
+    bool isDisableOperatore { get; set; } = false;
+
+    bool ShowComponent { get; set; } = false;
+    bool ShowLinkGestioneOperatori { get; set; } = false;
+    bool ShowLinkOperatoriNonConformi { get; set; } = false;
+    bool CheckAltraUtenza { get; set; } = false;
+    ProcedureLavorazioniDto ProcedureLavorazioniDto { get; set; } = new ProcedureLavorazioniDto();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await RunWithOverlay(async () =>
+        {
+            SetEditContext();
+
+            var operatoriTask = ServiceWrapper!.ServiceOperatori.GetOperatoriByUserAsync();
+            var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+            var repartiTask = ServiceWrapper.ServiceRepartiProduzione.GetRepartiProduzioneAsync();
+            var turniTask = ServiceWrapper.ServiceTurni.GetTurniAsync();
+            var tipoTurniTask = ServiceWrapper.ServiceTipoTurni.GetTipoTurniAsync();
+            var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+            var tipologieTask = ServiceWrapper.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+
+            await Task.WhenAll(operatoriTask, lavorazioniTask, repartiTask, turniTask, tipoTurniTask, fasiTask, tipologieTask);
+
+            ListOperatori = operatoriTask.Result;
+            SetSelectOperatore();
+
+            ListProcedureLavorazioniDto = lavorazioniTask.Result;
+            SetSelectLavorazione(ListProcedureLavorazioniDto!);
+
+            ListReparti = repartiTask.Result;
+            SetSelectReparto();
+
+            ListTurni = turniTask.Result;
+            SetSelectTurni();
+
+            ListTipoTurni = tipoTurniTask.Result;
+            SetSelectTipoTurni();
+
+            ListFasiLavorazione = fasiTask.Result;
+            ListTipologieTotaliDto = tipologieTask.Result;
+
+            //chiamato da menu Gestione Operatori
+            if (ValueIdOperatore != 0)
+            {
+                if (TipoReport == 1)
+                {
+                    ShowLinkGestioneOperatori = true;
+                    ShowLinkOperatoriNonConformi = false;
+                }
+                if (TipoReport == 2)
+                {
+                    ShowLinkGestioneOperatori = false;
+                    ShowLinkOperatoriNonConformi = true;
+                }
+
+                Model!.DataLavorazione = StartDate;
+                Model.IdOperatore = (int)ValueIdOperatore;
+                Model.Operatore = ListOperatori.FirstOrDefault(x => x.Idoperatore == (int)ValueIdOperatore)!.Operatore; 
+                Model.IdCentro = ListOperatori.FirstOrDefault(x => x.Idoperatore == (int)ValueIdOperatore)!.Idcentro;
+
+                await OnValueChangedOperatoreAsync(Model.Operatore);
+            }
+            else
+            {
+                ShowLinkGestioneOperatori = false;
+                ShowLinkOperatoriNonConformi = false;
+            }
+
+
+        }, "Caricamento dati...");
+
+    }
+
+    protected async Task GetListProduzioneOperatoriAsync()
+    {
+        await RunWithOverlay(async () =>
+            {
+                ListProduzioneOperatoriDto = await ServiceWrapper!.ServiceProduzioneOperatori.GetProduzioneOperatoriDtoAsync((int)Model!.IdOperatore!, (DateTime)Model!.DataLavorazione!);
+            }, "Caricamento dati...");
+    }
+
+    //*** Form ****
+    protected async Task HandleValidSubmit()
+    {
+
+        try
+        {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Inserimento in corso...");
+
+            var res = await ServiceWrapper!.ServiceProduzioneOperatori.CheckProduzioneOperatori(Model!);
+            if (!res)
+            {
+
+                await ServiceWrapper!.ServiceProduzioneOperatori.AddProduzioneOperatoriAsync(Model!, ListTipologieTotaliDto!);
+                await GetListProduzioneOperatoriAsync();
+
+                var preDataLav = Model!.DataLavorazione;
+
+                ResetFormModel();
+
+                Model!.DataLavorazione = preDataLav;
+
+                foreach (var element in ListTipologieTotaliDto!)
+                {
+                    element.Totale = 0;
+                }
+
+                IsDisabledLavorazione = false;
+                IsDisabledFase = false;
+                IsDisabledReparto = false;
+
+                CheckAltraUtenza = false;
+                await RefAltraUtenza!.ClearAsync();
+
+                base.ErrorMessage = "";
+                StateHasChanged();
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Lavorazione inserita", Severity.Success);
+            }
+            else
+            {
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                await NotificationDialog!.ShowNotification("Attenzione ! Record duplicato", "OK", Color.Error, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            Model!.DataLavorazione = DateTime.Now.Date;
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+
+    protected Boolean OnItemDisabledFunc(string oper)
+    {
+        if (oper != Model!.Operatore)
+            return false;
+        return true;
+    }
+
+    //events
+    protected async Task OnChangeDataAsync(DateTime? StartDateP)
+    {
+
+        Model!.DataLavorazione = StartDateP;
+        if (Model.IdOperatore != null)
+        {
+            if (Model.DataLavorazione.HasValue == true)
+            {
+                isDisableDatePicker = true;
+                isDisableOperatore = true;
+
+                await GetListProduzioneOperatoriAsync();
+
+                isDisableDatePicker = false;
+                isDisableOperatore = false;
+
+                base.ErrorMessage = "";
+            }
+        }
+    }
+
+
+    // Nuovo metodo interno che contiene la logica attuale
+    private async Task OnValueChangedOperatoreAsync(string operatore)
+    {
+        // Tutta la logica attuale di OnValueChangedOperatoreAsync
+        var oldDataLavorazione = Model?.DataLavorazione;
+        var oldOperatore = operatore;
+
+        Model = new ProduzioneOperatoriDto
+        {
+            DataLavorazione = oldDataLavorazione,
+            Operatore = oldOperatore
+        };
+
+        SetEditContext();
+
+        if (string.IsNullOrEmpty(operatore))
+        {
+            IsDisabledTurno = true;
+            IsDisabledTipoTurno = true;
+            DisableBoolFlagLavorazioneFaseReparto(true);
+            DisableBoolFlagOreMinuti(true);
+            OnChangeAltraUtenza(false);
+        }
+        else
+        {
+            Operatori? oper = GetOperatore(operatore);
+
+            if (oper != null)
+            {
+                Model.IdOperatore = oper.Idoperatore;
+                Model.Operatore = oper.Operatore;
+                Model.IdCentro = oper.Idcentro;
+
+                isDisableDatePicker = true;
+                isDisableOperatore = true;
+
+                await GetListProduzioneOperatoriAsync();
+
+                isDisableDatePicker = false;
+                isDisableOperatore = false;
+
+                CheckAltraUtenza = false;
+
+                SetSelectLavorazioneDto(oper!.Idcentro);
+
+                IsDisabledTurno = false;
+                IsDisabledTipoTurno = false;
+                DisableBoolFlagLavorazioneFaseReparto(false);
+                DisableBoolFlagOreMinuti(true);
+
+                ShowComponent = false;
+                base.ErrorMessage = "";
+            }
+        }
+        ValidateForm();
+    }
+
+    protected async Task OnValueChangedLavorazione(string lavorazione)
+    {
+        Model!.Lavorazione = lavorazione;
+
+        if (string.IsNullOrEmpty(lavorazione)) 
+        {
+            ResetLavorazione();
+
+            IsDisabledFase = true;
+            IsDisabledReparto = true;
+            DisableBoolFlagOreMinuti(true);
+        }
+        else
+        {
+            Model.Lavorazione = Model.Lavorazione.ToUpper();
+            Model.IdProceduraLavorazione = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.IdproceduraLavorazione;
+            Model.IdReparti = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.Idreparti;
+
+            ProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
+            if (ProcedureLavorazioniDto != null)
+            {
+                SetSelectFasi(ProcedureLavorazioniDto);
+            }
+
+            Model.Reparto = ListReparti!.FirstOrDefault(x => x.IdReparti == Model.IdReparti)?.Reparti;
+
+            IsDisabledFase = false;            
+            IsDisabledReparto = false;
+            DisableBoolFlagOreMinuti(false);
+
+        }
+
+        ValidateForm();
+    }
+
+    protected async Task OnValueChangedFaseAsync(string fase)
+    {
+        await RunWithOverlay(async () =>
+        {
+            Model!.Fase = fase;
+
+            if (string.IsNullOrEmpty(fase))
+            {
+                Model.Fase = null;
+                Model.IdFaseLavorazione = null;
+                Model.Ore = 0;
+                Model.Minuti = 0;
+                Model.TempoLavOreCent = 0;
+                ShowComponent = false;
+            }
+            else
+            {
+                Model.Fase = fase.ToUpper();
+                Model.IdFaseLavorazione = ListFasiLavorazione!.FirstOrDefault(x => x.FaseLavorazione == fase)?.IdFaseLavorazione;
+
+                ListTipologieTotali = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieAttiveByIdLavorazioneAsync((int)Model.IdProceduraLavorazione!, (int)Model.IdFaseLavorazione!);
+                if (ListTipologieTotali.Count > 0)
+                {
+                    foreach (var element in ListTipologieTotaliDto!)
+                    {
+                        element.Totale = 0;
+                    }
+
+                    ShowComponent = true;
+
+                    var prolav = ListProcedureLavorazioniDto!.Where(x => x.IdproceduraLavorazione == Model.IdProceduraLavorazione).FirstOrDefault();
+
+                    var idReparto = 0;
+                    if (prolav != null)
+                    {
+                        idReparto = (int)prolav!.Idreparti!;
+                        Model.IdReparti = idReparto;
+                    }
+                }
+                else
+                {
+                    ShowComponent = false;
+                }
+            }
+        }, "Cambio fase...");
+
+        ValidateForm();
+    }
+
+    protected void OnChangeAltraUtenza(bool value)
+    {
+        CheckAltraUtenza = value;
+        Model!.CheckLavoratoConAltraUtenza = CheckAltraUtenza;
+        RefAltraUtenza!.ClearAsync();
+
+        if (value == false)
+        {
+            Model!.AltraUtenza = null;
+            Model.FlagLlavoratoConAltraUtenza = null;
+        }
+
+    }
+
+    protected void OnValueChangedAltraUtenza(string operatore)
+    {
+        if (!string.IsNullOrEmpty(operatore))
+        {
+            Operatori? operAltraUtenza = GetOperatore(operatore);
+            if(operAltraUtenza != null)
+            {
+                if (operAltraUtenza != null)
+                {
+                    Model!.AltraUtenza = operAltraUtenza!.Operatore;    
+                    Model.FlagLlavoratoConAltraUtenza = 1;
+                }
+            }
+        }
+        else
+        {
+            Model!.AltraUtenza = null;
+        }
+    }
+
+    protected void OnValueChangedTurno(string turno)
+    {
+        Model!.Turno = turno;
+
+        if (string.IsNullOrEmpty(turno))
+        {
+            ResetTurno();
+
+            DisableBoolFlagLavorazioneFaseReparto(false);
+            DisableBoolFlagOreMinuti(false);
+        }
+        else
+        {
+            Model.IdTurno = ListTurni!.FirstOrDefault(x => x.Turno == turno)?.IdTurno;
+
+            //Assente
+            if (Model.IdTurno == 3)
+            {
+                Model.Lavorazione = "POSTEL_NO_LAVORAZIONE";
+                Model.Fase = "NO_FASE_LAVORAZIONE";
+                Model.Reparto = "NO_REPARTO";
+
+                Model.IdProceduraLavorazione = 33;
+                Model.IdFaseLavorazione = 7;
+                Model.IdReparti = 1;
+                Model.Ore = 0;
+                Model.Minuti = 0;
+                Model.TempoLavOreCent = 0;
+
+
+                OnChangeAltraUtenza(false);
+                Model.AltraUtenza = null;
+                Model.FlagLlavoratoConAltraUtenza = null;
+                Model.Note = null;
+
+                DisableBoolFlagLavorazioneFaseReparto(true);
+                DisableBoolFlagOreMinuti(false);
+            }           
+        }
+    }
+
+    protected void OnValueChangedTipoTurno(string tipoTurno)
+    {
+        Model!.TipoTurno = tipoTurno;
+
+        if (!string.IsNullOrEmpty(tipoTurno))
+        {
+            Model.IdTipoTurno = ListTipoTurni!.FirstOrDefault(x => x.TipoTurno == tipoTurno)?.IdTipoTurno;
+        }
+    }
+
+    protected void OnValueChangedReparto(string reparto)
+    {
+        Model!.Reparto = reparto;
+
+        if (reparto != null)
+        {
+            if (!string.IsNullOrEmpty(reparto))
+            {
+                Model.IdReparti = ListReparti != null ? ListReparti!.FirstOrDefault(x => x.Reparti == reparto)?.IdReparti : throw new ArgumentNullException("Mandatory parameter ListReparti", nameof(ListReparti));
+
+                if (Model.IdReparti == null)
+                {
+                    Model.Reparto = null;
+                    Model.IdReparti = null;
+                }
+            }
+            else
+            {
+                Model.IdReparti = null;
+            }
+        }
+        else
+        {
+            Model.IdReparti = null;
+        }
+
+
+    }
+
+    protected void DisableBoolFlagLavorazioneFaseReparto(bool flag)
+    {
+        IsDisabledLavorazione = flag;
+        IsDisabledFase = flag;
+        IsDisabledReparto = flag;
+    }
+
+    protected void DisableBoolFlagOreMinuti(bool flag)
+    {
+        IsDisabledOre = flag;
+        IsDisabledMinuti = flag;
+    }
+
+    //set time
+    protected void OnOreChanged(int ore)
+    {
+        Model!.Ore = ore;
+        CalcolaOreCents();
+        ValidateForm();
+    }
+
+    protected void OnMinutiChanged(int minuti)
+    {
+        Model!.Minuti = minuti;
+        CalcolaOreCents();
+        ValidateForm();
+    }
+
+    protected void CalcolaOreCents()
+    {
+        int minuti = 0;
+        if (Model!.Minuti == 0)
+        {
+            minuti = 0;
+        }
+        if (Model!.Minuti >= 1 && Model!.Minuti <= 15)
+        {
+            minuti = 15;
+        }
+        else if (Model!.Minuti >= 16 && Model!.Minuti <= 30)
+        {
+            minuti = 30;
+        }
+        else if (Model!.Minuti >= 31 && Model!.Minuti <= 45)
+        {
+            minuti = 45;
+        }
+        else if (Model!.Minuti >= 45 && Model!.Minuti <= 59)
+        {
+            minuti = 60;
+        }
+
+
+        Model!.TempoLavOreCent = (double)((Model!.Ore * 60) + minuti) / 60; ;
+    }
+
+
+    /// <summary>
+    /// reset some properties object when change Turno
+    /// </summary>
+    protected void ResetTurno()
+    {
+        Model!.IdTurno = null;
+        Model.IdProceduraLavorazione = null;
+        Model.IdFaseLavorazione = null;
+        Model.IdReparti = null;
+        Model.Turno = null;
+        Model.Lavorazione = null;
+        Model.Fase = null;
+        Model.Reparto = null;
+        Model.Ore = 0;
+        Model.Minuti = 0;
+        Model.TempoLavOreCent = 0;
+        Model.Note = null;
+
+    }
+
+
+    /// <summary>
+    /// reset some properties object when change Lavorazione
+    /// </summary>
+    protected void ResetLavorazione()
+    {
+        Model!.IdProceduraLavorazione = null;
+        Model!.IdFaseLavorazione = null;
+        Model!.IdReparti = null;
+        Model!.Lavorazione = null;
+        Model!.Fase = null;
+        Model!.Reparto = null;
+        Model!.Ore = 0;
+        Model!.Minuti = 0;
+        Model!.TempoLavOreCent = 0;
+        Model!.Note = null;
+
+    }
+
+    /// <summary>
+    /// Eliminazione a cascata settata nel DB all'interno della proprietà FK_TipologieTotaliProduzione_ProduzioneOperatori
+    /// della relazione di chiave esterna (specifica Insert/Update -> regola di eliminazione -> sovrapponi)
+    /// </summary>
+    /// <param name="idProduzione"></param>
+    /// <param name="lavorazione"></param>
+    /// <returns></returns>
+    protected async Task DeleteRecordAsync(int idProduzione, string lavorazione, int IdOperatore, DateTime dataLavorazione)
+    {
+        await RunWithOverlay(async () =>
+        {
+            var parameters = new DialogParameters();
+            parameters.Add("ContentText", "Eliminare : " + lavorazione + " ?");
+            parameters.Add("ButtonText", "Delete");
+            parameters.Add("Color", Color.Error);
+
+            var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+            var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+            var result = await dialog.Result;
+
+            if (!result!.Canceled)
+            {
+                Model!.IdOperatore = IdOperatore;
+
+                await ServiceWrapper!.ServiceProduzioneOperatori.DeleteProduzioneOperatoriAsync(idProduzione);
+                await GetListProduzioneOperatoriAsync();
+
+                Model!.IdOperatore = null;
+
+                base.ErrorMessage = "";
+
+                UiState?.ShowSnackbar("Lavorazione eliminata", Severity.Success);
+            }
+        }, "Eliminazione in corso...");
+    }
+
+
+    protected async Task OnUpdateRow(ProduzioneOperatoriDto produzioneOperatoriDto)
+    {
+        try
+        {
+            if (produzioneOperatoriDto.TempoLavOreCent >= 0)
+            {
+                await ServiceWrapper!.ServiceProduzioneOperatori.UpdateProduzioneOperatoriAsync(produzioneOperatoriDto);
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+            }
+            else
+            {
+                produzioneOperatoriDto.TempoLavOreCent = ValueBeforeEdit!.TempoLavOreCent;
+                await NotificationDialog!.ShowNotification("Il campo Ore non può essere a 0", "OK", Color.Error, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger!.LogError(ex.Message.ToString());
+            await NotificationDialog!.ShowNotification(ex.Message.ToString(), "OK", Color.Error, "Error");
+        }
+    }
+
+    protected void ValidateForm()
+    {
+
+        // Verifica che il Model esista
+        if (Model == null)
+        {
+            IsFormValid = false;
+            return;
+        }
+
+        // 1. Controllo campi obbligatori
+        bool campiObbligatoriCompilati =
+            Model.DataLavorazione != null &&
+            !string.IsNullOrWhiteSpace(Model.Operatore) &&
+            Model.IdOperatore.HasValue &&
+            !string.IsNullOrWhiteSpace(Model.Lavorazione) &&
+            Model.IdProceduraLavorazione.HasValue &&
+            !string.IsNullOrWhiteSpace(Model.Fase) &&
+            Model.IdFaseLavorazione.HasValue;
+
+        // 2. Controllo che almeno un campo numerico sia > 0
+        bool almenoUnCampoNumerico =
+            Model.Ore > 0 ||
+            Model.Minuti > 0 ;
+
+        // 3. Imposta lo stato del pulsante
+        IsFormValid = campiObbligatoriCompilati && almenoUnCampoNumerico;
+
+
+        StateHasChanged();
+    }
+
+}

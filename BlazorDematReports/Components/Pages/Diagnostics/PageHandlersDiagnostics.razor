@@ -1,0 +1,157 @@
+@* Componente diagnostico per verificare handler registrati *@
+@page "/diagnostics/handlers"
+@using LibraryLavorazioni.Shared.Interfaces
+@using LibraryLavorazioni.Shared.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Linq
+@inject IUnifiedHandlerRegistry Registry
+@attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Diagnostica Handler Registrati</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Code" Class="mr-2" />
+                    Handler Lavorazioni SQL
+                </MudText>
+                
+                <MudList T="string" Dense="true">
+                    @foreach (var handler in _lavorazioneHandlers)
+                    {
+                        <MudListItem T="string">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Storage" 
+                                         Color="Color.Primary" 
+                                         Class="mr-2" 
+                                         Size="Size.Small" />
+                                <MudText>@handler.Code</MudText>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+                
+                @if (!_lavorazioneHandlers.Any())
+                {
+                    <MudAlert Severity="Severity.Warning">Nessun handler SQL registrato</MudAlert>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="mt-2">
+                        @_lavorazioneHandlers.Count() handler SQL
+                    </MudChip>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-2" />
+                    Handler Mail Service
+                </MudText>
+                
+                <MudList T="string" Dense="true">
+                    @foreach (var handler in _mailHandlers)
+                    {
+                        <MudListItem T="string">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Mail" 
+                                         Color="Color.Secondary" 
+                                         Class="mr-2" 
+                                         Size="Size.Small" />
+                                <MudText>@handler.Code</MudText>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+                
+                @if (!_mailHandlers.Any())
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-2">
+                        <strong>? Nessun handler Mail registrato!</strong>
+                        <br /><br />
+                        <strong>Verifica:</strong>
+                        <ol>
+                            <li>Program.cs contiene:<br/>
+                                <pre>builder.Services.AddScoped&lt;IMailImportHandler, Hera16EwsHandler&gt;();</pre>
+                                <pre>builder.Services.AddScoped&lt;IMailImportHandler, Ader4Handler&gt;();</pre>
+                            </li>
+                            <li>Applicazione riavviata dopo modifiche</li>
+                            <li>Nessun errore di compilazione</li>
+                        </ol>
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="mt-2">
+                        @_mailHandlers.Count() handler Mail
+                    </MudChip>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Class="pa-4" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />
+                    Tutti i Codici Registrati
+                </MudText>
+                
+                <MudChipSet T="string">
+                    @foreach (var handlerCode in Registry.Codes.OrderBy(c => c))
+                    {
+                        <MudChip T="string" 
+                                 Color="@(IsMailHandler(handlerCode) ? Color.Secondary : Color.Primary)"
+                                 Size="Size.Small">
+                            @handlerCode
+                        </MudChip>
+                    }
+                </MudChipSet>
+                
+                <MudDivider Class="my-3" />
+                
+                <MudText Typo="Typo.body2" Class="mt-2">
+                    <strong>Totale handler registrati:</strong> @Registry.Codes.Count
+                </MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudButton Variant="Variant.Filled" 
+               Color="Color.Info" 
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="@Reload"
+               Class="mt-4">
+        Ricarica
+    </MudButton>
+</MudContainer>
+
+@code {
+    private IEnumerable<IUnifiedHandler> _lavorazioneHandlers = Array.Empty<IUnifiedHandler>();
+    private IEnumerable<IUnifiedHandler> _mailHandlers = Array.Empty<IUnifiedHandler>();
+
+    protected override void OnInitialized()
+    {
+        LoadHandlers();
+    }
+
+    private void LoadHandlers()
+    {
+        _lavorazioneHandlers = Registry.GetHandlersByType(HandlerType.Lavorazione);
+        _mailHandlers = Registry.GetHandlersByType(HandlerType.MailImport);
+    }
+
+    private bool IsMailHandler(string code)
+    {
+        return _mailHandlers.Any(h => h.Code == code);
+    }
+
+    private void Reload()
+    {
+        LoadHandlers();
+        StateHasChanged();
+    }
+}

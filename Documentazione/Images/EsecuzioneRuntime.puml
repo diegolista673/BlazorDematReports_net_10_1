@@ -1,0 +1,70 @@
+@startuml EsecuzioneRuntime
+!theme plain
+skinparam backgroundColor White
+skinparam participant {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+}
+skinparam database {
+    BackgroundColor LightYellow
+    BorderColor Orange
+}
+
+title Esecuzione Runtime Task (Mail vs Produzione)
+
+participant "Hangfire Scheduler" as HF
+participant "ProductionJobRunner" as Runner
+participant "MailImportHandlerRegistry" as Registry
+participant "Hera16EwsHandler" as Handler
+participant "ServiceReadDataViaMail" as MailService
+participant "LettoreDati" as Lettore
+database "TaskDaEseguire" as DB
+participant "Exchange Server" as Exchange
+database "HERA16 Table" as TargetDB
+
+HF -> Runner: 1. Triggered execution:\nRunAsync(idTaskDaEseguire)
+activate Runner
+Runner -> DB: 2. Carica entità con Include:\nProcedura, Fase, navigazioni
+Runner -> Runner: 3. IsMailTask(entity)?\nCheck MailServiceCode
+
+alt Mail Task (MailServiceCode != null)
+    Runner -> Registry: 4. Get(entity.MailServiceCode)\nResolve handler
+    activate Registry
+    Registry -> Handler: 5. Return Hera16EwsHandler\nper "HERA16.EWS"
+    deactivate Registry
+    
+    Runner -> Handler: 6. ExecuteAsync(scope, context, ct)\ncon MailImportExecutionContext
+    activate Handler
+    Handler -> MailService: 7. ProcessHera16Async(ct)\nPipeline specifica HERA16
+    activate MailService
+    
+    MailService -> Exchange: 8. FindItems(Inbox, filters)\nCerca email con soggetto specifico
+    activate Exchange
+    Exchange -> MailService: 9. Email results\ncon allegati CSV
+    deactivate Exchange
+    
+    MailService -> MailService: 10. ProcessEmailAsync()\nEstrae e processa allegati
+    MailService -> TargetDB: 11. BulkInsert CSV data\nSqlBulkCopy verso HERA16
+    activate TargetDB
+    TargetDB -> MailService: 12. Insert completed
+    deactivate TargetDB
+    
+    MailService -> Handler: 13. Return record count
+    deactivate MailService
+    Handler -> Runner: 14. Return success count
+    deactivate Handler
+
+else Production Task (MailServiceCode == null)
+    Runner -> Lettore: 4. SetDatiProduzioneAsync(dto)\nPipeline produzione standard
+    activate Lettore
+    Lettore -> DB: 5. Execute query con\nparametri configurati
+    Lettore -> Runner: 6. Success response
+    deactivate Lettore
+end
+
+Runner -> DB: 15. UPDATE audit fields:\nLastRunUtc, ConsecutiveFailures,\nLastError
+deactivate Runner
+
+note right of DB: Audit trail aggiornato\nper monitoring e debugging
+
+@enduml

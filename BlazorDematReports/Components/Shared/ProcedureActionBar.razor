@@ -1,0 +1,138 @@
+@* Action Bar per Edit/View Mode *@
+@if (Mode == ActionBarMode.Edit)
+{
+    <MudPaper id="floating-action-bar"
+              Class="@GetActionBarClass()" 
+              Elevation="8" 
+              Style="position: sticky; top: 0; z-index: 1001; margin-bottom: 16px; transition: all 0.3s ease; background-color: white;">
+        <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+            <div class="d-flex align-center gap-2">
+                @if (HasUnsavedChanges)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Error" Size="Size.Medium" />
+                    <MudText Typo="Typo.h6" Style="color: #f44336; font-weight: 600;">
+                        MODIFICHE IN SOSPESO
+                    </MudText>
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Color="Color.Success">
+                        Salvato
+                    </MudText>
+                }
+            </div>
+            
+            <div class="d-flex gap-2 align-center">
+                @if (ShowResetButton)
+                {
+                    <MudButton Variant="Variant.Text" 
+                               Size="Size.Small"
+                               OnClick="@OnReset"
+                               StartIcon="@Icons.Material.Filled.Undo"
+                               Disabled="@(!HasUnsavedChanges || IsProcessing)">
+                        Reset
+                    </MudButton>
+                }
+                
+                <MudButton Variant="Variant.Filled" 
+                           Size="Size.Small"
+                           Color="Color.Primary"
+                           OnClick="@OnSave"
+                           StartIcon="@(IsProcessing ? null : Icons.Material.Filled.Save)"
+                           Disabled="@(!HasUnsavedChanges || IsProcessing)">
+                    @if (IsProcessing)
+                    {
+                        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                        <span>@ProcessingText</span>
+                    }
+                    else
+                    {
+                        <span>@SaveButtonText</span>
+                    }
+                </MudButton>
+            </div>
+        </div>
+    </MudPaper>
+}
+else if (Mode == ActionBarMode.View)
+{
+    @* Modalità View - Action bar opzionale per azioni di visualizzazione *@
+    @if (ShowViewActions)
+    {
+        <MudPaper Class="pa-3 mb-4" Elevation="1">
+            <div class="d-flex justify-end gap-2">
+                @CustomViewActions
+            </div>
+        </MudPaper>
+    }
+}
+
+@code {
+    /// <summary>
+    /// Modalità dell'action bar (Edit o View)
+    /// </summary>
+    [Parameter] public ActionBarMode Mode { get; set; } = ActionBarMode.Edit;
+    
+    /// <summary>
+    /// Indica se ci sono modifiche non salvate
+    /// </summary>
+    [Parameter] public bool HasUnsavedChanges { get; set; }
+    
+    /// <summary>
+    /// Indica se è in corso un'operazione di salvataggio
+    /// </summary>
+    [Parameter] public bool IsProcessing { get; set; }
+    
+    /// <summary>
+    /// Callback per salvare le modifiche
+    /// </summary>
+    [Parameter] public EventCallback OnSave { get; set; }
+    
+    /// <summary>
+    /// Callback per resettare le modifiche
+    /// </summary>
+    [Parameter] public EventCallback OnReset { get; set; }
+    
+    /// <summary>
+    /// Mostra il pulsante Reset
+    /// </summary>
+    [Parameter] public bool ShowResetButton { get; set; } = true;
+    
+    /// <summary>
+    /// Testo del pulsante Salva
+    /// </summary>
+    [Parameter] public string SaveButtonText { get; set; } = "Salva";
+    
+    /// <summary>
+    /// Testo durante il processing
+    /// </summary>
+    [Parameter] public string ProcessingText { get; set; } = "Salvataggio...";
+    
+    /// <summary>
+    /// Mostra azioni in modalità View
+    /// </summary>
+    [Parameter] public bool ShowViewActions { get; set; } = false;
+    
+    /// <summary>
+    /// Contenuto custom per le azioni in modalità View
+    /// </summary>
+    [Parameter] public RenderFragment? CustomViewActions { get; set; }
+    
+    private string GetActionBarClass()
+    {
+        var baseClass = "floating-action-bar pa-3";
+        return HasUnsavedChanges 
+            ? $"{baseClass} has-changes" 
+            : $"{baseClass} saved";
+    }
+    
+    /// <summary>
+    /// Enum per la modalità dell'action bar
+    /// </summary>
+    public enum ActionBarMode
+    {
+        Edit,
+        View
+    }
+}

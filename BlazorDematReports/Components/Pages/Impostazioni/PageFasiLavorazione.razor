@@ -1,0 +1,216 @@
+﻿@page "/fasi-lavorazioni"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageFasiLavorazione,FasiLavorazioneDto,FasiLavorazioneDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4" >Fasi Lavorazione</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+        <MudItem xs="12" sm="12" md="12" lg="4" xl="4">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+                    <MudCardContent Class="pa-0">
+                        <MudText Typo="Typo.h6">Nuova Fase Lavorazione</MudText>
+                    </MudCardContent>
+
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                            <MudTextField @bind-Value="Model!.FaseLavorazione" Label="Fase Lavorazione" Variant="Variant.Text"
+                                        Required=true
+                                        For="(() => Model!.FaseLavorazione)"
+                                        Clearable=true Class="mt-5">
+                            </MudTextField>
+
+
+                            <div class="justify-end mt-5 d-flex align-center ">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                        </MudFocusTrap>
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="12" md="12" lg="8" xl="8">
+
+            <MudDataGrid T="FasiLavorazioneDto" Items="@ListFasiLavorazioneDto" ReadOnly="false"  FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+                         Dense=true Striped="true"  Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Breakpoint="Breakpoint.Sm"
+                    StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow" Outlined=false Height="100%">
+
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Fasi Lavorazione</MudText>
+                </ToolBarContent>
+
+                <Columns>
+
+                    <PropertyColumn Property="x => x!.IdFaseLavorazione" Title="ID" Editable=false Sortable="false" Filterable="false" HeaderStyle="width:30px" />
+
+                    <PropertyColumn Property="x => x!.FaseLavorazione" Title="Fase Lavorazione" Editable=true Sortable="true" Filterable="true" HeaderStyle="width:400px">
+                        <EditTemplate>
+                            <MudTextField @bind-Value="@context!.Item!.FaseLavorazione" Label="Fase" Variant="Variant.Text"
+                                          T="string"
+                                          Required=true
+                                          For="(() => Model!.FaseLavorazione)">
+                            </MudTextField>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+
+                    <TemplateColumn CellClass="d-flex justify-end" HeaderStyle="width:50px">
+                        <CellTemplate>
+                                <MudStack Row>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                                <MudDivider Vertical="true" FlexItem="true" />
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.IdFaseLavorazione, @context.Item!.FaseLavorazione!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                </MudTooltip>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="FasiLavorazioneDto" />
+                </PagerContent>
+
+            </MudDataGrid>
+
+        </MudItem>
+
+    </MudGrid>
+
+</MudContainer>
+
+
+
+@code {
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+           {
+               SetEditContext();
+
+               ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+
+           }, "Caricamento dati...");
+    }
+
+    protected async Task HandleValidSubmit()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.FaseLavorazione))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                await ServiceWrapper!.ServiceFasiLavorazioni.AddFasiLavorazioneAsync(Model);
+                ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+                
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Nuovo Fase Lavorazione inserita", Severity.Success);
+
+                ResetFormModel();
+                StateHasChanged();
+
+            }
+        }
+        catch (Exception ex)
+        {
+            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    protected async Task OnUpdateRow(FasiLavorazioneDto item)
+    {
+        try
+        {
+
+            if (!string.IsNullOrEmpty(item.FaseLavorazione))
+            {
+                await ServiceWrapper!.ServiceFasiLavorazioni.UpdateFasiLavorazioneAsync(item);
+                ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("La fase non può essere vuota", "OK", Color.Error, "Error");
+                item.FaseLavorazione = ValueBeforeEdit!.FaseLavorazione;
+            }
+
+        }
+        catch (Exception ex)
+        {
+            ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+
+
+    }
+
+    protected async Task DeleteRecordAsync(int idFase, string fase)
+    {
+        base.ErrorMessage = "";
+
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + fase + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null)
+        {
+            if (!result.Canceled)
+            {
+                try
+                {
+                    UiState?.ShowOverlay("Eliminazione in corso...");
+                    UiState?.SetMenuDisabled(true);
+
+                    await ServiceWrapper!.ServiceFasiLavorazioni.DeleteFasiLavorazioneAsync(idFase);
+                    ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+
+                    UiState?.HideOverlay();
+                    UiState?.SetMenuDisabled(false);
+                    UiState?.ShowSnackbar("Fase eliminata", Severity.Success);
+
+                }
+                catch (Exception ex)
+                {
+                    ResetFormModel();
+                    await HandleExceptionFormAsync(ex);
+                }
+            }
+        }
+
+    }
+
+
+
+}

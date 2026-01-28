@@ -1,0 +1,88 @@
+@startuml ArchitetturaGenerale
+!theme plain
+skinparam backgroundColor White
+skinparam component {
+    BackgroundColor LightCyan
+    BorderColor DarkCyan
+}
+skinparam database {
+    BackgroundColor LightYellow
+    BorderColor Orange
+}
+skinparam cloud {
+    BackgroundColor LightPink
+    BorderColor Red
+}
+
+title Architettura Generale Sistema Task e Mail
+
+package "Blazor UI Layer" {
+    component [PageProcedureLavorazioni] as Page
+    component [DialogAddBackgroundTask] as Dialog
+    component [DataGridElencoFasiNew] as Grid
+}
+
+package "Service Layer" {
+    component [ServiceProcedureLavorazioni] as ProcService
+    component [ServiceTaskDaEseguire] as TaskService
+}
+
+package "Infrastructure Layer" {
+    component [ProductionJobScheduler] as Scheduler
+    component [ProductionJobRunner] as Runner
+    component [HangfireRecurringJobManagerAdapter] as Adapter
+}
+
+package "Mail Import System" {
+    component [MailImportHandlerRegistry] as Registry
+    component [Hera16EwsHandler] as Hera16
+    component [Eq4VeronaHandler] as Eq4VR  
+    component [Eq4GenovaHandler] as Eq4GE
+    component [ServiceReadDataViaMail] as MailService
+}
+
+database "TaskDaEseguire" as MainDB
+database "HERA16 Tables" as Hera16DB
+database "Equitalia4 Tables" as Eq4DB
+cloud "Hangfire Dashboard" as HangfireDash
+cloud "Exchange Servers" as Exchange
+
+' UI Layer connections
+Page --> Dialog
+Page --> Grid
+Page --> ProcService
+
+' Service Layer connections  
+ProcService --> MainDB
+TaskService --> MainDB
+Dialog --> Registry
+
+' Infrastructure connections
+ProcService --> Scheduler
+Scheduler --> Adapter
+Adapter --> HangfireDash
+Scheduler --> MainDB
+
+' Runtime execution
+HangfireDash --> Runner
+Runner --> Registry
+Runner --> MailService
+
+' Mail handlers
+Registry --> Hera16
+Registry --> Eq4VR
+Registry --> Eq4GE
+Hera16 --> MailService
+Eq4VR --> MailService
+Eq4GE --> MailService
+
+' External connections
+MailService --> Exchange
+MailService --> Hera16DB
+MailService --> Eq4DB
+
+note right of MainDB : Tabella unificata per\ntask produzione e mail
+note right of Registry : Pattern Registry per\ngestione handler dinamici
+note right of Scheduler : Scheduler unificato con\nnaming convention coerente
+
+@enduml

@@ -1,0 +1,52 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor/MudBlazor.min.css"]?v=@(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString())" rel="stylesheet" />
+    <link href="css/SiteBase.css" rel="stylesheet" />
+    <!-- nuovi css estratti -->
+    <link href="css/phasecard.minicharts.css" rel="stylesheet" />
+    <link href="css/totaliLavorazioniFasi.css" rel="stylesheet" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <!-- scripts esistenti -->
+    <script src="@Assets["_content/MudBlazor/MudBlazor.min.js"]?v=@(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString())"></script>
+    <script src="_framework/blazor.web.js"></script>
+    <script src="js/Charts/EChartProduzioneFogliScansionati.js" type="text/javascript"></script>
+    <script src="js/Charts/EChartProduzioneDocumentiPubblicati.js" type="text/javascript"></script>
+    <script src="js/Charts/EChartProduzioneVolumeOre.js"></script>
+    <script src="js/Charts/EChartPhaseLast5Years.js" type="text/javascript"></script>
+    <script src="js/Charts/EChartPhaseYearStacked.js" type="text/javascript"></script>
+    <script src="js/Charts/EChartPhaseMiniBar.js" type="text/javascript"></script>
+    <script src="js/Charts/EChartProduzioneStackedLine.js" type="text/javascript"></script>
+    <script src="js/Charts/echartproduzionechartline.js"></script>
+    <script src="js/client-shared.js"></script>
+    <script src="js/utilities.js"></script>
+    <script src="js/clipboard-helper.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script suppress-error="BL9992">
+        document.body.addEventListener('keypress', e => {
+            if (e.which == 13 && !e.target.matches('button[type=submit]')) {
+                const form = e.composedPath().find(e => e.matches('form'))
+                const submitButton = form && form.querySelector('button[type=submit]:enabled');
+                if (submitButton) {
+                    const preventSubmit = (e2) => { e2.preventDefault(); return false; }
+                    form.addEventListener('click', preventSubmit, { once: true, capture: true });
+                    setTimeout(() => form.removeEventListener('click', preventSubmit, { capture: true }), 0);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

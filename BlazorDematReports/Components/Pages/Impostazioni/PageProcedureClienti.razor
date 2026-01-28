@@ -1,0 +1,378 @@
+﻿@page "/procedure-clienti"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageProcedureClienti,ProcedureClienteDto,ProcedureClienteDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Procedure Clienti</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer MaxWidth="MaxWidth.False">
+    <MudGrid Class="mt-2">
+
+        @*form*@
+        <MudItem xs="12" sm="12" md="12" lg="4" xl="4">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+
+                    <MudCardContent Class="pa-0">
+                        <MudText Typo="Typo.h6">Nuova Procedura Cliente</MudText>
+                    </MudCardContent>
+
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
+                        <DataAnnotationsValidator />
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                            <MudSelect T=int? Label="Select Centro" Style="width:200px" Class="mt-3" Margin="Margin.Dense"
+                                    Required=true
+                                    For="(() => Model!.Idcentro)"
+                                    Clearable=true
+                                    AutoFocus=true
+                                    Value="@base.Model!.Idcentro"
+                                    ValueChanged="@((int? arg) => OnValueChangedCentro(arg))" >
+
+                                    @if (ListCentri != null)
+                                    {
+                                        @foreach (CentriLavorazione item in ListCentri!)
+                                        {
+                                            <MudSelectItem T=int? Value="@item.Idcentro">@item.Centro</MudSelectItem>
+                                        }
+                                    }   
+                            </MudSelect>
+
+
+                            <MudAutocomplete T="string" Label="Cliente" @bind-Value=@Model!.Cliente
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectCliente,arg))"
+                                             MaxItems=null
+                                             Clearable=true
+                                             Required="true"
+                                             Dense=true
+                                             Immediate="true"
+                                             ResetValueOnEmptyText="true"
+                                             For="(() => Model!.Cliente)"
+                                             Disabled=@isDisableCliente 
+                                             TextChanged="@(_ => ValidateForm())" />
+
+                            <MudSelect T="string" Label="Descrizione" Variant="Variant.Text" @bind-Value="Model!.DescrizioneProcedura" Clearable=true>
+                                <MudSelectItem Value="@("23I")" />
+                                <MudSelectItem Value="@("BOLLETTINI")" />
+                                <MudSelectItem Value="@("CONTRATTI")" />
+                                <MudSelectItem Value="@("DONAZIONI")" />
+                                <MudSelectItem Value="@("DOCUMENTI")" />
+                                <MudSelectItem Value="@("FONDI")" />
+                                <MudSelectItem Value="@("MODULI")" />
+                                <MudSelectItem Value="@("NO_LAVORAZIONE")" />
+                                <MudSelectItem Value="@("PRATICHE")" />
+                                <MudSelectItem Value="@("QUESTIONARI_RUO")" />
+                                <MudSelectItem Value="@("RACCOMANDATE")" />
+                                <MudSelectItem Value="@("RESI")" />
+                                <MudSelectItem Value="@("RID")" />
+                                <MudSelectItem Value="@("SOLLECITI")" />
+                            </MudSelect>
+
+                            <MudTextField @bind-Value="Model!.Commessa" Label="Commessa" Variant="Variant.Text" Clearable=true></MudTextField>
+
+                            <MudTextField @bind-Value="Model!.ProceduraCliente" 
+                                Label="Procedura Cliente" 
+                                Variant="Variant.Text" 
+                                Adornment="Adornment.End" 
+                                AdornmentText="@Sigla"
+                                Required=true
+                                For="(() => Model!.ProceduraCliente)"
+                                Clearable=true
+                                TextChanged="@(_ => ValidateForm())"
+                                Immediate="true">
+                            </MudTextField>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                            <div class="justify-end mt-5 d-flex align-center">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsFormValid)">Salva</MudButton>
+                            </div>
+
+                        </MudFocusTrap>
+                    </EditForm>
+
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @*table*@
+        <MudItem xs="12" sm="12" md="12" lg="8" xl="8">
+            <MudDataGrid T="ProcedureClienteDto" 
+                Items="@ListProcedureClienteDto" 
+                ReadOnly="false" 
+                Filterable="true" 
+                FilterMode="@FilterMode" 
+                FilterCaseSensitivity="@CaseSensitivity"
+                Dense=true 
+                Bordered=true 
+                EditMode="DataGridEditMode.Form" 
+                EditTrigger="DataGridEditTrigger.Manual" 
+                Hover=true 
+                Breakpoint="Breakpoint.Sm"
+                StartedEditingItem="@StartedEditingItem" 
+                CanceledEditingItem="@CanceledEditingItem" 
+                CommittedItemChanges="@OnUpdateRow" 
+                Outlined=false
+                Height="100%" 
+                Striped="true">
+
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Procedure Clienti</MudText>
+                </ToolBarContent>
+
+                <Columns>
+
+                    <PropertyColumn Property="x => x!.IdproceduraCliente" Title="ID" Editable=false Sortable="false" Filterable="false" HeaderStyle="width:50px">
+                        <EditTemplate>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x!.ProceduraCliente" Title="Procedura Cliente" Editable=true Sortable="true">
+                        <EditTemplate>
+                            <MudTextField @bind-Value="@context.Item!.ProceduraCliente" Label="Procedura Cliente" Variant="Variant.Text"
+                                            Required=true
+                                      For="(() => Model!.ProceduraCliente)">
+                            </MudTextField>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x!.DescrizioneProcedura" Title="Descrizione" Editable=true Sortable="true" Hidden="true">
+                        <EditTemplate>
+                            <MudSelect T="string" Label="Descrizione" Variant="Variant.Text" @bind-Value="context.Item!.DescrizioneProcedura" Clearable=true>
+                                <MudSelectItem Value="@("23I")" />
+                                <MudSelectItem Value="@("BOLLETTINI")" />
+                                <MudSelectItem Value="@("CONTRATTI")" />
+                                <MudSelectItem Value="@("DONAZIONI")" />
+                                <MudSelectItem Value="@("DOCUMENTI")" />
+                                <MudSelectItem Value="@("FONDI")" />
+                                <MudSelectItem Value="@("MODULI")" />
+                                <MudSelectItem Value="@("NO_LAVORAZIONE")" />
+                                <MudSelectItem Value="@("PRATICHE")" />
+                                <MudSelectItem Value="@("QUESTIONARI_RUO")" />
+                                <MudSelectItem Value="@("RACCOMANDATE")" />
+                                <MudSelectItem Value="@("RESI")" />
+                                <MudSelectItem Value="@("RID")" />
+                                <MudSelectItem Value="@("SOLLECITI")" />
+                            </MudSelect>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x!.Commessa" Title="Commessa" Editable=true Sortable="true" Hidden="true">
+                        <EditTemplate>
+                            <MudTextField Label="Commessa" 
+                                          Variant="Variant.Text"
+                                          For="(() => Model!.Commessa)" 
+                                          @bind-Value="@context.Item!.Commessa">
+                            </MudTextField>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x!.Cliente" Title="Cliente" Editable=false Sortable="true">
+                        <EditTemplate>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x!.Centro" Title="Centro" Editable=false Sortable="true">
+                        <EditTemplate>
+                        </EditTemplate>
+                    </PropertyColumn>
+
+                    <TemplateColumn CellClass="d-flex justify-end" Filterable="false">
+                        <CellTemplate>
+                            <MudStack Row>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                                <MudDivider Vertical="true" FlexItem="true" />
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.IdproceduraCliente, @context.Item.ProceduraCliente!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                </MudTooltip>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ProcedureClienteDto" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudItem>
+
+    </MudGrid>
+
+</MudContainer>
+
+
+@code {
+
+    bool isDisableCliente { get; set; } = false;
+    string? Sigla { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+        {
+             SetEditContext();
+
+            // Avvia le chiamate asincrone in parallelo
+            var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+            var procedureTask = ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync();
+
+            await Task.WhenAll(centriTask, procedureTask);
+
+            ListCentri = centriTask.Result;
+            ListProcedureClienteDto = procedureTask.Result;
+
+        }, "Caricamento dati...");
+    }
+
+    private void ValidateForm()
+    {
+        // Forza la validazione dell'EditContext
+        EditContext?.Validate();
+
+        // Controlla esplicitamente che i campi obbligatori siano compilati
+        bool isValid = !string.IsNullOrWhiteSpace(Model?.Cliente) &&
+                      !string.IsNullOrWhiteSpace(Model?.ProceduraCliente);
+
+        // Aggiorna lo stato del pulsante
+        IsFormValid = isValid && (EditContext?.Validate() ?? false);
+    }
+
+    protected async Task HandleValidSubmitAsync()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.ProceduraCliente))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                Model!.ProceduraCliente = (Model.ProceduraCliente + "_" + ConfigUser!.SiglaCentroOrigine).ToUpper();
+                Model!.DataInserimento = DateTime.Now;
+                Model!.Idoperatore = ConfigUser.IdUtente;
+
+                var cliente = await ServiceWrapper!.ServiceClienti.FindByCondition(x => x.NomeCliente == Model!.Cliente).FirstAsync();
+                Model!.Idcliente = cliente.IdCliente;
+                Model!.Idcentro = cliente.IdCentroLavorazione;
+
+                await ServiceWrapper.ServiceProcedureClienti.AddProceduraClienteAsync(Model!);
+                ListProcedureClienteDto = await ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync();
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Nuova Procedura Cliente inserita", Severity.Success);
+
+                ResetFormModel();
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+    protected async Task DeleteRecordAsync(int IdproceduraCliente, string proceduraCliente)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + proceduraCliente + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled )
+        {
+            try
+            {
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
+
+                await ServiceWrapper!.ServiceProcedureClienti.DeleteProceduraClienteAsync(IdproceduraCliente);
+                ListProcedureClienteDto = await ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync();
+
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
+                UiState?.ShowSnackbar("Procedura Cliente eliminata", Severity.Success);
+
+                base.ErrorMessage = "";
+
+            }
+            catch (Exception ex)
+            {
+                await HandleExceptionFormAsync(ex);
+            }
+        }
+    }
+
+    protected async Task OnUpdateRow(ProcedureClienteDto item)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(item.ProceduraCliente))
+            {
+                await ServiceWrapper!.ServiceProcedureClienti.UpdateProcedureClienteAsync(item);
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("La Procedura Cliente non può essere vuota", "OK", Color.Error, "Error");
+                item.ProceduraCliente = ValueBeforeEdit!.ProceduraCliente;
+            }
+
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    protected async Task OnValueChangedCentro(int? idCentro)
+    {
+        Model!.Idcentro = idCentro;
+
+        if (idCentro is null)
+        {
+            isDisableCliente = true;
+            ResetForm();
+            Sigla = "";
+        }
+        else
+        {
+            try
+            {
+                isDisableCliente = false;
+                ListClienti = await ServiceWrapper!.ServiceClienti.GetClientiByIDCentroAsync((int)idCentro);
+                SetSelectCliente();
+
+                Sigla = "_" + ListCentri!.Where(x => x.Idcentro == idCentro).First().Sigla;
+            }
+            catch (Exception ex)
+            {
+                ResetFormModel();
+                await HandleExceptionFormAsync(ex);
+            }
+        }
+    }
+
+    protected void ResetForm()
+    {
+        IsFormValid = false;
+        ResetFormModel();
+        Sigla = "";
+        StateHasChanged();
+
+    }
+
+}

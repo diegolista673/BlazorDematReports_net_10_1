@@ -1,0 +1,465 @@
+@using DataReading.Dto
+@using BlazorDematReports.Dto
+@using Entities.Models.DbApplication
+@inject ILogger<ProcedureMonitoringDashboard> Logger
+
+<div class="pa-4">
+    
+@* Header *@
+    <div class="d-flex justify-space-between align-center mb-4">
+        <div>
+            <MudText Typo="Typo.h5">Monitoring & Statistiche</MudText>
+            <MudText Typo="Typo.body2" Class="text-muted">
+                Dashboard real-time per monitorare lo stato e le performance della procedura
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="@RefreshDataAsync"
+                   Disabled="@_isLoading">
+            @if (_isLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Aggiorna
+        </MudButton>
+    </div>
+    
+    @* Task Lifecycle Info Alert *@
+    <MudAlert Severity="Severity.Info" Class="mb-4" ShowCloseIcon="false" Dense="true">
+        <MudText Typo="Typo.subtitle2" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
+            <strong>Ciclo di Vita dei Task</strong>
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            I task attraversano i seguenti stati durante il loro ciclo di vita:
+        </MudText>
+        <MudGrid Spacing="1">
+            <MudItem xs="12" sm="4">
+                <div class="d-flex align-center">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="mr-2">CONFIGURED</MudChip>
+                    <MudText Typo="Typo.caption">Task pronto, non ancora eseguito</MudText>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <div class="d-flex align-center">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="mr-2">COMPLETED</MudChip>
+                    <MudText Typo="Typo.caption">Ultima esecuzione completata con successo</MudText>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <div class="d-flex align-center">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="mr-2">ERROR</MudChip>
+                    <MudText Typo="Typo.caption">Ultima esecuzione fallita</MudText>
+                </div>
+            </MudItem>
+        </MudGrid>
+        <MudDivider Class="my-2" />
+        <MudText Typo="Typo.caption" Class="text-muted">
+            <strong>Nota:</strong> Tutti i task con <code>Enabled = true</code> vengono eseguiti automaticamente da Hangfire secondo la loro schedulazione. 
+            Lo stato indica solo l'esito dell'ultima esecuzione.
+        </MudText>
+    </MudAlert>
+    
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-center align-center" style="min-height: 300px;">
+            <MudProgressCircular Size="Size.Large" Indeterminate="true" Color="Color.Primary" />
+        </div>
+    }
+    else
+    {
+        @* === KPI CARDS === *@
+        <MudGrid Spacing="3" Class="mb-4">
+            @* Total Phases *@
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <div class="d-flex justify-space-between align-center">
+                            <div>
+                                <MudText Typo="Typo.caption" Class="text-muted">Fasi Totali</MudText>
+                                <MudText Typo="Typo.h4" Color="Color.Primary">@_stats.TotalPhases</MudText>
+                            </div>
+                            <MudAvatar Color="Color.Primary" Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Large" />
+                            </MudAvatar>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            @* Total Tasks *@
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <div class="d-flex justify-space-between align-center">
+                            <div>
+                                <MudText Typo="Typo.caption" Class="text-muted">Task Totali</MudText>
+                                <MudText Typo="Typo.h4" Color="Color.Info">@_stats.TotalTasks</MudText>
+                            </div>
+                            <MudAvatar Color="Color.Info" Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Large" />
+                            </MudAvatar>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            @* Mail Services *@
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <div class="d-flex justify-space-between align-center">
+                            <div>
+                                <MudText Typo="Typo.caption" Class="text-muted">Servizi Mail</MudText>
+                                <MudText Typo="Typo.h4" Color="Color.Secondary">@_stats.MailServices</MudText>
+                            </div>
+                            <MudAvatar Color="Color.Secondary" Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Large" />
+                            </MudAvatar>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+        
+        @* === STATUS OVERVIEW === *@
+        <MudGrid Spacing="3" Class="mb-4">
+            @* Task Status Distribution *@
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.PieChart" Class="mr-2" />
+                                Distribuzione Stato Task
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudStack Spacing="2">
+                            @foreach (var status in _stats.TasksByStatus)
+                            {
+                                <div>
+                                    <div class="d-flex justify-space-between mb-1">
+                                        <MudText Typo="Typo.body2">@GetStatusLabel(status.Key)</MudText>
+                                        <MudText Typo="Typo.body2"><strong>@status.Value</strong></MudText>
+                                    </div>
+                                    <MudProgressLinear Color="@GetStatusColor(status.Key)" 
+                                                      Value="@GetPercentage(status.Value, _stats.TotalTasks)" 
+                                                      Size="Size.Small" />
+                                </div>
+                            }
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            @* Task Type Distribution *@
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-2" />
+                                Distribuzione Tipo Task
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudStack Spacing="2">
+                            @foreach (var type in _stats.TasksByType)
+                            {
+                                <div>
+                                    <div class="d-flex justify-space-between mb-1">
+                                        <MudText Typo="Typo.body2">@GetTaskTypeName(type.Key)</MudText>
+                                        <MudText Typo="Typo.body2"><strong>@type.Value</strong></MudText>
+                                    </div>
+                                    <MudProgressLinear Color="@GetTaskTypeColor(type.Key)" 
+                                                      Value="@GetPercentage(type.Value, _stats.TotalTasks)" 
+                                                      Size="Size.Small" />
+                                </div>
+                            }
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+        
+        @* === PHASES WITH TASKS === *@
+        <MudCard Elevation="2" Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">
+                        <MudIcon Icon="@Icons.Material.Filled.ViewList" Class="mr-2" />
+                        Dettaglio Fasi e Task
+                    </MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_phaseDetails.Any())
+                {
+                    <MudDataGrid Items="@_phaseDetails" 
+                                 Bordered="true" 
+                                 Hover="true" 
+                                 Dense="true"
+                                 Filterable="true"
+                                 SortMode="SortMode.Multiple">
+                        <Columns>
+                            <PropertyColumn Property="x => x.PhaseName" Title="Fase">
+                                <HeaderTemplate>
+                                    <MudTooltip Text="Nome della fase di lavorazione">
+                                        <MudText Typo="Typo.body2"><strong>Fase</strong></MudText>
+                                    </MudTooltip>
+                                </HeaderTemplate>
+                            </PropertyColumn>
+                            
+                            <PropertyColumn Property="x => x.TaskCount" Title="Task Totali">
+                                <HeaderTemplate>
+                                    <MudTooltip Text="Numero totale di task configurati per questa fase">
+                                        <MudText Typo="Typo.body2"><strong>Task Totali</strong></MudText>
+                                    </MudTooltip>
+                                </HeaderTemplate>
+                            </PropertyColumn>
+                            
+                            <TemplateColumn Title="Configured" Filterable="true" Sortable="true">
+                                <HeaderTemplate>
+                                    <MudTooltip Text="Task in stato CONFIGURED (pronti, non ancora eseguiti)">
+                                        <MudText Typo="Typo.body2"><strong>Configured</strong></MudText>
+                                    </MudTooltip>
+                                </HeaderTemplate>
+                                <CellTemplate>
+                                    @{
+                                        var configuredCount = GetConfiguredTaskCount(context.Item.PhaseName);
+                                    }
+                                    <div class="d-flex align-center gap-1">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                                            @configuredCount
+                                        </MudChip>
+                                    </div>
+                                </CellTemplate>
+                            </TemplateColumn>
+                            
+                            <TemplateColumn Title="Completed" Filterable="true" Sortable="true">
+                                <HeaderTemplate>
+                                    <MudTooltip Text="Task con ultima esecuzione completata con successo">
+                                        <MudText Typo="Typo.body2"><strong>Completed</strong></MudText>
+                                    </MudTooltip>
+                                </HeaderTemplate>
+                                <CellTemplate>
+                                    @{
+                                        var completedCount = GetCompletedTaskCount(context.Item.PhaseName);
+                                    }
+                                    <div class="d-flex align-center gap-1">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">
+                                            @completedCount
+                                        </MudChip>
+                                    </div>
+                                </CellTemplate>
+                            </TemplateColumn>
+                            
+                            <TemplateColumn Title="Error" Filterable="true" Sortable="true">
+                                <HeaderTemplate>
+                                    <MudTooltip Text="Task con ultima esecuzione fallita">
+                                        <MudText Typo="Typo.body2"><strong>Error</strong></MudText>
+                                    </MudTooltip>
+                                </HeaderTemplate>
+                                <CellTemplate>
+                                    @{
+                                        var errorCount = GetErrorTaskCount(context.Item.PhaseName);
+                                    }
+                                    <div class="d-flex align-center gap-1">
+                                        <MudChip T="string" Size="Size.Small" Color="@(errorCount > 0 ? Color.Error : Color.Default)">
+                                            @errorCount
+                                        </MudChip>
+                                    </div>
+                                </CellTemplate>
+                            </TemplateColumn>
+                            
+                            <TemplateColumn Title="Data Reading" Filterable="false" Sortable="false">
+                                <HeaderTemplate>
+                                    <MudTooltip Text="Indica se la fase ha il flag Data Reading abilitato">
+                                        <MudText Typo="Typo.body2"><strong>Data Reading</strong></MudText>
+                                    </MudTooltip>
+                                </HeaderTemplate>
+                                <CellTemplate>
+                                    <MudIcon Icon="@(context.Item.HasDataReading ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                             Color="@(context.Item.HasDataReading ? Color.Success : Color.Default)" />
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                        <PagerContent>
+                            <MudDataGridPager T="PhaseDetail" />
+                        </PagerContent>
+                    </MudDataGrid>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Normal">
+                        Nessuna fase configurata con task.
+                    </MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+    
+</div>
+
+@code {
+    [Parameter] public ProcedureLavorazioniDto Model { get; set; } = null!;
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    
+    private bool _isLoading = false;
+    private MonitoringStats _stats = new();
+    private List<PhaseDetail> _phaseDetails = new();
+    
+    protected override void OnParametersSet()
+    {
+        if (Model != null)
+        {
+            CalculateStatistics();
+        }
+    }
+    
+    private async Task RefreshDataAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            await OnRefresh.InvokeAsync();
+            CalculateStatistics();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private void CalculateStatistics()
+    {
+        _stats = new MonitoringStats();
+        _phaseDetails = new List<PhaseDetail>();
+        
+        if (Model?.LavorazioniFasiDataReadingsDto == null) return;
+        
+        // Calculate total phases (excluding procedure-level phase with ID=0)
+        _stats.TotalPhases = Model.LavorazioniFasiDataReadingsDto.Count(f => f.IdFaseLavorazione != 0);
+        
+        // Calculate all tasks (including procedure-level mail services)
+        var allTasks = Model.LavorazioniFasiDataReadingsDto
+            .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
+            .ToList();
+        
+        _stats.TotalTasks = allTasks.Count;
+        _stats.MailServices = allTasks.Count(t => t.IdConfigurazioneDatabase.HasValue);
+        
+        // Group by status
+        _stats.TasksByStatus = allTasks
+            .GroupBy(t => t.Stato ?? "UNKNOWN")
+            .ToDictionary(g => g.Key, g => g.Count());
+        
+        // Group by type
+        _stats.TasksByType = allTasks
+            .GroupBy(t => t.IdTask)
+            .ToDictionary(g => g.Key, g => g.Count());
+        
+        // Build phase details (excluding procedure-level phase)
+        foreach (var fase in Model.LavorazioniFasiDataReadingsDto.Where(f => f.IdFaseLavorazione != 0))
+        {
+            var tasks = fase.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>();
+            _phaseDetails.Add(new PhaseDetail
+            {
+                PhaseName = fase.FaseLavorazione ?? "Unknown",
+                TaskCount = tasks.Count(),
+                HasDataReading = fase.FlagDataReading
+            });
+        }
+    }
+    
+    private double GetPercentage(int value, int total)
+    {
+        return total > 0 ? (value * 100.0 / total) : 0;
+    }
+    
+    private string GetStatusLabel(string status) => status switch
+    {
+        "COMPLETED" => "Completato",
+        "CONFIGURED" => "Configurato",
+        "ERROR" => "Errore",
+        _ => status
+    };
+    
+    private Color GetStatusColor(string status) => status switch
+    {
+        "COMPLETED" => Color.Success,
+        "CONFIGURED" => Color.Info,
+        "ERROR" => Color.Error,
+        _ => Color.Default
+    };
+    
+    private string GetTaskTypeName(int taskType) => taskType switch
+    {
+        1 => "Giornaliero",
+        2 => "Temporizzato",
+        3 => "Mensile",
+        _ => "Sconosciuto"
+    };
+    
+    private Color GetTaskTypeColor(int taskType) => taskType switch
+    {
+        1 => Color.Primary,
+        2 => Color.Secondary,
+        3 => Color.Tertiary,
+        _ => Color.Default
+    };
+    
+    private int GetConfiguredTaskCount(string phaseName)
+    {
+        var fase = Model?.LavorazioniFasiDataReadingsDto?
+            .FirstOrDefault(f => f.FaseLavorazione == phaseName);
+        
+        if (fase?.TaskDaEseguireDto == null) return 0;
+        
+        return fase.TaskDaEseguireDto.Count(t => 
+            t.Stato?.Equals("CONFIGURED", StringComparison.OrdinalIgnoreCase) == true);
+    }
+    
+    private int GetCompletedTaskCount(string phaseName)
+    {
+        var fase = Model?.LavorazioniFasiDataReadingsDto?
+            .FirstOrDefault(f => f.FaseLavorazione == phaseName);
+        
+        if (fase?.TaskDaEseguireDto == null) return 0;
+        
+        return fase.TaskDaEseguireDto.Count(t => 
+            t.Stato?.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase) == true);
+    }
+    
+    private int GetErrorTaskCount(string phaseName)
+    {
+        var fase = Model?.LavorazioniFasiDataReadingsDto?
+            .FirstOrDefault(f => f.FaseLavorazione == phaseName);
+        
+        if (fase?.TaskDaEseguireDto == null) return 0;
+        
+        return fase.TaskDaEseguireDto.Count(t => 
+            t.Stato?.Equals("ERROR", StringComparison.OrdinalIgnoreCase) == true);
+    }
+    
+    private class MonitoringStats
+    {
+        public int TotalPhases { get; set; }
+        public int TotalTasks { get; set; }
+        public int MailServices { get; set; }
+        public Dictionary<string, int> TasksByStatus { get; set; } = new();
+        public Dictionary<int, int> TasksByType { get; set; } = new();
+    }
+    
+    private class PhaseDetail
+    {
+        public string PhaseName { get; set; } = string.Empty;
+        public int TaskCount { get; set; }
+        public bool HasDataReading { get; set; }
+    }
+}

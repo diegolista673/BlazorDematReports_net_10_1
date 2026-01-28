@@ -1,0 +1,73 @@
+﻿
+
+.sticky-tabs {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Floating Action Bar - Design migliorato */
+.floating-action-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1300;
+    min-width: 450px;
+    max-width: 600px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Stato con modifiche non salvate */
+.floating-action-bar.has-changes {
+    border-left: 4px solid #ff9800;
+}
+
+/* Stato salvato */
+.floating-action-bar.saved {
+    border-left: 4px solid #4caf50;
+}
+
+/* Desktop grande */
+@media (min-width: 1400px) {
+    .floating-action-bar {
+        min-width: 500px;
+        max-width: 700px;
+    }
+}
+
+/* Tablet e mobile */
+@media (max-width: 960px) {
+    .floating-action-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        transform: none;
+        width: 100%;
+        min-width: auto;
+        max-width: none;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    }
+}
+
+/* Mobile piccolo */
+@media (max-width: 600px) {
+    .floating-action-bar {
+        padding: 12px !important;
+    }
+    
+    .floating-action-bar .d-flex {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+
+/* Padding per evitare che il contenuto sia coperto dalla barra */
+.content-with-floating-bar {
+    padding-bottom: 100px;
+}
+
+

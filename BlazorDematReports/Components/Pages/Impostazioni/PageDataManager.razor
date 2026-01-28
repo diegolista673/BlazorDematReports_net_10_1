@@ -1,0 +1,491 @@
+﻿@page "/data-manager"
+
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageDataManager,TaskDataReadingAggiornamentoDto,TaskDataReadingAggiornamentoDto,SearchDataDto,SearchDataDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Load Data Manager </MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer MaxWidth="MaxWidth.False">
+    <MudGrid Class="mt-1 ">
+         <MudItem xs="12" md="12" xl="12" sm="12" lg="12">
+            <MudTabs Elevation="2" Rounded="true" >
+
+                @* form search dati produzione *@
+                <MudTabPanel Text="Aggiorna Dati Lavorazione *">
+                    <MudGrid Class="mt-1">
+                        <MudItem xs="12" sm="12" md="12" lg="3" xl="3">
+                            <MudCard Style="height: 100%">
+                                <MudCardContent>
+                                    <EditForm EditContext="@uEditContext" OnValidSubmit="HandleSubmitLoadDataAsync">
+                                        <PageTaskValidationProvider />
+
+                                        <MudSelect @ref="@RefCentro" T=int? Label="Select Centro" Style="width:200px" Class="mt-3" Margin="Margin.Dense"
+                                                           Required=true
+                                                           For="(() => uModel!.Idcentro)"
+                                                           Clearable=true
+                                                           ValueChanged="@((int? arg) => OnValueChangedCentroAsync(arg))">
+
+                                            @if (ListCentri != null)
+                                            {
+                                                @foreach (CentriLavorazione item in ListCentri!)
+                                                {
+                                                    <MudSelectItem T=int? Value="@item.Idcentro">@item.Centro</MudSelectItem>
+                                                }
+                                            }
+                                        </MudSelect>
+
+
+                                        @*Lavorazione*@
+                                        <MudAutocomplete T="string" 
+                                            Label="Lavorazione"
+                                            SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectLavorazione,arg))"
+                                            MaxItems=null
+                                            Clearable=true
+                                            Disabled="@IsDisabledLavorazione"
+                                            ResetValueOnEmptyText="true"
+                                            Dense=true
+                                            SelectOnActivation="true"
+                                            Value="@uModel!.NomeProcedura"
+                                            Text="@uModel!.NomeProcedura"
+                                            ValueChanged="@((string arg) => OnValueChangedLavorazione(arg))"
+                                            Required=true
+                                            For="(() => uModel!.NomeProcedura)"  />
+
+
+                                        @* fasi previste per la raccolta dati automatica *@
+                                        <MudAutocomplete T="string"
+                                            Label="Fase"
+                                            SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectFase,arg))"
+                                            MaxItems=null
+                                            Clearable=true
+                                            ResetValueOnEmptyText="true"
+                                            Dense=true
+                                            Value="@uModel!.Fase"
+                                            Text="@uModel!.Fase"
+                                            ValueChanged="@((string arg) => OnValueChangedFase(arg))"
+                                            Disabled=IsDisabledFase
+                                            Required=true />
+
+
+
+                                        @* task da eseguire *@
+                                        @if(LavorazioniFasiDataReadingDto != null){
+                                            <MudSelect T=int? Label="Task/Query" Margin="Margin.Dense"
+                                                       Required=true Clearable=true @bind-Value="@IdTaskDaEseguire" Disabled=IsDisabledTask @ref="@RefTask">
+
+                                                @foreach (var item in LavorazioniFasiDataReadingDto!.TaskDaEseguireDto)
+                                                {
+                                                    @* NUOVO SISTEMA: Mostra tipo da ConfigurazioneFontiDati *@
+                                                    <MudSelectItem T=int? Value="item.IdTaskDaEseguire">
+                                                        @item.TaskName - @item.Descrizione
+                                                        @if (item.IdConfigurazioneDatabase.HasValue)
+                                                        {
+                                                            <text> (Configurazione Unificata)</text>
+                                                        }
+                                                    </MudSelectItem>
+                                                }
+
+                                            </MudSelect>
+                                        }
+
+                                        <MudDatePicker @ref =@RefDatePickerFrom Label="Data Da" Required="true" Disabled=@IsDisabledFase DateChanged="@((DateTime? arg) => OnValueChangedDateFrom(arg))" />
+                                        <MudDatePicker @ref =@RefDatePickerTo Label="Data A" Required="true" Disabled=@IsDisabledFase DateChanged="@((DateTime? arg) => OnValueChangedDateTo(arg))" />
+
+
+                                        <MudText Typo="Typo.subtitle2" Class="titolo mt-4">*I dati caricati manualmente non verranno sovrascritti</MudText>
+
+                                        <div class="justify-end mt-5 d-flex align-center ">
+                                            <MudButton Class="mt-2" ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.TableView" Disabled="@(!IsFormValid)">Aggiorna</MudButton>
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                                        {
+                                            <p style="color:red;">@ErrorMessage</p>
+                                        }
+
+                                    </EditForm>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                        <MudItem xs="12" sm="12" md="12" lg="9" xl="9">
+                            <MudCard Style="height: 100%">
+                                <MudCardContent>
+                                    <MudDataGrid Items="@ListTaskDataReadingAggiornamentoDto" Dense=true Bordered=true Hover=true Outlined=true RowsPerPage="10" >
+                                        <ToolBarContent>
+                                            <MudText Typo="Typo.h6">Report Aggiornamento</MudText>
+                                        </ToolBarContent>
+
+                                        <Columns>
+                                            <PropertyColumn Property="x => x.Lavorazione" Title="Lavorazione" Editable=false Sortable="false"></PropertyColumn>
+                                            <PropertyColumn Property="x => x.FaseLavorazione" Title="Fase" Editable=false Sortable="false" />
+                                            <PropertyColumn Property="x => x.DataInizioLavorazione.ToShortDateString()" Title="Inizio Lavorazione" Editable=false Sortable="false" />
+                                            <PropertyColumn Property="x => x.DataFineLavorazione.ToShortDateString()" Title="Fine Lavorazione" Editable=false Sortable="false" />
+                                            <PropertyColumn Property="x => x.DataAggiornamento" Title="Aggiornamento" Editable=false Sortable="false" />
+                                            <PropertyColumn Property="x => x.Risultati" Title="Risultati" Editable=false Sortable="false" />
+                                            <PropertyColumn Property="x => x.EsitoLetturaDato" Title="Esito" Editable=false Sortable="false" />
+                                            <PropertyColumn Property="x => x.DescrizioneEsito" Title="Descrizione" Editable=false Style="width:30%" Sortable="false" />
+                                        </Columns>
+
+                                        <PagerContent>
+                                            <MudDataGridPager T="TaskDataReadingAggiornamentoDto" />
+                                        </PagerContent>
+
+                                    </MudDataGrid>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    </MudGrid>
+                </MudTabPanel>
+
+                @* form result aggiornamento *@
+                <MudTabPanel Text="Aggiornamento">
+                    <MudGrid Class="mt-2 ">
+                        @* form *@
+                        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+                            <MudCard Style="height: 100%">
+                                <MudCardContent>
+                                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleSubmitAggiornamentoAsync">
+                                        <DataAnnotationsValidator />
+
+                                        <div>
+                                            <div class="d-inline-flex pa-2">
+                                                <MudDatePicker Label="Data Da" @bind-Date="@Model!.StartDataLavorazione" Required="true" />
+                                            </div>
+                                            <div class="d-inline-flex pa-2">
+                                                <MudDatePicker Label="Data A" @bind-Date="@Model.EndDataLavorazione" Required="true" />
+                                                <ValidationMessage For="() => Model.EndDataLavorazione" />
+                                            </div>
+
+                                            <div class="d-inline-flex pa-2 "><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.TableView" >Report</MudButton></div>
+
+                                        </div>
+
+                                        <p style="color:red;" >@MessaggioErroreAggiornamento</p>
+
+                                    </EditForm>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+
+                        @*table*@
+                        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+
+                            <MudDataGrid Items="@ListAggiornamento" Dense=true Bordered=true Hover=true Outlined=true RowsPerPage="10" >
+                                <ToolBarContent>
+                                    <MudText Typo="Typo.h6">Report Aggiornamento</MudText>
+                                </ToolBarContent>
+
+                                <Columns>
+                                    <PropertyColumn Property="x => x.IdLavorazione" Title="IdProcedura" Editable=false Style="width:5%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.Lavorazione" Title="Lavorazione" Editable=false Style="width:30%" Sortable="false"></PropertyColumn>
+                                    <PropertyColumn Property="x => x.IdFase" Title="IdFase" Editable=false Style="width:5%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.FaseLavorazione" Title="Fase" Editable=false Style="width:5%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.DataInizioLavorazione.ToShortDateString()" Title="Inizio" Editable=false Style="width:10%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.DataFineLavorazione.ToShortDateString()" Title="Fine" Editable=false Style="width:5%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.DataAggiornamento" Title="Aggiornamento" Editable=false Style="width:10%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.Risultati" Title="Risultati" Editable=false Style="width:5%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.EsitoLetturaDato" Title="Esito" Editable=false Style="width:5%" Sortable="false" />
+                                    <PropertyColumn Property="x => x.DescrizioneEsito" Title="Descrizione" Editable=false Style="width:20%" Sortable="false" />
+                                </Columns>
+
+                                <PagerContent>
+                                    <MudDataGridPager T="TaskDataReadingAggiornamentoDto" />
+                                </PagerContent>
+
+                            </MudDataGrid>
+
+                        </MudItem>
+
+                    </MudGrid>
+                </MudTabPanel>
+
+            </MudTabs>
+        </MudItem>
+    </MudGrid>
+
+</MudContainer>
+
+
+@code {
+
+    protected MudSelect<int?>? RefCentro;
+    protected MudSelect<int?>? RefTask;
+    protected MudDatePicker? RefDatePickerFrom;
+    protected MudDatePicker? RefDatePickerTo;
+
+    protected bool IsDisabledFase { get; set; } = true;
+    protected bool IsDisabledLavorazione { get; set; } = true;
+    protected bool IsDisabledTask { get; set; } = true;
+    protected string MessaggioErrore { get; set; } = string.Empty;
+    protected string MessaggioErroreAggiornamento { get; set; } = string.Empty;
+
+    protected List<TaskDataReadingAggiornamentoDto>? ListAggiornamento { get; set; } = new();
+
+    protected bool ClasseQueryIntegrata { get; set; }
+    protected int? IdTaskDaEseguire { get; set; }
+    protected int? IdTaskHangFire { get; set; }
+
+    protected LavorazioniFasiDataReadingDto? LavorazioniFasiDataReadingDto { get; set; } = new LavorazioniFasiDataReadingDto();
+    protected ProcedureLavorazioniDto ProcedureLavorazioniDto = new ProcedureLavorazioniDto();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+        {
+            SetEditContext();
+            USetEditContext();
+
+            // Avvia tutte le chiamate asincrone in parallelo
+            var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+            var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+            var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
+            await Task.WhenAll(centriTask, fasiTask, lavorazioniTask);
+
+            ListCentri = centriTask.Result;
+            ListFasiLavorazione = fasiTask.Result;
+            ListProcedureLavorazioni = lavorazioniTask.Result;
+            SetSelectLavorazione();
+
+            Model!.StartDataLavorazione = DateTime.Now.Date;
+            Model.EndDataLavorazione = DateTime.Now.Date;
+
+
+        }, "Caricamento dati...");
+    }
+
+
+    #region TAB Load Data
+
+    protected async Task HandleSubmitLoadDataAsync()
+    {
+        int idProcLav = 0;
+        try
+        {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Ricerca in corso...");
+
+            base.ErrorMessage = "";
+            MessaggioErrore = "";
+
+            if (uModel != null)
+            {
+                var procedura = ListProcedureLavorazioni?.FirstOrDefault(x => x.NomeProcedura == uModel.NomeProcedura);
+                var fase = ListFasiLavorazione?.FirstOrDefault(x => x.FaseLavorazione == uModel.Fase);
+                
+                if (procedura?.IdproceduraLavorazione == null)
+                {
+                    MessaggioErrore = "Procedura di lavorazione non trovata";
+                    return;
+                }
+                
+                if (fase?.IdFaseLavorazione == null)
+                {
+                    MessaggioErrore = "Fase di lavorazione non trovata";
+                    return;
+                }
+                
+                idProcLav = (int)procedura.IdproceduraLavorazione;
+                int idFase = fase.IdFaseLavorazione;
+
+                if (IdTaskDaEseguire == null)
+                    throw new NullReferenceException("Errore manca Task/Query da eseguire");
+
+                // NUOVO SISTEMA: Esegui task tramite ProductionJobRunner
+                await DataReading.Infrastructure.ProductionJobRunner.RunAsync((int)IdTaskDaEseguire);
+
+                IsFormValid = false;
+                IsDisabledLavorazione = false;
+                IsDisabledFase = false;
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Lavorazione eseguita con successo", Severity.Success);
+
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleExceptionFormAsync(ex);
+        }
+        finally
+        {
+            ListTaskDataReadingAggiornamentoDto = await ServiceWrapper!.ServiceTaskDataReadingAggiornamento.GetAggiornamentoLavorazioneDtoByDateAsync(idProcLav, DateTime.Now.Date);
+
+            base.ResetUModel();
+
+            uModel!.StartDate = null;
+            uModel.EndDate = null;
+
+            await RefTask!.ClearAsync();
+            await RefCentro!.ClearAsync();
+            await RefDatePickerFrom!.ClearAsync();
+            await RefDatePickerTo!.ClearAsync();
+
+            IsDisabledLavorazione = true;
+            IsDisabledFase = true;
+            IsDisabledTask = true;
+
+            UiState?.HideOverlay();
+            UiState?.SetMenuDisabled(false);
+        }
+    }
+
+    protected async Task OnValueChangedCentroAsync(int? idCentro)
+    {
+        try
+        {
+            uModel!.Idcentro = idCentro;
+            uModel!.NomeProcedura = null;
+            uModel!.Fase = null;
+
+            await RefTask!.ClearAsync();
+
+            if (idCentro != null)
+            {
+                uModel.Centro = ListCentri!.Where(x => x.Idcentro == idCentro).First().Centro;
+                SetSelectLavorazione((int)idCentro);
+                IsDisabledLavorazione = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger!.LogError(ex.Message.ToString());
+
+            var parameters1 = new DialogParameters();
+            parameters1.Add("ContentText", ex.Message.ToString());
+            parameters1.Add("ButtonText", "OK");
+            parameters1.Add("Color", Color.Error);
+
+            var options1 = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+            await DialogService!.ShowAsync<Dialog>("Error", parameters1, options1);
+        }
+    }
+
+    protected async Task OnValueChangedLavorazione(string lavorazione)
+    {
+        uModel!.NomeProcedura = lavorazione;
+        uModel!.Fase = null;
+
+        await RefTask!.ClearAsync();
+        IsDisabledTask = true;
+
+        if (string.IsNullOrEmpty(lavorazione))
+        {
+            IsDisabledFase = true;
+            ProcedureLavorazioniDto = new ProcedureLavorazioniDto();
+            uModel!.IdProceduraLavorazione = null;
+            SetSelectFasiOnlyWithDataReading(null);
+            return;
+        }
+
+
+        if (ListProcedureLavorazioni != null)
+        {
+            var procedura = ListProcedureLavorazioni.FirstOrDefault(x => x.NomeProcedura == lavorazione);
+            if (procedura != null && procedura.IdproceduraLavorazione > 0)
+            {
+                int idProcedura = procedura.IdproceduraLavorazione;
+                ProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetProceduraLavorazioneDtoAsync(idProcedura);
+                uModel!.IdProceduraLavorazione = idProcedura;
+                IsDisabledFase = false;
+                SetSelectFasiOnlyWithDataReading(ProcedureLavorazioniDto);
+            }
+            else
+            {
+                // Lavorazione non trovata
+                IsDisabledFase = true;
+                ProcedureLavorazioniDto = new ProcedureLavorazioniDto();
+                uModel!.IdProceduraLavorazione = null;
+                SetSelectFasiOnlyWithDataReading(null);
+            }
+        }
+        else
+        {
+            IsDisabledFase = true;
+            ProcedureLavorazioniDto = new ProcedureLavorazioniDto();
+            uModel!.IdProceduraLavorazione = null;
+            SetSelectFasiOnlyWithDataReading(null);
+        }
+    }
+
+    protected async Task OnValueChangedFase(string fase)
+    {
+        uModel!.Fase = fase;
+        await RefTask!.ClearAsync();
+        IsDisabledTask = true;
+
+        if (!string.IsNullOrEmpty(fase))
+        {
+            if (ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto != null){
+                int idFase = ListFasiLavorazione!.Where(x => x.FaseLavorazione == uModel.Fase).FirstOrDefault()!.IdFaseLavorazione;
+                LavorazioniFasiDataReadingDto = ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto.Where(t => t.FlagDataReading == true & t.IdFaseLavorazione == idFase).FirstOrDefault();
+                IsDisabledTask = false;
+            }
+        }
+    }
+
+    protected void OnValueChangedDateTo(DateTime? endDate)
+    {
+        uModel!.EndDate = endDate;
+
+        if (uEditContext != null && uModel!.EndDate != null)
+        {
+            FieldIdentifier ToDateField = uEditContext.Field(nameof(uModel.EndDate));
+            uEditContext.NotifyFieldChanged(ToDateField);
+        }
+    }
+
+    protected void OnValueChangedDateFrom(DateTime? startDate)
+    {
+
+        uModel!.StartDate = startDate;
+
+        if (uEditContext != null && uModel!.StartDate != null)
+        {
+            FieldIdentifier fromDateField = uEditContext.Field(nameof(uModel.StartDate));
+            uEditContext.NotifyFieldChanged(fromDateField);
+        }
+    }
+
+
+
+    #endregion
+
+
+
+    #region TAB Aggiornamento
+
+    protected async Task HandleSubmitAggiornamentoAsync()
+    {
+        try
+        {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Ricerca in corso...");
+
+            MessaggioErroreAggiornamento = "";
+            ListAggiornamento = await ServiceWrapper!.ServiceTaskDataReadingAggiornamento.GetAggiornamentoDtoByDateAsync(Model!.StartDataLavorazione!.Value.Date, Model!.EndDataLavorazione!.Value.Date);
+
+            UiState?.SetMenuDisabled(false);
+            UiState?.HideOverlay();
+        }
+        catch (Exception ex)
+        {
+            MessaggioErroreAggiornamento = ex.Message.ToString();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    #endregion
+
+
+}
+
+
+
+
+
+

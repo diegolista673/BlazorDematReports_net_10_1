@@ -1,0 +1,18 @@
+﻿@inject NavigationManager Navigation
+
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+           Navigation.NavigateTo("/Account/Login");
+        }
+        catch(NavigationException ex)
+        {
+            throw ex;
+        }
+
+
+    }
+}

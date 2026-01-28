@@ -1,0 +1,187 @@
+﻿@page "/report-completo"
+@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
+@inherits BaseComponentPage<PageReportCompleto,ReportAnnualeDto,ReportAnnualeDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4" >Report Lavorazioni Completo</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+        @*form*@
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+            <MudCard Style="height: 100%" Elevation="3">
+                <MudCardContent>
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
+                        <PageGestioneOperatoriValidationProvider />
+
+                        <div>
+                            <div class="d-inline-flex pa-2">
+                                <MudDatePicker Label="Data"  @bind-Date="@Model!.StartDataLavorazione" Required="true" />
+                            </div>
+                            <div class="d-inline-flex pa-2">
+                                <MudDatePicker Label="Data"  @bind-Date="@Model!.EndDataLavorazione" Required="true" />
+                            </div>
+                            <div class="d-inline-flex pa-2">
+                                <MudSelect T=int? @bind-Value="Model.IdCentro" Label="Select Centro" Style="width:200px"
+                                           Required=true
+                                           For="(() => Model.IdCentro)"
+                                           Clearable=true>
+
+                                    @if(ListCentri != null)
+                                    {
+                                        @foreach (CentriLavorazione item in ListCentri)
+                                        {
+                                            <MudSelectItem T=int? Value="@item.Idcentro">@item.Centro</MudSelectItem>
+                                        }
+                                    }
+
+
+                                </MudSelect>
+                            </div>
+
+                            <div class="d-inline-flex pa-2 "><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.TableView" Disabled="@(!IsFormValid)">Report</MudButton></div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                        {
+                            <p style="color:red;">@ErrorMessage</p>
+                        }
+
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @*table*@
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+
+            <div Class="mb-5">
+                <div class="d-inline-flex pa-2 ">
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled"
+                    OnClick="@(()=>CreateDocument())" Color="Color.Primary"
+                    StartIcon="@Icons.Material.Filled.Download" Disabled="@(isDisabledReport)">Excel</MudButton>
+                </div>
+            </div>
+
+            <MudDataGrid T="ReportEsportazioneOreDocumenti" Items="@LstReportEsportazioneOreDocumenti" ReadOnly="false" Filterable="true" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+                             Dense=true Bordered=true Hover=true Outlined=true Groupable="true">
+                <Columns>
+
+                    <PropertyColumn Property="x => x.ProceduraCliente" Title="Cliente" Editable=false  Groupable="true"/>
+                    <PropertyColumn Property="x => x.NomeProcedura" Title="Lavorazione" Editable=false  Groupable="true"/>
+                    <PropertyColumn Property="x => x.FaseLavorazione" Title="Fase" Editable=false Groupable="false"/>
+                    <PropertyColumn Property="x => x.TempoLavOreCent" Title="Ore" Editable=false Groupable="false" />
+
+                    <PropertyColumn Property="x => x.Documenti" Title="Documenti" Editable=true Sortable="true" Groupable="false">
+                        <EditTemplate>
+                            <MudNumericField @bind-Value="@context.Item.Documenti" Label="Documenti" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" />
+                        </EditTemplate>
+                        <CellTemplate>
+                            @context.Item.Documenti.ToString("N0")
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.Fogli" Title="Fogli" Editable=true Sortable="true" Groupable="false">
+                        <EditTemplate>
+                            <MudNumericField @bind-Value="@context.Item.Fogli" Label="Fogli" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" />
+                        </EditTemplate>
+                        <CellTemplate>
+                            @context.Item.Fogli.ToString("N0")
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.Pagine" Title="Pagine" Editable=true Sortable="true" Groupable="false">
+                        <EditTemplate>
+                            <MudNumericField @bind-Value="@context.Item.Pagine" Label="Pagine" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" />
+                        </EditTemplate>
+                        <CellTemplate>
+                            @context.Item.Pagine.ToString("N0")
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.Scarti" Title="Scarti" Editable=true Sortable="true" Groupable="false">
+                        <EditTemplate>
+                            <MudNumericField @bind-Value="@context.Item.Scarti" Label="Scarti" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" />
+                        </EditTemplate>
+                        <CellTemplate>
+                            @context.Item.Scarti.ToString("N0")
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ReportEsportazioneOreDocumenti" />
+                </PagerContent>
+            </MudDataGrid>
+
+        </MudItem>
+
+    </MudGrid>
+
+</MudContainer>
+
+
+
+@code{
+
+    bool isDisableDatePicker { get; set; } = false;
+    bool isDisabledReport { get; set; } = true;
+    IEnumerable<ReportEsportazioneOreDocumenti> LstReportEsportazioneOreDocumenti { get; set; } = Enumerable.Empty<ReportEsportazioneOreDocumenti>();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await RunWithOverlay(async () =>
+          {
+              SetEditContext();
+              ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+
+              Model!.StartDataLavorazione = DateTime.Now.Date;
+              Model.EndDataLavorazione = DateTime.Now.Date;
+
+          }, "Caricamento dati...");
+
+    }
+
+    protected async Task HandleValidSubmitAsync()
+    {
+        try
+        {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Ricerca in corso...");
+
+            LstReportEsportazioneOreDocumenti = await ServiceWrapper!.ServiceConfigReportDocumenti.GetReportClientiAsync(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, (int)Model.IdCentro!);
+            if (LstReportEsportazioneOreDocumenti.Count() > 0)
+            {
+                isDisabledReport = false;
+            }
+            else
+            {
+                isDisabledReport = true;
+            }
+
+             UiState?.SetMenuDisabled(false);
+
+            Layout!.UpdateFooter();
+            UiState?.HideOverlay();
+            base.ErrorMessage = "";
+        }
+        catch (Exception ex)
+        {
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    protected async void CreateDocument()
+    {
+        MemoryStream excelStream = ServiceWrapper!.ServiceConfigReportDocumenti.CreateExcelProduzioneCompleta(LstReportEsportazioneOreDocumenti);
+        string title = "ProduzioneCompleta.xlsx";
+        await JSInterop!.SaveAs(title, excelStream.ToArray());
+    }
+
+
+}

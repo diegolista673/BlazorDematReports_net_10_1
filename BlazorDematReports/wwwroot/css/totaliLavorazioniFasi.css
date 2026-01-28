@@ -1,0 +1,5 @@
+.totali-fasi-header { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:1rem; }
+.totali-fasi-header .mud-text { display:flex; align-items:center; gap:.25rem; }
+.totali-fasi-summary { margin-bottom:1.5rem; }
+.totali-fasi-avatar { width:200px; height:100px; }
+@media (max-width:768px){ .totali-fasi-avatar { width:140px; height:70px; } }

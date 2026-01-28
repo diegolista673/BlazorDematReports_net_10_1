@@ -1,0 +1,362 @@
+@page "/procedure-lavorazioni/edit/{IdProcedura:int}"
+@page "/procedure-lavorazioni/edit/{IdProcedura:int}/{ActiveTab}"
+@using DataReading.Dto
+@using BlazorDematReports.Dto
+@using BlazorDematReports.Services.ProcedureEdit
+@using BlazorDematReports.Components.ProcedureEdit
+@using BlazorDematReports.Components.Shared
+@using BlazorDematReports.Components.Pages.Impostazioni.Components
+@using LibraryLavorazioni.Shared.Interfaces
+@using Microsoft.AspNetCore.Components
+@using Microsoft.EntityFrameworkCore
+@using Entities.Models.DbApplication
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageEditProcedura,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
+@inject ProcedureEditStateService StateService
+@inject ProcedureNavigationService NavigationService
+@inject DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
+@inject NavigationManager NavManager
+@inject IDialogService DialogService
+@inject IUnifiedHandlerRegistry HandlerRegistry
+@inject IDbContextFactory<DematReportsContext> DbFactory
+
+<PageTitle>@GetPageTitle()</PageTitle>
+
+@* Breadcrumbs *@
+<MudBreadcrumbs Items="_breadcrumbItems" Class="mb-4"></MudBreadcrumbs>
+
+@* Main Content *@
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-0">
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-center align-center" style="min-height: 400px;">
+            <div class="text-center">
+                <MudProgressCircular Size="Size.Large" Indeterminate="true" Color="Color.Primary" />
+                <MudText Typo="Typo.body1" Class="mt-4">Caricamento procedura...</MudText>
+            </div>
+        </div>
+    }
+    else if (Model != null)
+    {
+        @* Header con Logo e Navigazion *@
+        <ProcedureHeaderCard LogoBase64="@Model.LogoBase64"
+                            NavigationText="Torna alla Lista"
+                            OnNavigationClick="@HandleCancelAsync" />
+        
+        @* Info Procedura  *@
+        <ProcedureInfoGrid Model="@Model" />
+        
+        @* KPI Cards *@
+        <ProcedureKpiCards Model="@Model" />
+
+        @* Action Bar Sticky *@
+        @if (!_isLoading && Model != null)
+        {
+            <ProcedureActionBar Mode="ProcedureActionBar.ActionBarMode.Edit"
+                                HasUnsavedChanges="@StateService.HasUnsavedChanges"
+                                IsProcessing="@_isProcessing"
+                                OnSave="@HandleSaveAsync"
+                                OnReset="@HandleResetAsync" />
+        }
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Error" Class="ma-4">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
+            Procedura non trovata o errore nel caricamento. Verifica l'ID o riprova più tardi.
+        </MudAlert>
+    }
+</MudContainer>
+
+
+
+@* Container per gli Expansion Panels *@
+@if (!_isLoading && Model != null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="pa-0">
+        @* CONTENUTO: Expansion Panels invece dei Tab *@
+        <MudExpansionPanels Elevation="2" Class="mb-4">
+            
+            @* Generale Expansion Panel *@
+            <MudExpansionPanel Text="Informazioni Generali" 
+                              Icon="@Icons.Material.Filled.Info" 
+                              IsInitiallyExpanded="true">
+                <ChildContent>
+                    <ProcedureGeneralForm Model="@Model" OnModelChanged="@HandleModelChangedAsync" />
+                </ChildContent>
+            </MudExpansionPanel>
+            
+            @* Fasi di Lavorazione Expansion Panel *@
+            <MudExpansionPanel Text="Fasi di Lavorazione" 
+                              Icon="@Icons.Material.Filled.Timeline" 
+                              IsInitiallyExpanded="false">
+                <ChildContent>
+                    <ProcedurePhasesViewer Model="@Model" OnModelChanged="@HandleModelChangedAsync" />
+                </ChildContent>
+            </MudExpansionPanel>
+            
+            @* Configurazioni Fonti Dati *@
+            <MudExpansionPanel Text="?? Configurazioni Fonti Dati" 
+                              Icon="@Icons.Material.Filled.Settings" 
+                              IsInitiallyExpanded="false">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Settings" />
+                        <MudText>Configurazioni Fonti Dati</MudText>
+                        <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                            @_configurazioniCount
+                        </MudChip>
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    @if (Model.IdproceduraLavorazione.HasValue)
+                    {
+                        <ProcedureConfigurazioniWidget IdProceduraLavorazione="@Model.IdproceduraLavorazione.Value"
+                                                       OnTasksCreated="@HandleTasksCreatedAsync" />
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Warning">
+                            Salva prima la procedura per gestire le configurazioni.
+                        </MudAlert>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+            
+            @* Monitoring Expansion Panel *@
+            <MudExpansionPanel Text="Monitoring e Dashboard" 
+                              Icon="@Icons.Material.Filled.Dashboard" 
+                              IsInitiallyExpanded="false">
+                <ChildContent>
+                    <ProcedureMonitoringDashboard Model="@Model" OnRefresh="@LoadProceduraAsync" />
+                </ChildContent>
+            </MudExpansionPanel>
+            
+        </MudExpansionPanels>
+</MudContainer>
+}
+
+
+
+
+@code {
+[Parameter] public int IdProcedura { get; set; }
+[Parameter] public string? ActiveTab { get; set; }
+    
+private bool _isLoading = true;
+private bool _isProcessing = false;
+private List<BreadcrumbItem> _breadcrumbItems = new();
+private int _configurazioniCount = 0;
+    
+/// <summary>
+/// Verifica se la procedura ha un handler implementato (query integrata disponibile).
+/// </summary>
+private bool HasIntegratedQuery
+    {
+        get
+        {
+            if (Model == null || string.IsNullOrWhiteSpace(Model.NomeProcedura))
+                return false;
+            
+            // Verifica se esiste un handler registrato per questa procedura
+            return HandlerRegistry.TryGetHandler(Model.NomeProcedura, out _);
+        }
+    }
+    
+    /// <summary>
+    /// Restituisce la classe CSS per la floating action bar in base allo stato.
+    /// </summary>
+    private string GetFloatingBarClass()
+    {
+        var baseClass = "floating-action-bar pa-3";
+        return StateService.HasUnsavedChanges 
+            ? $"{baseClass} has-changes" 
+            : $"{baseClass} saved";
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+        SetupBreadcrumbs();
+        StateService.UnsavedChangesChanged += OnUnsavedChangesChanged;
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isLoading)
+        {
+            await LoadProceduraAsync();
+        }
+    }
+    
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            var loadFasiTask = Task.Run(async () => 
+                ListFasiLavorazione = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync());
+            
+            var loadTaskTypesTask = Task.Run(async () => 
+                ListTask = await ServiceWrapper!.ServiceTabellaTask.GetTabellaTaskAsync());
+            
+            await Task.WhenAll(loadFasiTask, loadTaskTypesTask);
+            
+            Logger?.LogInformation("Reference data loaded successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error loading reference data");
+        }
+    }
+    
+    private async Task LoadProceduraAsync()
+    {
+        try
+        {
+            Model = await ServiceWrapper!.ServiceProcedureLavorazioni
+                .GetSingleProceduraLavorazioneDtoByIDAsync(IdProcedura);
+            
+            if (Model != null)
+            {
+                StateService.InitializeState(Model);
+                SetEditContext();
+                
+                // Carica contatore configurazioni
+                await LoadConfigurazioniCountAsync();
+                
+                Logger?.LogInformation("Loaded procedure {ProcedureId}: {ProcedureName}", 
+                    IdProcedura, Model.NomeProcedura);
+            }
+            else
+            {
+                Logger?.LogWarning("Procedure {ProcedureId} not found", IdProcedura);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error loading procedure {ProcedureId}", IdProcedura);
+            await HandleExceptionFormAsync(ex, "Errore nel caricamento della procedura");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+    
+    private async Task LoadConfigurazioniCountAsync()
+    {
+        try
+        {
+            await using var context = await DbFactory!.CreateDbContextAsync();
+            _configurazioniCount = await context.ConfigurazioneFontiDatis
+                .CountAsync(c => c.FlagAttiva && 
+                       c.ConfigurazioneFaseCentros.Any(fc => 
+                           fc.FlagAttiva && 
+                           fc.IdProceduraLavorazione == IdProcedura));
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Error loading configurations count");
+            _configurazioniCount = 0;
+        }
+    }
+    
+    private async Task HandleTasksCreatedAsync()
+    {
+        // Ricarica contatore dopo creazione task
+        await LoadConfigurazioniCountAsync();
+        // Ricarica anche il model per aggiornare i KPI
+        await LoadProceduraAsync();
+        StateHasChanged();
+    }
+    
+    private async Task HandleModelChangedAsync()
+    {
+        StateService.DetectChanges();
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    private async Task HandleSaveAsync()
+    {
+        _isProcessing = true;
+        try
+        {
+            Logger?.LogInformation("Saving procedure {ProcedureId}", IdProcedura);
+            
+            await ServiceWrapper!.ServiceProcedureLavorazioni
+                .UpdateProceduraLavorazioneAndFasiDataReadingASync(Model!);
+            
+            await ProductionScheduler.SyncAllAsync();
+            
+            StateService.MarkAsSaved();
+            UiState?.ShowSnackbar("Procedura salvata con successo", Severity.Success);
+            
+            Logger?.LogInformation("Procedure {ProcedureId} saved successfully", IdProcedura);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error saving procedure {ProcedureId}", IdProcedura);
+            UiState?.ShowSnackbar($"Errore durante il salvataggio: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task HandleResetAsync()
+    {
+        await LoadProceduraAsync();
+        UiState?.ShowSnackbar("Modifiche annullate", Severity.Info);
+    }
+    
+    private async Task HandleCancelAsync()
+    {
+        if (StateService.HasUnsavedChanges)
+        {
+            var parameters = new DialogParameters
+            {
+                ["ContentText"] = "Ci sono modifiche non salvate. Vuoi uscire senza salvare?",
+                ["ButtonText"] = "Esci senza salvare",
+                ["Color"] = Color.Error
+            };
+            
+            var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small };
+            var dialog = await DialogService!.ShowAsync<Dialog>("Modifiche non salvate", parameters, options);
+            var result = await dialog.Result;
+            
+            if (result.Canceled)
+                return;
+        }
+        
+        NavManager.NavigateTo("/procedure-lavorazioni");
+    }
+    
+    private void OnUnsavedChangesChanged(object? sender, bool hasChanges)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private string GetPageTitle()
+    {
+        return Model != null 
+            ? $"Modifica Procedura - {Model.NomeProcedura}"
+            : "Modifica Procedura";
+    }
+    
+    private void SetupBreadcrumbs()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new("Home", "/", false, Icons.Material.Filled.Home),
+            new("Procedure Lavorazioni", "/procedure-lavorazioni", false, Icons.Material.Filled.List),
+            new($"Modifica: {Model?.NomeProcedura ?? "..."}", null, true, Icons.Material.Filled.Edit)
+        };
+    }
+    
+    public void Dispose()
+    {
+        StateService.UnsavedChangesChanged -= OnUnsavedChangesChanged;
+    }
+}

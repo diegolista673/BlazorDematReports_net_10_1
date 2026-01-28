@@ -1,0 +1,9 @@
+.page-totali-fasi-card { transition: width .3s, box-shadow .3s; box-shadow:0 2px 8px rgba(0,0,0,.08); border-radius:12px; background:#fff; }
+.responsive-card { width:100%; max-width:480px; }
+.page-totali-fasi-paper { background:#f7f7fa; border-radius:8px; box-shadow:none; }
+.phase-mini-chart-wrapper, .phase-last5years-chart-wrapper, .phase-mini-chart-placeholder { display:flex; align-items:center; }
+.phase-chart-container { flex:1 1 220px; max-width:240px; min-width:160px; height:100px; }
+.phase-chart-container canvas, .phase-chart-container svg { width:100%!important; height:100%!important; }
+@media (max-width:1200px){ .responsive-card{max-width:400px} .phase-chart-container{flex:1 1 200px; height:95px} }
+@media (max-width:992px){ .responsive-card{max-width:340px} .phase-chart-container{flex:1 1 180px; height:90px} }
+@media (max-width:768px){ .responsive-card{max-width:100%} .phase-chart-container{flex:1 1 100%; max-width:100%; height:140px} }

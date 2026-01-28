@@ -1,0 +1,683 @@
+﻿@page "/gestione-operatori"
+@page "/gestione-operatori/{StartDataLavorazioneParam:datetime}/{EndDataLavorazioneParam:datetime}/{IdCentroParam:int}/{TipoReportParam:int}"
+
+@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
+@inherits BaseComponentPage<PageGestioneOperatori,ReportAnnualeDto,ReportProduzioneCompleta>
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Gestione operatori</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+        @*form*@
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+            <MudCard Style="height: 100%" Elevation="3">
+                <MudCardContent>
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
+                        <PageGestioneOperatoriValidationProvider />
+
+                        <div>
+                            <div class="d-inline-flex pa-2">
+                                <MudDatePicker Label="Data" @bind-Date="@Model!.StartDataLavorazione" Required="true" Editable="true" />
+                            </div>
+                            <div class="d-inline-flex pa-2">
+                                <MudDatePicker Label="Data" @bind-Date="@Model.EndDataLavorazione" Required="true" Editable="true" />
+                            </div>
+                            <div class="d-inline-flex pa-2">
+                                <MudSelect T=int? @bind-Value="Model.IdCentro" Label="Select Centro" Style="width:200px"
+                                           Required=true
+                                           For="(() => Model.IdCentro)"
+                                           Clearable=true>
+
+                                    @if(ListCentri != null){
+                                        @foreach (CentriLavorazione item in ListCentri)
+                                        {
+                                            <MudSelectItem T=int? Value="@item.Idcentro">@item.Centro</MudSelectItem>
+                                        }
+                                    }
+
+                                </MudSelect>
+                            </div>
+
+                            <div class="d-inline-flex pa-2 "><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.TableView" Disabled="@(!IsFormValid)">Report</MudButton></div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                        {
+                            <p style="color:red;">@ErrorMessage</p>
+                        }
+
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @if(string.IsNullOrEmpty(message)){
+
+            @*table*@
+            <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+
+                <div Class="mb-4">
+                    <div class="d-inline-flex pa-2 " style="width: 200px"  >
+                        <MudSelect T="Option" Label="Select tipo" ValueChanged="OnValueChanged" Value="SelectOption" Disabled=@isSelectReportValid >
+                            @foreach (var opt in Options)
+                            {
+                                <MudSelectItem Value="@opt">@opt</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </div>
+
+                    <div class="d-inline-flex pa-2 ">
+                        <MudButton Variant="Variant.Outlined" OnClick="@(()=>CreateDocumentoAsync())" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Download" Disabled="@(isDisabledReport)">Excel</MudButton>
+                    </div>
+
+                </div>
+
+                <MudDataGrid T="ReportProduzioneCompleta" Items="@LstReportGiornalieroView"
+                             ReadOnly="false"
+                             Filterable="true"
+                             FilterMode="@FilterMode"
+                             FilterCaseSensitivity="@CaseSensitivity"
+                             Dense=true
+                             Bordered=true
+                             EditMode="DataGridEditMode.Form"
+                             EditTrigger="DataGridEditTrigger.Manual"
+                             Hover=true
+                             StartedEditingItem="@StartedEditingItem"
+                             CanceledEditingItem="@CanceledEditingItem"
+                             CommittedItemChanges="@OnUpdateRowAsync"
+                             Outlined=true
+                             Virtualize=true
+                             FixedHeader=true
+                             Height="65vh"
+                             Groupable="true">
+                    <ToolBarContent>
+                        <MudText Typo="Typo.h6">Report Operatori Produzione</MudText>
+                    </ToolBarContent>
+                    <Header>
+                        <MudTHeadRow Class="header-centered ">
+                            <MudTh colspan="3">Lettura Dati</MudTh>
+                            <MudTh colspan="11">Report</MudTh>
+                        </MudTHeadRow>                    </Header>
+                    <Columns>
+                        <TemplateColumn CellStyle="text-align: center" Title="Stato" Filterable="false" Sortable="false" Editable=false Groupable="false">
+                            <CellTemplate>
+
+                                @* ore > 0; doc = 0; datareading = true*@ 
+                                @if ((@context.Item.TempoLavOreCent > 0) & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & (@context.Item.FlagDataReading == true ))
+                                {
+                                    <MudTooltip Text="Documenti incompleti con lettura dati prevista">
+                                        <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                                @* ore = 0; doc > 0; datareading = true  *@
+                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == true )
+                                {
+                                    <MudTooltip Text="Ore incomplete ">
+                                        <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                                @* ore > 0; doc > 0; datareading = true  *@
+                                @if (@context.Item.TempoLavOreCent > 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == true )
+                                {
+                                    <MudTooltip Text="Ore e Documenti completi">
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                                @* ore = 0; doc = 0; datareading = true  *@
+                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & @context.Item.FlagDataReading == true )
+                                {
+                                    <MudTooltip Text="Ore e documenti incomplete con lettura dati prevista">
+                                        <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+
+
+
+                                @* ore > 0; doc = 0; datareading = false  *@
+                                @if (@context.Item.TempoLavOreCent > 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & @context.Item.FlagDataReading == false )
+                                {
+                                    <MudTooltip Text="Ore complete, documenti non necessari se lettura dati non prevista">
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                                @* ore = 0; doc > 0; datareading = false  *@
+                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == false )
+                                {
+                                    <MudTooltip Text="Ore incomplete ">
+                                        <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                                @* ore > 0; doc > 0; datareading = false  *@
+                                @if (@context.Item.TempoLavOreCent > 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == false )
+                                {
+                                    <MudTooltip Text="Ore e Documenti completi">
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+                                @* ore = 0; doc = 0; datareading = false  *@
+                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & @context.Item.FlagDataReading == false )
+                                {
+                                    <MudTooltip Text="Ore incomplete">
+                                        <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+
+
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn CellStyle="text-align: center" Title="Eseguita" Filterable="false" Sortable="false" Editable=false Groupable="false">
+                            <CellTemplate>
+                                @if (@context.Item.DescrizioneEsito == TipiLetturaDati.LavorazioneNonImplementata)
+                                {
+
+                                    <MudTooltip Text="Lettura Dati Non Implementata">
+                                        <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+
+                                @if (@context.Item.DescrizioneEsito == TipiLetturaDati.ErroreNelCaricamentoDati)
+                                {
+                                    <MudTooltip Text="Errore Nel Caricamento Dati">
+                                        <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+
+                                @if (@context.Item.DescrizioneEsito == TipiLetturaDati.NessunDatoDisponibile || @context.Item.DescrizioneEsito == TipiLetturaDati.DatiDisponibili)
+                                {
+                                    <MudTooltip Text="Lettura Dati avvenuta correttamente">
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+
+                                @if (@context.Item.Esito == 0)
+                                {
+
+                                    <MudTooltip Text="Lettura Dati non effettuata">
+                                        <MudIcon Icon="@Icons.Material.Filled.Remove" Size="Size.Small" />
+                                    </MudTooltip>
+                                }
+
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.FlagDataReading" Title="Prevista" Editable=false Filterable="false" Sortable="false" CellStyle="text-align: center" Groupable="false">
+                            <CellTemplate>
+                                <MudTooltip Text="Lettura Dati Prevista">
+                                    @if (@context.Item.FlagDataReading)
+                                    {
+                                        <MudText Typo="Typo.body2">SI</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body2">NO</MudText>
+                                    }
+                                </MudTooltip>
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="x => x.DataLavorazione" Title="Data" Editable=false Filterable="false" Sortable="true" Format="yyyy-MM-dd" Groupable="false">
+                            <CellTemplate>
+                                @context.Item.DataLavorazione!.Value.ToShortDateString()
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="x => x.Operatore" Title="Operatore" Editable=false Sortable="false" Filterable="false" Groupable="true">
+                            <CellTemplate>
+                                <MudLink Href="@string.Format("produzione-operatore/{0}/{1}/{2}/{3}/{4}",
+                                                                @context.Item.DataLavorazione!.Value.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture),
+                                                                @context.Item.DataLavorazione.Value.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture),
+                                                                @context.Item.IdOperatore,
+                                                                @context.Item.IdCentro,
+                                                                @SelectOption.Type)">
+                                    <MudText Typo="Typo.body2">@context.Item.Operatore!.ToUpper()</MudText>
+                                </MudLink>
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <TemplateColumn Title="NotFound" Editable=false Sortable="false" Filterable="false">
+                            <CellTemplate>
+                                @context.Item.OperatoreNonRiconosciuto
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.NomeProcedura" Title="NomeProcedura" Editable=false Sortable="true" Filterable="true" Groupable="true"></PropertyColumn>
+                        <PropertyColumn Property="x => x.FaseLavorazione" Title="Fase" Editable=false Sortable="false" Filterable="false" Groupable="false"></PropertyColumn>
+                        <PropertyColumn Property="x => x.TempoLavOreCent" Title="Ore" Editable=false Sortable="false" Filterable="false" Groupable="false"></PropertyColumn>
+                        <PropertyColumn Property="x => x.Documenti" Title="Documenti" Editable=true Sortable="false" Filterable="false" Groupable="false">
+                            <EditTemplate>
+                                <MudNumericField @bind-Value="@context.Item.Documenti" Label="Documenti" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" Margin="Margin.Dense" Class="mt-4"/>
+                            </EditTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="x => x.Fogli" Title="Fogli" Editable=true Sortable="false" Filterable="false" Groupable="false">
+                            <EditTemplate>
+                                <MudNumericField @bind-Value="@context.Item.Fogli" Label="Fogli" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" Margin="Margin.Dense" Class="mt-4"/>
+                            </EditTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="x => x.Pagine" Title="Pagine" Editable=true Sortable="false" Filterable="false" Groupable="false">
+                            <EditTemplate>
+                                <MudNumericField @bind-Value="@context.Item.Pagine" Label="Pagine" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" Margin="Margin.Dense" Class="mt-4"/>
+                            </EditTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="x => x.Scarti" Title="Scarti" Editable=true Sortable="false" Filterable="false" Groupable="false">
+                            <EditTemplate>
+                                <MudNumericField @bind-Value="@context.Item.Scarti" Label="Scarti" Variant="Variant.Outlined" Required Min="0" Step="1" RequiredError="required" Margin="Margin.Dense" Class="mt-4" />
+                            </EditTemplate>
+                        </PropertyColumn>
+                        <TemplateColumn CellStyle="text-align: center" Title="Edit" Sortable="false" Filterable="false" Groupable="false">
+                            <CellTemplate>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                    <PagerContent>
+                        <MudDataGridPager T="ReportProduzioneCompleta" />
+                    </PagerContent>
+                </MudDataGrid>
+
+            </MudItem>
+
+            @*table totali dedicati*@
+            <MudItem xs="12" sm="12" md="12" lg="12" xl="12" >
+                <MudDataGrid T="ReportGiornalieroTotaliDedicati" 
+                             Items="@LstReportTotaliDedicatiGiornalieroView" 
+                             ReadOnly="false" 
+                             Dense=true 
+                             Bordered=true 
+                             Outlined=true 
+                             Hover=true 
+                             Virtualize=true
+                             FixedHeader=true
+                             Height="65vh">
+                    <ToolBarContent>
+                        <MudText Typo="Typo.h6">Report Totali Dedicati</MudText>
+                    </ToolBarContent>
+                    <Columns>
+
+                        <PropertyColumn Property="x => x.DataLavorazione" Title="Data" Editable=false Filterable="false" Sortable="false" Format="yyyy-MM-dd">
+                            <CellTemplate>
+                                @context.Item.DataLavorazione.ToShortDateString()
+                            </CellTemplate>
+                        </PropertyColumn>
+
+                        <PropertyColumn Property="x => x.Operatore" Title="Operatore" />
+                        <PropertyColumn Property="x => x.Lavorazione" Title="Lavorazione" />
+                        <PropertyColumn Property="x => x.FaseLavorazione" Title="Fase" />
+                        <PropertyColumn Property="x => x.TipoTotale" Title="Tipo" />
+                        <PropertyColumn Property="x => x.Totale" Title="Totale" />
+
+                    </Columns>
+                    <PagerContent>
+                        <MudDataGridPager T="ReportGiornalieroTotaliDedicati" />
+                    </PagerContent>
+                </MudDataGrid>
+            </MudItem>
+        }
+        else{
+            <MudText Typo="Typo.h4">@message</MudText>
+        }
+
+    </MudGrid>
+
+</MudContainer>
+
+
+
+@code {
+
+    /// TODO controlare virtualizzazione datagrid
+    /// 
+
+    [Parameter]
+    public DateTime StartDataLavorazioneParam { get; set; }
+
+    [Parameter]
+    public DateTime EndDataLavorazioneParam { get; set; }
+
+    [Parameter]
+    public int IdCentroParam { get; set; }
+
+    [Parameter]
+    public int TipoReportParam { get; set; }
+
+    int? _idCentro { get; set; }
+
+    bool isDisabledReport { get; set; } = true;
+    bool isSelectReportValid { get; set; } = false;
+    bool LoadTotaliDedicati { get; set; } = false;
+    bool isDownloading { get; set; } = false;
+
+
+    ReportProduzioneCompleta ReportProduzioneCompleta = new ReportProduzioneCompleta();
+    IEnumerable<ReportProduzioneCompleta> LstReportGiornalieroView { get; set; } = Enumerable.Empty<ReportProduzioneCompleta>();
+    IEnumerable<ReportGiornalieroTotaliDedicati> LstReportTotaliDedicatiGiornalieroView { get; set; } = Enumerable.Empty<ReportGiornalieroTotaliDedicati>();
+
+    IEnumerable<ReportProduzioneCompleta> LstReportGiornaliero { get; set; } = Enumerable.Empty<ReportProduzioneCompleta>();
+    IEnumerable<ReportGiornalieroTotaliDedicati> LstReportTotaliDedicatiGiornaliero { get; set; } = Enumerable.Empty<ReportGiornalieroTotaliDedicati>();
+
+    ReportAnnualeDto reportAnnualeDtoNonConforme = new ReportAnnualeDto();
+
+    string message = "";
+
+    Option SelectOption { get; set; } = new Option(1, "Elenco completo");
+    List<Option> Options { get; set; } = new List<Option>()
+    {
+        new Option(1,"Elenco completo"),
+        new Option(2,"Quadratura assente" )
+    };
+
+
+    // private FilterMode FilterMode { get; set; } = FilterMode.Simple;
+    // private CaseSensitivity CaseSensitivity { get; set; } = CaseSensitivity.CaseInsensitive;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+           {
+               SetEditContext();
+
+               // Avvia il caricamento dei centri in parallelo
+               var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+
+               // Prepara i parametri e le chiamate ai report solo se richiesto
+               Task<List<ReportProduzioneCompleta>>? reportGiornalieroTask = null;
+               Task<List<ReportGiornalieroTotaliDedicati>>? totaliDedicatiTask = null;
+
+               if (IdCentroParam != 0)
+               {
+                   Model!.StartDataLavorazione = StartDataLavorazioneParam;
+                   Model.EndDataLavorazione = EndDataLavorazioneParam;
+                   Model.IdCentro = IdCentroParam;
+                   SelectOption = Options.First(x => x.Type == TipoReportParam);
+                   IsFormValid = true;
+
+                   // Avvia le chiamate ai report in parallelo
+                   reportGiornalieroTask = ServiceWrapper!.ServiceProduzioneOperatori
+                       .GetReportProduzioneCompletaGiornalieraAsync(Model.StartDataLavorazione!.Value.Date, Model.EndDataLavorazione!.Value.Date, (int)Model.IdCentro!);
+
+                   totaliDedicatiTask = ServiceWrapper.ServiceProduzioneOperatori
+                       .GetReportTotaliDedicatiPeriodoAsync(Model);
+               }
+               else
+               {
+                   SelectOption = Options.First(x => x.Type == 1);
+                   Model!.StartDataLavorazione = DateTime.Now.Date;
+                   Model.EndDataLavorazione = DateTime.Now.Date;
+               }
+
+               // Attendi tutte le chiamate in parallelo
+               if (reportGiornalieroTask != null && totaliDedicatiTask != null)
+               {
+                   await Task.WhenAll(centriTask, reportGiornalieroTask, totaliDedicatiTask);
+
+                   ListCentri = centriTask.Result;
+                   LstReportGiornaliero = reportGiornalieroTask.Result;
+                   LstReportTotaliDedicatiGiornaliero = totaliDedicatiTask.Result;
+
+                   LstReportGiornalieroView = LstReportGiornaliero.OrderBy(x => x.DataLavorazione).ThenBy(x => x.Operatore).ToList();
+                   LstReportTotaliDedicatiGiornalieroView = LstReportTotaliDedicatiGiornaliero.ToList();
+
+                   isDisabledReport = !(LstReportGiornalieroView.Any() || LstReportTotaliDedicatiGiornalieroView.Any());
+                   isSelectReportValid = !LstReportGiornalieroView.Any();
+
+                   OnValueChanged(SelectOption);
+               }
+               else
+               {
+                   // Solo centri
+                   ListCentri = await centriTask;
+               }
+
+               ErrorMessage = "";
+               Layout!.ResetFooter();
+
+
+           }, "Caricamento dati...");
+
+    }
+
+    protected async Task HandleValidSubmitAsync()
+    {
+        try
+        {
+            // Validazione delle date
+            if (Model?.StartDataLavorazione == null || Model?.EndDataLavorazione == null || Model?.IdCentro == null)
+            {
+                ErrorMessage = "Dati di ricerca incompleti";
+                return;
+            }
+
+
+            // int days = (Model!.EndDataLavorazione!.Value.Date - Model.StartDataLavorazione!.Value.Date).Days;
+
+            // if (days > 366)
+            // {
+            //     message = "Range max 1 year";
+            //     return;
+            // }
+
+
+            // if (days < 0)
+            // {
+            //     message = "Data inizio maggiore di data fine";
+            //     return;
+            // }
+
+
+            // message = "";
+            // LoadTotaliDedicati = false;
+            // ErrorMessage = "";
+
+            // UiState?.SetMenuDisabled(true);
+            // UiState?.ShowOverlay("Ricerca in corso...");
+
+            // // Avvia tutte le chiamate in parallelo
+            // var reportGiornalieroTask = ServiceWrapper!.ServiceProduzioneOperatori
+            //     .GetReportProduzioneCompletaGiornalieraAsync(Model.StartDataLavorazione!.Value.Date, Model.EndDataLavorazione!.Value.Date, (int)Model.IdCentro!);
+
+            // var totaliDedicatiTask = ServiceWrapper.ServiceProduzioneOperatori
+            //     .GetReportTotaliDedicatiPeriodoAsync(Model);
+
+
+            // var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+
+            // // Attendi tutte le chiamate
+            // await Task.WhenAll(reportGiornalieroTask, totaliDedicatiTask, centriTask);
+
+            // // Assegna i risultati
+            // LstReportGiornaliero = reportGiornalieroTask.Result;
+            // LstReportTotaliDedicatiGiornaliero = totaliDedicatiTask.Result;
+            // ListCentri = centriTask.Result;
+
+            // LstReportGiornalieroView = LstReportGiornaliero.OrderBy(x => x.DataLavorazione).ThenBy(x => x.Operatore).ToList();
+            // LstReportTotaliDedicatiGiornalieroView = LstReportTotaliDedicatiGiornaliero.ToList();
+
+            // isDisabledReport = !(LstReportGiornalieroView.Any() || LstReportTotaliDedicatiGiornalieroView.Any());
+            // isSelectReportValid = !LstReportGiornalieroView.Any();
+
+            // LoadTotaliDedicati = true;
+            // ErrorMessage = "";
+
+            // Layout!.UpdateFooter();
+            // UiState?.HideOverlay();
+            // UiState?.SetMenuDisabled(false);
+            // Reset dello stato
+
+
+            message = "";
+            LoadTotaliDedicati = false;
+            ErrorMessage = "";
+
+            // Attiva overlay e blocca interfaccia durante il caricamento
+            await RunWithOverlay(async () =>
+            {
+                // Prepara e avvia tutte le chiamate API in parallelo
+                var tasks = new List<Task>
+                {
+                    LoadReportProduzioneAsync(),
+                    LoadTotaliDedicatiAsync(),
+                    RefreshCentriAsync()
+                };
+
+                // Attendi il completamento di tutte le chiamate
+                await Task.WhenAll(tasks);
+
+                // Elaborazione e visualizzazione dei risultati
+                PrepareViewData();
+
+                // Aggiorna lo stato dell'interfaccia
+                LoadTotaliDedicati = true;
+                Layout?.UpdateFooter();
+
+            }, "Ricerca in corso...");
+        }
+        catch (Exception ex)
+        {
+            base.ErrorMessage = ex.Message.ToString();
+            Logger!.LogError(ex.Message.ToString());
+
+             UiState?.SetMenuDisabled(false);
+            UiState?.HideOverlay();
+
+            await NotificationDialog!.ShowNotification(base.ErrorMessage, "OK", Color.Error, "Error");
+        }
+    }
+
+
+    private async Task LoadReportProduzioneAsync()
+    {
+        LstReportGiornaliero = await ServiceWrapper!.ServiceProduzioneOperatori
+            .GetReportProduzioneCompletaGiornalieraAsync(
+                Model!.StartDataLavorazione!.Value.Date,
+                Model.EndDataLavorazione!.Value.Date,
+                (int)Model.IdCentro!);
+    }
+
+    private async Task LoadTotaliDedicatiAsync()
+    {
+        LstReportTotaliDedicatiGiornaliero = await ServiceWrapper!.ServiceProduzioneOperatori
+            .GetReportTotaliDedicatiPeriodoAsync(Model!);
+    }
+
+    private async Task RefreshCentriAsync()
+    {
+        ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+    }
+
+    private void PrepareViewData()
+    {
+        // Ordina e prepara i dati per la visualizzazione
+        LstReportGiornalieroView = LstReportGiornaliero
+            .OrderBy(x => x.DataLavorazione)
+            .ThenBy(x => x.Operatore)
+            .ToList();
+
+        LstReportTotaliDedicatiGiornalieroView = LstReportTotaliDedicatiGiornaliero.ToList();
+
+        // Aggiorna lo stato dei pulsanti in base ai dati
+        isDisabledReport = !(LstReportGiornalieroView.Any() || LstReportTotaliDedicatiGiornalieroView.Any());
+        isSelectReportValid = !LstReportGiornalieroView.Any();
+
+        // Applica il filtro corrente
+        OnValueChanged(SelectOption);
+    }
+
+
+
+    protected async Task OnUpdateRowAsync(ReportProduzioneCompleta item)
+    {
+        ////Solo update/insert per la tabella produzione sistema, per le ore invece deve essere fatto tramite form produzione operatori perchè ci sono altri parametri da inserire obbligatori
+        await SetTabellaProduzioneSistemaAsync(item);
+    }
+
+    protected async Task SetTabellaProduzioneSistemaAsync(ReportProduzioneCompleta ps)
+    {
+        if ((ps.Documenti == 0 & ps.Fogli == 0 & ps.Pagine == 0 & ps.Scarti == 0) & 
+            (ValueBeforeEdit!.Documenti == 0 & ValueBeforeEdit.Fogli == 0 & ValueBeforeEdit.Pagine == 0 & ValueBeforeEdit.Scarti == 0))
+        {
+            return;
+        }
+        else
+        {
+            try
+            {
+                ProduzioneSistemaDto ProduzioneSistemaDto = new ProduzioneSistemaDto();
+                ProduzioneSistemaDto.IdOperatore = ps.IdOperatore;
+                ProduzioneSistemaDto.Operatore = ps.Operatore;
+                ProduzioneSistemaDto.OperatoreNonRiconosciuto = ps.OperatoreNonRiconosciuto;
+                ProduzioneSistemaDto.IdProceduraLavorazione = ps.IdProceduraLavorazione;
+                ProduzioneSistemaDto.IdFaseLavorazione = ps.IdFaseLavorazione;
+                ProduzioneSistemaDto.DataLavorazione = ps.DataLavorazione!.Value;
+                ProduzioneSistemaDto.DataAggiornamento = DateTime.Now.Date;
+                ProduzioneSistemaDto.Documenti = ps.Documenti!.Value;
+                ProduzioneSistemaDto.Fogli = ps.Fogli!.Value;
+                ProduzioneSistemaDto.Pagine = ps.Pagine!.Value;
+                ProduzioneSistemaDto.Scarti = ps.Scarti!.Value;
+                ProduzioneSistemaDto.FlagInserimentoAuto = false;
+                ProduzioneSistemaDto.FlagInserimentoManuale = true;
+                ProduzioneSistemaDto.IdCentro = Model!.IdCentro!.Value;
+
+                ////Update or Insert tabella produzione sistema                
+                var res = await ServiceWrapper!.ServiceProduzioneSistema.CheckProduzioneSistemaOperatoreAsync(ProduzioneSistemaDto);
+
+                //update
+                if (res)
+                {
+                    await ServiceWrapper.ServiceProduzioneSistema.UpdateProduzioneSistemaAsync(ProduzioneSistemaDto);
+                }
+                //insert
+                else
+                {
+                    await ServiceWrapper.ServiceProduzioneSistema.AddProduzioneSistemaAsync(ProduzioneSistemaDto);
+                }
+            }
+            catch (Exception ex)
+            {
+                base.ErrorMessage = ex.Message.ToString();
+                Logger!.LogError(ex.Message.ToString());
+                await NotificationDialog!.ShowNotification(ex.Message.ToString(), "OK", Color.Error, "Error");
+            }
+
+        }
+
+    }
+
+    protected async Task CreateDocumentoAsync()
+    {
+        if (SelectOption.Type == 1)
+        {
+            MemoryStream excelStream = ServiceWrapper!.ServiceProduzioneOperatori.CreateExcelProduzioneGiornalieraCompleta(LstReportGiornalieroView, LstReportTotaliDedicatiGiornalieroView);
+            string title = "ProduzioneGiornaliera" + ".xlsx";
+            await JSInterop!.SaveAs(title, excelStream.ToArray());
+        }
+
+        if (SelectOption.Type == 2)
+        {
+            MemoryStream excelStream = ServiceWrapper!.ServiceProduzioneOperatori.CreateExcelProduzioneGiornalieraCompleta(LstReportGiornalieroView, Enumerable.Empty<ReportGiornalieroTotaliDedicati>());
+            string title = "ProduzioneNonConforme" + ".xlsx";
+            await JSInterop!.SaveAs(title, excelStream.ToArray());
+        }
+
+    }
+
+    protected void OnValueChanged(Option option)
+    {
+        SelectOption = option;
+
+        if (SelectOption.Type == 1)
+        {
+            LstReportGiornalieroView = LstReportGiornaliero.OrderBy(x => x.DataLavorazione).ThenBy(x => x.Operatore).ToList();
+            LstReportTotaliDedicatiGiornalieroView = LstReportTotaliDedicatiGiornaliero;
+        }
+
+        if (SelectOption.Type == 2)
+        {
+            LstReportGiornalieroView = LstReportGiornalieroView.Where(x => ((x.TempoLavOreCent > 0) && (x.Documenti == 0 && x.Fogli == 0 && x.Pagine == 0) & x.FlagDataReading == true) ||
+                                                                             ((x.TempoLavOreCent == 0) && (x.Documenti > 0 || x.Fogli > 0 || x.Pagine > 0) & x.FlagDataReading == true)
+                                                                           ).OrderBy(x => x.DataLavorazione).ThenBy(x => x.Operatore).ToList();
+
+            LstReportTotaliDedicatiGiornalieroView = Enumerable.Empty<ReportGiornalieroTotaliDedicati>();
+        }
+    }
+
+
+ 
+}

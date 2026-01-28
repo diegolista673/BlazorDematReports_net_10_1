@@ -1,0 +1,184 @@
+# ?? AZIONI RICHIESTE - Completamento Rimozione Legacy
+
+**Data:** 2024-01-26  
+**Status:** ?? PARZIALMENTE COMPLETATO
+
+---
+
+## ? Modifiche Completate
+
+1. ? `Entities/Models/DbApplication/TaskDaEseguire.cs` - Campi legacy rimossi
+2. ? `Entities/Models/DbApplication/DematReportsContext.cs` - OnModelCreating aggiornato
+3. ? `DataReading/Dto/TaskDaEseguireDto.cs` - Campi legacy rimossi, aggiunto `IdConfigurazioneDatabase`
+4. ? `DataReading/Services/TaskService.cs` - Metodo `BuildTaskDtoAsync` aggiornato
+5. ? `DataReading/Infrastructure/ProductionJobInfrastructure.cs` - Metodi routing aggiornati
+6. ? `BlazorDematReports/Components/Pages/Impostazioni/PageEditProcedura.razor` - Expansion panel rimosso
+7. ? Database - Colonne legacy rimosse (IdQuery, QueryIntegrata, Connessione, MailServiceCode)
+
+---
+
+## ?? Errori Rimanenti
+
+### File: `DataReading/LettoreDati.cs`
+
+Questo file contiene la logica LEGACY per l'esecuzione delle query ed è usato dal sistema vecchio.
+
+**Linee con errori:**
+- Linea 524: `case { QueryIntegrata: true }:` 
+- Linea 545-546: Riferimenti a `QueryIntegrata` e `Connessione`
+- Linea 555-556: Riferimenti a `QueryIntegrata` e `Connessione`
+- Linea 563-564: Log con campi legacy
+- Linea 590: `task.Connessione`
+- Linea 609-613: `task.IdQuery`
+- Linea 619: Log con `task.IdQuery`
+- Linea 624: `task.Connessione`
+
+---
+
+## ?? Soluzioni Possibili
+
+### Opzione 1: Deprecare `LettoreDati` (CONSIGLIATO)
+
+Questo file è usato solo dal sistema legacy. Se tutti i task usano `IdConfigurazioneDatabase`, questo file non serve più.
+
+**Passi:**
+
+1. Verifica che NON ci siano task senza `IdConfigurazioneDatabase`:
+```sql
+SELECT COUNT(*) FROM TaskDaEseguire 
+WHERE IdConfigurazioneDatabase IS NULL AND Enabled = 1;
+```
+
+2. Se il risultato è 0, puoi:
+   - Commentare tutto il contenuto di `ExecuteTaskAsync` in `LettoreDati.cs`
+   - Sostituire con throw `NotSupportedException("Legacy system deprecated")`
+   - Lasciare il file per compatibilità ma non funzionale
+
+**Codice da mettere in `LettoreDati.cs`:**
+```csharp
+public async Task<DataReading> ExecuteTaskAsync(TaskDaEseguireDto taskDaEseguireDto)
+{
+    throw new NotSupportedException(
+        "Legacy LettoreDati system is deprecated. " +
+        "All tasks must use IdConfigurazioneDatabase with unified system.");
+}
+```
+
+---
+
+### Opzione 2: Mantenere Compatibilità Legacy (NON CONSIGLIATO)
+
+Se ci sono ancora task legacy attivi, aggiungi i campi al DTO come nullable:
+
+```csharp
+// In TaskDaEseguireDto.cs
+[Obsolete("Legacy - use IdConfigurazioneDatabase")]
+public int? IdQuery { get; set; }
+
+[Obsolete("Legacy - use IdConfigurazioneDatabase")]
+public bool? QueryIntegrata { get; set; }
+
+[Obsolete("Legacy - use IdConfigurazioneDatabase")]
+public string? Connessione { get; set; }
+```
+
+Poi aggiorna `LettoreDati.cs` per supportare entrambi i sistemi.
+
+---
+
+## ?? Verifica Status Task
+
+Esegui questa query per verificare lo stato della migrazione:
+
+```sql
+-- Conta task per tipo sistema
+SELECT 
+    CASE 
+        WHEN IdConfigurazioneDatabase IS NOT NULL THEN 'NUOVO SISTEMA'
+        ELSE 'LEGACY (deprecated)'
+    END AS TipoSistema,
+    COUNT(*) AS NumeroTask,
+    SUM(CASE WHEN Enabled = 1 THEN 1 ELSE 0 END) AS TaskAttivi
+FROM TaskDaEseguire
+GROUP BY 
+    CASE 
+        WHEN IdConfigurazioneDatabase IS NOT NULL THEN 'NUOVO SISTEMA'
+        ELSE 'LEGACY (deprecated)'
+    END
+ORDER BY TipoSistema;
+```
+
+**Risultato Atteso:**
+```
+TipoSistema         | NumeroTask | TaskAttivi
+--------------------+------------+-----------
+NUOVO SISTEMA       | X          | X
+LEGACY (deprecated) | 0          | 0
+```
+
+Se `LEGACY (deprecated)` ha `TaskAttivi = 0`, puoi deprecare completamente `LettoreDati`.
+
+---
+
+## ?? Azione Immediata Consigliata
+
+**1. Verifica task attivi:**
+```bash
+sqlcmd -S "VEVRFL1M031H" -d "DematReports" -E -Q "SELECT COUNT(*) AS TaskLegacyAttivi FROM TaskDaEseguire WHERE IdConfigurazioneDatabase IS NULL AND Enabled = 1"
+```
+
+**2A. Se risultato = 0 (NESSUN TASK LEGACY ATTIVO):**
+Deprecare completamente `LettoreDati.cs`:
+
+```csharp
+// DataReading/LettoreDati.cs - DEPRECATO
+public async Task<DataReading> ExecuteTaskAsync(TaskDaEseguireDto taskDaEseguireDto)
+{
+    _logger.LogError(
+        "LEGACY SYSTEM CALLED: Task {TaskId} without IdConfigurazioneDatabase!", 
+        taskDaEseguireDto.IdTaskDaEseguire);
+    
+    throw new NotSupportedException(
+        $"Legacy LettoreDati is deprecated. Task {taskDaEseguireDto.IdTaskDaEseguire} " +
+        "must have IdConfigurazioneDatabase set. Please migrate to unified configuration system.");
+}
+```
+
+**2B. Se risultato > 0 (CI SONO TASK LEGACY ATTIVI):**
+1. Identificare i task:
+```sql
+SELECT IdTaskDaEseguire, IdTaskHangFire, Enabled
+FROM TaskDaEseguire
+WHERE IdConfigurazioneDatabase IS NULL AND Enabled = 1;
+```
+
+2. Creare configurazioni per questi task usando `/admin/fonti-dati`
+3. Associare i task alle nuove configurazioni
+4. Disabilitare i task legacy
+5. Ritornare all'opzione 2A
+
+---
+
+## ?? File da Modificare
+
+| File | Azione | Priorità |
+|------|--------|----------|
+| `DataReading/LettoreDati.cs` | Deprecare `ExecuteTaskAsync` | ?? ALTA |
+| `DataReading/Services/TaskService.cs` | ? COMPLETATO | - |
+| `DataReading/Infrastructure/ProductionJobInfrastructure.cs` | ? COMPLETATO | - |
+| `Entities/Models/DbApplication/TaskDaEseguire.cs` | ? COMPLETATO | - |
+| `Entities/Models/DbApplication/DematReportsContext.cs` | ? COMPLETATO | - |
+
+---
+
+## ?? Prossimi Passi
+
+1. ? Esegui query verifica task legacy
+2. ? Se 0 task legacy ? Depreca `LettoreDati.cs`
+3. ? Ricompila progetto
+4. ? Test funzionale sistema nuovo
+5. ? Commit modifiche a Git
+
+---
+
+**La migrazione è al 95% - manca solo deprecare LettoreDati!** ??

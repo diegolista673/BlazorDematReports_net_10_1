@@ -1,0 +1,245 @@
+﻿@page "/normalizzazione-operatore"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+
+@inherits BaseComponentPage<PageNormalizzazioneOperatore,OperatoriNormalizzatiDto,OperatoriNormalizzatiDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4" >Normalizzazione Operatore</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+        <MudItem xs="12" sm="12" md="12" lg="4" xl="4">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+
+                        <MudCardContent Class="pa-0">
+                            <MudText Typo="Typo.h6">Normalizzazione</MudText>
+                        </MudCardContent>
+
+                        <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmit">
+                                <PageNormalizzazioneOperatoreValidationProvider />
+
+                            <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                                <MudTextField @bind-Value="Model!.OperatoreDaNormalizzare" Label="Da Normalizzare" Variant="Variant.Text" 
+                                            Required=true
+                                            For="(() => Model!.OperatoreDaNormalizzare)"
+                                            Clearable=true Class="mt-5">
+                                </MudTextField>
+
+
+                                <MudAutocomplete @ref="@RefOperatori" T="string" Label="Operatori" @bind-Value="Model.OperatoreNormalizzato"
+                                                    ToStringFunc="@(oper => oper==null ? null : oper)"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectOperatore,arg))"
+                                                    MaxItems=null
+                                                    Clearable=true
+                                                    Required="true"
+                                                    ResetValueOnEmptyText="true" 
+                                                    Dense=true
+                                                    For="(() => Model.OperatoreNormalizzato)" />
+
+
+                                <div class="justify-end mt-5 d-flex align-center ">
+                                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" Disabled="@(!IsFormValid)" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                                </div>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                            </MudFocusTrap>
+                        </EditForm>
+
+
+                    
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="12" md="12" lg="8" xl="8">
+
+                <MudDataGrid T="OperatoriNormalizzatiDto" Items="@ListOperatoriNormalizzatiDto" ReadOnly="false" Filterable="true" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+                         Dense=true Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Breakpoint="Breakpoint.Sm"
+                         StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" Striped="true"  CommittedItemChanges="@OnUpdateRow" Outlined=false Height="100%">
+                        <ToolBarContent>
+                            <MudText Typo="Typo.h6">Operatori Normalizzati</MudText>
+                        </ToolBarContent>
+                        <Columns>
+
+                            <PropertyColumn Property="x => x.IdNorm" Title="ID" Editable=false Sortable="false" Filterable="false" HeaderStyle="width:50px" />
+
+                            <PropertyColumn Property="x => x.OperatoreDaNormalizzare" Title="Operatore Da Normalizzare" Editable=true Sortable="true">
+                                <EditTemplate>
+                                    <MudTextField @bind-Value="@context.Item!.OperatoreDaNormalizzare" Label="Operatore Da Normalizzare" Variant="Variant.Text"
+                                                    Required=true
+                                                    For="(() => Model!.OperatoreDaNormalizzare)">
+                                    </MudTextField>
+                                </EditTemplate>
+                            </PropertyColumn>
+
+
+                            <PropertyColumn Property="x => x.OperatoreNormalizzato" Title="Operatore" Editable=true Sortable="true">
+                                <EditTemplate>
+                                    <MudAutocomplete T="string" Label="Operatori" @bind-Value="@context.Item!.OperatoreNormalizzato"
+                                                        ToStringFunc="@(oper => oper==null ? null : oper)"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectOperatore,arg))"
+                                                        MaxItems=null
+                                                        Clearable=true
+                                                        Required="true"
+                                                        ResetValueOnEmptyText="true"
+                                                        Dense=true />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <TemplateColumn CellClass="d-flex justify-end">
+                                <CellTemplate>
+                                    <MudStack Row>
+                                        <MudTooltip Text="Edit">
+                                            <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                        </MudTooltip>
+                                        <MudDivider Vertical="true" FlexItem="true" />
+                                        <MudTooltip Text="Delete">
+                                            <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.IdNorm, @context.Item.OperatoreDaNormalizzare!,@context.Item.OperatoreNormalizzato!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                        </MudTooltip>
+                                    </MudStack>
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                        </Columns>
+                        <PagerContent>
+                            <MudDataGridPager T="OperatoriNormalizzatiDto" />
+                        </PagerContent>
+
+                    </MudDataGrid>
+        </MudItem>
+
+    </MudGrid>
+    
+</MudContainer>
+
+
+
+@code {
+
+    bool isDisableOperatore { get; set; } = false;
+
+    MudAutocomplete<string>? RefOperatori;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await RunWithOverlay(async () =>
+           {
+               SetEditContext();
+
+               ListOperatori = await ServiceWrapper!.ServiceOperatori.GetOperatoriByUserAsync();
+               SetSelectOperatore();
+
+               ListOperatoriNormalizzatiDto = await ServiceWrapper!.ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
+
+
+           }, "Caricamento dati...");
+    }
+
+
+
+    async Task HandleValidSubmit()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.OperatoreDaNormalizzare))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                Operatori? oper = GetOperatore(Model.OperatoreNormalizzato!);
+                Model.OperatoreNormalizzato = oper!.Operatore;
+
+                await ServiceWrapper!.ServiceOperatoriNormalizzati.AddOperatoriNormalizzatiAsync(Model);
+                
+                ListOperatoriNormalizzatiDto = await ServiceWrapper!.ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Nuovo Operatore Normalizzato inseritoa", Severity.Success);
+
+                ResetFormModel();
+
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    async Task DeleteRecordAsync(int id, string operatoreDaNorm, string operatore)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare il record: " + operatoreDaNorm + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null)
+        {
+            if (!result.Canceled)
+            {
+                try
+                {
+                    UiState?.ShowOverlay("Eliminazione in corso...");
+                    UiState?.SetMenuDisabled(true);
+
+                    await ServiceWrapper!.ServiceOperatoriNormalizzati.DeleteOperatoriNormalizzatiAsync(id);
+                    ListOperatoriNormalizzatiDto = await ServiceWrapper!.ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
+
+                    UiState?.HideOverlay();
+                    UiState?.SetMenuDisabled(false);
+
+                    base.ErrorMessage = "";
+
+                    UiState?.ShowSnackbar("Operatore eliminato", Severity.Success);
+                }
+                catch (Exception ex)
+                {
+                    await HandleExceptionFormAsync(ex);
+                }
+            }
+        }
+
+    }
+
+
+    async Task OnUpdateRow(OperatoriNormalizzatiDto item)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(item.OperatoreDaNormalizzare) & (!string.IsNullOrEmpty(item.OperatoreNormalizzato)))
+            {
+                await ServiceWrapper!.ServiceOperatoriNormalizzati.UpdateOperatoriNormalizzatiAsync(item);
+                UiState?.ShowSnackbar("Update eseguitoo", Severity.Success);
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("Operatore non può essere vuoto", "OK", Color.Error, "Error");
+                item.OperatoreDaNormalizzare = ValueBeforeEdit!.OperatoreDaNormalizzare;
+                item.OperatoreNormalizzato = ValueBeforeEdit!.OperatoreNormalizzato;
+            }
+        }
+        catch (Exception ex)
+        {
+            ListProcedureClienteDto = await ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync(); UiState?.SetMenuDisabled(false);
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+}

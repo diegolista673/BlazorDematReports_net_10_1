@@ -1,0 +1,267 @@
+﻿@page "/clienti"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+
+
+@inherits BaseComponentPage<PageClienti,ClientiDto,ClientiDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Clienti</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+
+        @*form*@
+        <MudItem xs="12" sm="12" md="12" lg="4" xl="4">
+            <MudCard Style="height: 100%">
+            <MudCardContent>
+                    <MudCardContent Class="pa-0">
+                        <MudText Typo="Typo.h6">Nuovo Cliente</MudText>
+                    </MudCardContent>
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
+                        <DataAnnotationsValidator />
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                        <MudSelect @ref="@RefCentro" T=int? Label="Select Centro" Style="width:200px" Class="mt-3" Margin="Margin.Dense"
+                                Required=true
+                                For="(() => Model!.IdCentroLavorazione)"
+                                Clearable=true
+                                AutoFocus=true
+                                ValueChanged="@((int? arg) => OnValueChangedCentro(arg))">
+
+
+                                @if (ListCentri != null)
+                                {
+                                    @foreach (CentriLavorazione item in ListCentri)
+                                    {
+                                        <MudSelectItem T=int? Value="@item.Idcentro">@item.Centro</MudSelectItem>
+                                    }
+                                }
+
+                            </MudSelect>
+
+
+                            <MudTextField @bind-Value="Model!.NomeCliente" Label="Cliente" Variant="Variant.Text" Adornment="Adornment.End" AdornmentText="@Sigla"
+                            Required=true
+                            For="(() => Model!.NomeCliente)"
+                            Clearable=true>
+                            </MudTextField>
+
+
+                            <div class="justify-end mt-5 d-flex align-center ">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="focus-visible-button" StartIcon="@Icons.Material.Filled.Save" Disabled="@(!IsFormValid)">Salva</MudButton>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                        </MudFocusTrap>
+                    </EditForm>
+                </MudCardContent>
+
+            </MudCard>
+        </MudItem>
+
+        @*table*@
+        <MudItem xs="12" sm="12" md="12" lg="8" xl="8">
+            <MudDataGrid T="ClientiDto" Items="@ListClientiDto" ReadOnly="false" Striped="true"  Filterable="true" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+            Dense=true Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Breakpoint="Breakpoint.Sm"
+            StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow" Outlined=false Height="100%">
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Clienti</MudText>
+                </ToolBarContent>
+                <Columns>
+
+                    <PropertyColumn Property="x => x.IdCliente" Title="ID" Editable=false Sortable="false" Filterable="false" Style="width:30px" />
+                    <PropertyColumn Property="x => x.NomeCliente" Title="Cliente" Editable=true Sortable="true">
+                        <EditTemplate>
+                            <MudTextField @bind-Value="@context.Item.NomeCliente" Label="Cliente" Variant="Variant.Text"
+                            Required=true
+                            For="(() => Model!.NomeCliente)">
+                            </MudTextField>
+                        </EditTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.Centro" Title="Centro" Editable=false Sortable="true" />
+                    <TemplateColumn CellClass="d-flex justify-end" Title="Settings" Filterable="false" Sortable="true" Editable=false>
+                        <CellTemplate>
+                            <MudStack Row>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                                <MudDivider Vertical="true" FlexItem="true" />
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item.IdCliente, @context.Item.NomeCliente!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                </MudTooltip>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ClientiDto" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudItem>
+
+
+    </MudGrid>
+</MudContainer>
+
+
+@code {
+
+    string? Sigla { get; set; }
+    MudSelect<int?>? RefCentro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+           {
+               SetEditContext();
+
+               var clientiTask = ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+               var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+               await Task.WhenAll(clientiTask, centriTask);
+               ListClientiDto = clientiTask.Result;
+               ListCentri = centriTask.Result;
+
+
+           }, "Caricamento dati...");
+    }
+
+    protected async Task HandleValidSubmitAsync()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.NomeCliente))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                Model.NomeCliente = Model.NomeCliente.ToUpper() + Sigla;
+                Model.DataCreazioneCliente = DateTime.Now;
+                Model.IdOperatore = ConfigUser!.IdUtente;
+
+                await ServiceWrapper!.ServiceClienti.AddClienteAsync(Model);
+                ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+                
+                ResetFormModel();
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Nuovo Cliente inserito", Severity.Success);
+
+            }
+        }
+        catch (Exception ex)
+        {
+            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    protected async Task DeleteRecordAsync(int idCliente, string cliente)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + cliente + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null)
+        {
+            if (!result.Canceled)
+            {
+                try
+                {
+                    UiState?.ShowOverlay("Eliminazione in corso...");
+                    UiState?.SetMenuDisabled(true);
+
+                    await ServiceWrapper!.ServiceClienti.DeleteClienteAsync(idCliente);
+                    ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+
+                    ResetFormModel();
+
+                    UiState?.HideOverlay();
+                    UiState?.SetMenuDisabled(false);
+                    UiState?.ShowSnackbar("Nuovo Cliente inserito", Severity.Success);
+
+                }
+                catch (Exception ex)
+                {
+                    ResetFormModel();
+                    await HandleExceptionFormAsync(ex);
+                }
+            }
+        }
+
+    }
+
+    protected async Task OnUpdateRow(ClientiDto item)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(item.NomeCliente))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowEditOverlay("Update in corso...");
+
+                item.NomeCliente = item.NomeCliente.ToUpper();
+                await ServiceWrapper!.ServiceClienti.UpdateClienteAsync(item);
+
+                ResetFormModel();
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideEditOverlay();
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("Il campo cliente non può essere vuoto", "OK", Color.Error, "Error");
+                item.NomeCliente = ValueBeforeEdit!.NomeCliente;
+            }
+        }
+        catch (Exception ex)
+        {
+            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    protected async Task OnValueChangedCentro(int? idCentro)
+    {
+        try
+        {
+            Model!.IdCentroLavorazione = idCentro;
+
+            if (idCentro != null)
+            {
+                Model.Centro = ListCentri!.Where(x => x.Idcentro == idCentro).First().Centro;
+                Sigla = "_" + ListCentri!.Where(x => x.Idcentro == idCentro).First().Sigla;
+                StateHasChanged();
+            }
+            else
+            {
+                ResetFormModel();
+            }
+        }
+        catch (Exception ex)
+        {
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+}

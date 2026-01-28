@@ -1,0 +1,207 @@
+﻿@page "/ruoli-utenti"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageRuoliUtenti,RuoliDto,RuoliDto>
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Ruoli</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer MaxWidth="MaxWidth.False" >
+
+    <MudGrid Class="mt-2 ">
+
+        @*form*@
+        <MudItem  xs="12" sm="12" md="12" lg="4" xl="4">
+            <MudCard Style="height: 100%">
+            <MudCardContent>
+                    <MudCardContent Class="pa-0">
+                        <MudText Typo="Typo.h6">Nuovo Ruolo</MudText>
+                    </MudCardContent>
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
+                        <PageRuoliValidationProvider />
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                        <MudTextField @bind-Value="Model!.Ruolo" Label="Ruolo" Variant="Variant.Text" 
+                                    Required=true
+                                          For="(() => Model!.Ruolo)"
+                                    Clearable=true>
+                        </MudTextField>
+ 
+
+                        <div class="justify-end mt-5 d-flex align-center ">
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                        </div>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                        </MudFocusTrap>
+                    </EditForm>
+            </MudCardContent>
+
+        </MudCard>
+        </MudItem>
+
+        @*table*@
+        <MudItem  xs="12" sm="12" md="12" lg="8" xl="8">
+            <MudDataGrid T="RuoliDto" Items="@ListRuoliDto" ReadOnly="false" Filterable="true" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+                         Dense=true Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Striped="true" Breakpoint="Breakpoint.Sm"
+                            StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow" Outlined=false Height="100%">
+                    <ToolBarContent>
+                        <MudText Typo="Typo.h6">Clienti</MudText>
+                    </ToolBarContent>
+                    <Columns>
+
+                        <PropertyColumn Property="x => x.IdRuolo" Title="ID" Editable=false Sortable="false" Filterable="false" Style="width:30px" />
+                        <PropertyColumn Property="x => x.Ruolo" Title="Cliente" Editable=true Sortable="true">
+                            <EditTemplate>
+                                <MudTextField @bind-Value="@context.Item.Ruolo" Label="Cliente" Variant="Variant.Text"
+                                              Required=true
+                                              For="(() => Model!.Ruolo)">
+                                </MudTextField>
+                            </EditTemplate>
+                        </PropertyColumn>
+
+                    <TemplateColumn CellClass="d-flex justify-lg-center justify-xl-center justify-xs-end justify-sm-end justify-md-end" Filterable="false" Sortable="true" Editable=false>
+                            <CellTemplate>
+                                <MudStack Row>
+                                    <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync"></MudIconButton>
+                                    </MudTooltip>
+                                    <MudDivider Vertical="true" FlexItem="true" />
+                                    <MudTooltip Text="Delete">
+                                    <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item.IdRuolo, @context.Item.Ruolo!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                    </MudTooltip>
+                                </MudStack>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                    <PagerContent>
+                        <MudDataGridPager T="RuoliDto" />
+                    </PagerContent>
+                </MudDataGrid>
+        </MudItem>
+    </MudGrid>
+
+</MudContainer>
+
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await RunWithOverlay(async () =>
+           {
+               UiState?.SetMenuDisabled(true);
+               SetEditContext();
+
+               ListRuoliDto = await ServiceWrapper!.ServiceRuoli.GetRuoliDtoAsync();
+
+           }, "Caricamento dati...");
+    }
+
+    protected async Task HandleValidSubmitAsync()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.Ruolo))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                Model.Ruolo = Model.Ruolo.ToUpper();
+                await ServiceWrapper!.ServiceRuoli.AddRuoloAsync(Model);
+                ListRuoliDto = await ServiceWrapper!.ServiceRuoli.GetRuoliDtoAsync();
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Nuovo Ruolo inserito", Severity.Success);
+
+                ResetFormModel(); 
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            ListRuoliDto = await ServiceWrapper!.ServiceRuoli.GetRuoliDtoAsync();
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+    protected async Task DeleteRecordAsync(int idRuolo, string ruolo)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + ruolo + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+
+        if (!result!.Canceled)
+        {
+            try
+            {
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
+
+                await ServiceWrapper!.ServiceRuoli.DeleteRuoloAsync(idRuolo);
+                ListRuoliDto = await ServiceWrapper!.ServiceRuoli.GetRuoliDtoAsync();
+
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
+                UiState?.ShowSnackbar("Ruolo eliminato", Severity.Success);
+                base.ErrorMessage = "";
+                
+
+            }
+            catch (Exception ex)
+            {
+                ResetFormModel();
+                ListRuoliDto = await ServiceWrapper!.ServiceRuoli.GetRuoliDtoAsync();
+                await HandleExceptionFormAsync(ex);
+            }
+        }
+    }
+
+    protected async Task OnUpdateRow(RuoliDto item)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(item.Ruolo))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Update in corso...");
+
+                item.Ruolo = item.Ruolo.ToUpper();
+                await ServiceWrapper!.ServiceRuoli.UpdateRuoloAsync(item);
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("Il campo Ruolo non può essere vuoto", "OK", Color.Error, "Error");
+                item.Ruolo = ValueBeforeEdit!.Ruolo;
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            ListRuoliDto = await ServiceWrapper!.ServiceRuoli.GetRuoliDtoAsync();
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+
+}

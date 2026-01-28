@@ -1,0 +1,40 @@
+@inject IClipboardService ClipboardService
+
+
+<MudTooltip Text="@Message" ShowOnClick="@click" ShowOnHover="@hover">
+    <MudIconButton  Icon="@Icons.Material.Filled.ContentCopy" Variant=@variant Color=@color Size="Size.Small" @onclick="OnClick" />
+</MudTooltip>
+
+
+@code {
+    [Parameter]
+    public string? TextToCopy { get; set; }
+
+    bool click { get; set; } = false;
+    bool hover { get; set; } = true;
+
+    Variant variant = Variant.Outlined;
+    Color color = Color.Primary;
+
+    string Message { get; set; } = "Copy";
+
+    
+
+    private async Task OnClick()
+    {
+        await ClipboardService.CopyToClipboard(TextToCopy);
+        click = true;
+        Message = "Copy";
+        variant = Variant.Filled;
+        color = Color.Success;
+        Message = "Copied!";
+        click = false;
+        StateHasChanged();
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        variant = Variant.Outlined;
+        color =  Color.Primary;
+        Message = "Copy";
+        StateHasChanged();
+
+    }
+}

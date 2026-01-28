@@ -1,0 +1,523 @@
+﻿@page "/carica-dati"
+@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO, USER")]
+@inherits BaseComponentPage<PageCaricaDati,ProduzioneSistemaDto,ProduzioneSistemaDto>
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Carica Dati Produzione</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer MaxWidth="MaxWidth.False">
+
+    <MudGrid Class="mt-2 ">
+        <MudItem xs="12" xl="3" sm="3">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
+                        <PageCaricaDatiValidationProvider />
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                            <MudDatePicker Label="Data" DateChanged="@OnChangeDataAsync" Date="@Model!.DataLavorazione" Required="true" Disabled=@isDisableDatePicker />
+
+                            <MudAutocomplete T="string"
+                                             Label="Operatore"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectOperatore,arg))"
+                                             MaxItems=null
+                                             Clearable=true
+                                             Required="true"
+                                             ResetValueOnEmptyText="true"
+                                             Dense=true
+                                             Value="@Model!.Operatore"
+                                             Text="@Model!.Operatore"
+                                             ValueChanged="@((string arg) => OnValueChangedOperatoreAsync(arg))"
+                                             For="(() => Model.Operatore)"
+                                             Disabled=@isDisableOperatore>
+                            </MudAutocomplete>
+
+
+                            @*Lavorazione*@
+                            <MudAutocomplete T="string"
+                                             Label="Lavorazione"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectLavorazione,arg))"
+                                             MaxItems=null
+                                             Required="true"
+                                             Clearable=true
+                                             Disabled="@IsDisabledLavorazione"
+                                             ResetValueOnEmptyText="true"
+                                             Dense=true
+                                             SelectOnActivation="true"
+                                             Value="@Model!.Lavorazione"
+                                             Text="@Model!.Lavorazione"
+                                             ValueChanged="@((string arg) => OnValueChangedLavorazione(arg))"
+                                             For="(() => Model!.Lavorazione)" />
+
+
+                            @*Fase*@
+                            <MudAutocomplete T="string" Label="Fase"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectFase,arg))"
+                                             MaxItems=null
+                                             Required="true"
+                                             Clearable=true
+                                             Disabled="@IsDisabledFase"
+                                             ResetValueOnEmptyText="true"
+                                             Dense=true
+                                             SelectOnActivation="true"
+                                             Value="@base.Model.Fase"
+                                             Text="@base.Model.Fase"
+                                             ValueChanged="@((string arg) => OnValueChangedFase(arg))"
+                                             For="(() => Model.Fase)" />
+
+                            <MudNumericField @bind-Value="@base.Model.Documenti" Label="Documenti" Min="0" For="(() => Model.Documenti)" TextChanged="@(_ => ValidateForm())" ></MudNumericField>
+                            <MudNumericField @bind-Value="@base.Model.Fogli" Label="Fogli" Min="0" For="(() => Model.Fogli)" TextChanged="@(_ => ValidateForm())"></MudNumericField>
+                            <MudNumericField @bind-Value="@base.Model.Pagine" Label="Pagine" Min="0" For="(() => Model.Pagine)" TextChanged="@(_ => ValidateForm())"></MudNumericField>
+                            <MudNumericField @bind-Value="@base.Model.PagineSenzaBianco" Label="PagineSenzaBianco" Min="0" For="(() => Model.PagineSenzaBianco)" TextChanged="@(_ => ValidateForm())"></MudNumericField>
+                            <MudNumericField @bind-Value="@base.Model.Scarti" Label="Scarti" Min="0" For="(() => Model.Scarti)" TextChanged="@(_ => ValidateForm())"></MudNumericField>
+
+                            <div class="justify-end mt-5 d-flex align-center ">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto focus-visible-button" Disabled="@(!IsFormValid)" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                        </MudFocusTrap>
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" xl="9" sm="9">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+                    <MudDataGrid T="ProduzioneSistemaDto" Items="@base.ListProduzioneSistemaDto" ReadOnly="false" Filterable="false" Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true EditDialogOptions="@maxWidth"
+                                 Outlined=false Height="100%" StartedEditingItem="@base.StartedEditingItem" CanceledEditingItem="@base.CanceledEditingItem" CommittedItemChanges="@OnUpdateRowAsync">
+                        <Columns>
+
+                            <PropertyColumn Property="x => x!.DataLavorazione" Title="Data" Format="yyyy-MM-dd">
+                                <CellTemplate>
+                                    @context.Item!.DataLavorazione!.Value.ToShortDateString()
+                                </CellTemplate>
+                            </PropertyColumn>
+
+                            <PropertyColumn Property="x => x!.Operatore" Title="Operatore" Editable=false Sortable="false" Filterable="false" />
+
+                            <PropertyColumn Property="x => x!.Lavorazione" Title="Lavorazione" Editable=false Sortable="false" Filterable="false" />
+
+                            <PropertyColumn Property="x => x!.Fase" Title="Fase" Editable=false Sortable="false" Filterable="false" />
+
+                            <PropertyColumn Property="x => x!.Documenti" Title="Documenti" Sortable="false" Filterable="false">
+                                <EditTemplate>
+                                    <MudNumericField @bind-Value="@context.Item!.Documenti" Label="Documenti" Variant="Variant.Text" Min="0" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <PropertyColumn Property="x => x!.Fogli" Title="Fogli" Sortable="false" Filterable="false">
+                                <EditTemplate>
+                                    <MudNumericField @bind-Value="@context.Item!.Fogli" Label="Fogli" Variant="Variant.Text" Min="0" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <PropertyColumn Property="x => x!.Pagine" Title="Pagine" Sortable="false" Filterable="false">
+                                <EditTemplate>
+                                    <MudNumericField @bind-Value="@context.Item!.Pagine" Label="Pagine" Variant="Variant.Text" Min="0" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <PropertyColumn Property="x => x!.PagineSenzaBianco" Title="PagNoBianco" Sortable="false" Filterable="false">
+                                <EditTemplate>
+                                    <MudNumericField @bind-Value="@context.Item!.PagineSenzaBianco" Label="PagNoBianco" Variant="Variant.Text" Min="0" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+                            <PropertyColumn Property="x => x!.Scarti" Title="Scarti" Sortable="false" Filterable="false">
+                                <EditTemplate>
+                                    <MudNumericField @bind-Value="@context.Item!.Scarti" Label="Scarti" Variant="Variant.Text" Min="0" />
+                                </EditTemplate>
+                            </PropertyColumn>
+
+
+                            <TemplateColumn CellClass="d-flex justify-end" Filterable="false" Sortable="false">
+                                <CellTemplate>
+                                    <MudStack Row>
+                                        <MudTooltip Text="Edit">
+                                            <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                        </MudTooltip>
+                                        <MudDivider Vertical="true" FlexItem="true" />
+                                        <MudTooltip Text="Delete">
+                                            <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.IdProduzioneSistema, @context.Item.Lavorazione!, @context.Item.IdOperatore, @context.Item.DataLavorazione))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                        </MudTooltip>
+                                    </MudStack>
+                                </CellTemplate>
+                            </TemplateColumn>
+
+                        </Columns>
+                    </MudDataGrid>
+
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+</MudContainer>
+
+
+@code {
+
+
+    CancellationToken CancellationToken { get; set; }
+
+    bool IsDisabledLavorazione { get; set; } = true;
+    bool IsDisabledFase { get; set; } = true;
+    bool isDisableDatePicker { get; set; } = false;
+    bool isDisableOperatore { get; set; } = false;
+
+    DialogOptions maxWidth = new DialogOptions() { MaxWidth = MaxWidth.Small };
+    ProcedureLavorazioniDto ProcedureLavorazioniDto { get; set; } = new ProcedureLavorazioniDto();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+           {
+               SetEditContext();
+
+               // Avvia tutte le chiamate asincrone in parallelo
+               var operatoriTask = ServiceWrapper!.ServiceOperatori.GetOperatoriByUserAsync();
+               var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+               var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+
+               await Task.WhenAll(operatoriTask, lavorazioniTask, fasiTask);
+
+               ListOperatori = operatoriTask.Result;
+               SetSelectOperatore();
+
+               ListProcedureLavorazioniDto = lavorazioniTask.Result;
+               SetSelectLavorazione(ListProcedureLavorazioniDto!);
+
+               ListFasiLavorazione = fasiTask.Result;
+               Model!.DataLavorazione = DateTime.Now.Date;
+               IsFormValid = false;
+
+           }, "Caricamento dati...");
+    }
+
+    protected async Task HandleValidSubmitAsync()
+    {
+        try
+        {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Inserimento in corso...");
+
+            var res = await ServiceWrapper!.ServiceProduzioneSistema.CheckProduzioneSistemaOperatoreAsync(Model!);
+            if (!res)
+            {
+                Model!.DataAggiornamento = DateTime.Now.Date;
+                Model.FlagInserimentoManuale = true;
+                Model.FlagInserimentoAuto = false;
+
+                await ServiceWrapper.ServiceProduzioneSistema.AddProduzioneSistemaAsync(Model);
+
+                ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)Model.IdOperatore!, Model.DataLavorazione!.Value);
+
+                Model.DataLavorazione = DateTime.Now.Date;
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+
+                var preDataLav = Model!.DataLavorazione;
+                var preIdOperatore = Model!.IdOperatore;
+
+                ResetFormModel();
+
+                Model!.DataLavorazione = preDataLav;
+                Model!.IdOperatore = preIdOperatore;
+
+                ErrorMessage = "";
+                IsDisabledLavorazione = false;
+                IsDisabledFase = false;
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.ShowSnackbar("Dati Produzione inseriti", Severity.Success);
+
+                StateHasChanged();
+            }
+            else
+            {
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                await NotificationDialog!.ShowNotification("Attenzione ! Record duplicato", "OK", Color.Error, "Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            Model!.DataLavorazione = DateTime.Now.Date;
+            await HandleExceptionFormAsync(ex);
+        }
+
+    }
+
+    protected async Task DeleteRecordAsync(int idProduzione, string lavorazione, int? IdOperatore, DateTime? DataLavorazione)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + lavorazione + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null)
+        {
+            if (!result.Canceled)
+            {
+                try
+                {
+
+                    UiState?.ShowOverlay("Eliminazione in corso...");
+                    UiState?.SetMenuDisabled(true);
+
+                    await ServiceWrapper!.ServiceProduzioneSistema.DeleteProduzioneSistemaAsync(idProduzione);
+
+                    ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync(IdOperatore, DataLavorazione);
+
+                    UiState?.HideOverlay();
+                    UiState?.SetMenuDisabled(false);
+                    UiState?.ShowSnackbar("Lavorazione eliminata", Severity.Success);
+
+                    base.ErrorMessage = "";
+                }
+                catch (Exception ex)
+                {
+                    await HandleExceptionFormAsync(ex);
+                }
+            }
+        }
+
+
+    }
+
+    protected async Task OnChangeDataAsync(DateTime? StartDateP)
+    {
+        Model!.DataLavorazione = StartDateP;
+
+        if (Model.IdOperatore != null)
+        {
+            if (Model.DataLavorazione.HasValue == true)
+            {
+                isDisableDatePicker = true;
+                isDisableOperatore = true;
+
+                ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)Model.IdOperatore!, Model.DataLavorazione!.Value);
+
+                IsDisabledLavorazione = false;
+                IsDisabledFase = true;
+                isDisableDatePicker = false;
+                isDisableOperatore = false;
+            }
+        }
+
+        ValidateForm();
+    }
+
+    protected async Task OnValueChangedOperatoreAsync(string operatore)
+    {
+        var preDataLav = Model!.DataLavorazione;
+
+        Model = new ProduzioneSistemaDto();
+        Model.DataLavorazione = preDataLav;
+        Model.Operatore = operatore;
+
+        SetEditContext();
+
+        if (string.IsNullOrEmpty(operatore))
+        {
+            IsDisabledLavorazione = true;
+            IsDisabledFase = true;
+        }
+        else
+        {
+            Operatori? oper = GetOperatore(operatore);
+
+            if (oper != null)
+            {
+                try
+                {
+                    Model.IdOperatore = oper.Idoperatore;
+                    Model.Operatore = oper.Operatore;
+                    Model.IdCentro = oper.Idcentro;
+
+                    SetSelectLavorazioneDto(oper!.Idcentro);
+                    ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)base.Model.IdOperatore, base.Model.DataLavorazione!.Value);
+
+                    IsDisabledLavorazione = false;
+                    IsDisabledFase = true;
+                    isDisableDatePicker = false;
+                    isDisableOperatore = false;
+
+                    base.ErrorMessage = "";
+                }
+                catch (Exception ex)
+                {
+                    await HandleExceptionFormAsync(ex);
+                }
+            }
+        }
+
+        ValidateForm();
+    }
+
+    protected async Task OnUpdateRowAsync(ProduzioneSistemaDto item)
+    {
+        try
+        {
+            UiState?.ShowEditOverlay("Update in corso...");
+            UiState?.SetMenuDisabled(true);
+
+            if (!string.IsNullOrEmpty(item.Lavorazione))
+            {
+
+                await ServiceWrapper!.ServiceProduzioneSistema.UpdateProduzioneSistemaAsync(item);
+
+                ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync(item.IdOperatore, item.DataLavorazione);
+
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+            }
+
+            UiState?.SetMenuDisabled(false);
+            UiState?.HideEditOverlay();
+
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            Model!.DataLavorazione = DateTime.Now.Date;
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+    protected async Task OnValueChangedLavorazione(string lavorazione)
+    {
+        Model!.Lavorazione = lavorazione;
+
+        if (string.IsNullOrEmpty(lavorazione))
+        {
+            
+            ResetLavorazione();
+            IsDisabledFase = true;
+        }
+        else
+        {
+            Model.Lavorazione = Model.Lavorazione.ToUpper();
+            Model.IdProceduraLavorazione = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.IdproceduraLavorazione;
+
+            ProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
+            if (ProcedureLavorazioniDto != null)
+            {
+                SetSelectFasi(ProcedureLavorazioniDto);
+            }
+
+            IsDisabledFase = false;
+        }
+
+        ValidateForm();
+    }
+
+    protected void ResetLavorazione()
+    {
+        // Reset solo i campi relativi alla lavorazione
+        Model!.IdProceduraLavorazione = null;
+        Model.Lavorazione = null;
+        Model.IdFaseLavorazione = null;
+        Model.Fase = null;
+
+    }
+
+    protected void OnValueChangedFase(string fase)
+    {
+        Model!.Fase = fase;
+
+        if (string.IsNullOrEmpty(fase))
+        {
+            Model.Fase = null;
+            Model.IdFaseLavorazione = null;
+        }
+        else
+        {
+            Model.Fase = fase.ToUpper();
+            Model.IdFaseLavorazione = base.ListFasiLavorazione!.FirstOrDefault(x => x.FaseLavorazione == fase)?.IdFaseLavorazione;
+        }
+
+        ValidateForm();
+    }
+
+    protected override void ResetFormModel()
+    {
+        base.ResetFormModel();
+
+        // Inizializza i campi numerici a 0
+        if (Model != null)
+        {
+            Model.Documenti = 0;
+            Model.Fogli = 0;
+            Model.Pagine = 0;
+            Model.PagineSenzaBianco = 0;
+            Model.Scarti = 0;
+        }
+
+        IsFormValid = false;
+    }
+
+
+    protected void ValidateForm()
+    {
+        try
+        {
+            // Verifica che il Model esista
+            if (Model == null)
+            {
+                IsFormValid = false;
+                return;
+            }
+
+            // 1. Controllo campi obbligatori
+            bool campiObbligatoriCompilati =
+                Model.DataLavorazione != null &&
+                !string.IsNullOrWhiteSpace(Model.Operatore) &&
+                Model.IdOperatore.HasValue &&
+                !string.IsNullOrWhiteSpace(Model.Lavorazione) &&
+                Model.IdProceduraLavorazione.HasValue &&
+                !string.IsNullOrWhiteSpace(Model.Fase) &&
+                Model.IdFaseLavorazione.HasValue;
+
+            // 2. Controllo che almeno un campo numerico sia > 0
+            bool almenoUnCampoNumerico =
+                Model.Documenti > 0 ||
+                Model.Fogli > 0 ||
+                Model.Pagine > 0 ||
+                Model.PagineSenzaBianco > 0 ||
+                Model.Scarti > 0;
+
+            // 3. Imposta lo stato del pulsante
+            IsFormValid = campiObbligatoriCompilati && almenoUnCampoNumerico;
+
+            // 4. Log per debug
+            Console.WriteLine($"ValidateForm: Model={Model != null}, CampiObbligatori={campiObbligatoriCompilati}, AlmenoUnCampoNumerico={almenoUnCampoNumerico}, IsFormValid={IsFormValid}");
+            Console.WriteLine($"Dettagli: Data={Model.DataLavorazione}, Operatore={Model.Operatore}, IdOperatore={Model.IdOperatore}, Lavorazione={Model.Lavorazione}, IdProceduraLavorazione={Model.IdProceduraLavorazione}, Fase={Model.Fase}, IdFaseLavorazione={Model.IdFaseLavorazione}");
+            Console.WriteLine($"Valori numerici: Doc={Model.Documenti}, Fogli={Model.Fogli}, Pagine={Model.Pagine}, PgSenzaBianco={Model.PagineSenzaBianco}, Scarti={Model.Scarti}");
+        }
+        catch (Exception ex)
+        {
+            // Cattura eventuali eccezioni che potrebbero verificarsi durante la validazione
+            Console.WriteLine($"Errore in ValidateForm: {ex.Message}");
+            IsFormValid = false;
+        }
+
+        // Forza un aggiornamento dell'UI
+        StateHasChanged();
+    }
+
+
+}

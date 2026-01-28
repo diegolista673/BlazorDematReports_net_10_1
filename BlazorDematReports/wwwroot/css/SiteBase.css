@@ -1,0 +1,64 @@
+
+input {
+    text-transform: uppercase;
+}
+
+.mud-table-head .header-centered th {
+    text-align: center;
+    font-size: 1.2em;
+    border: 1px solid lightgrey;
+}
+
+.mud-table-foot .bold-text .mud-table-cell {
+    font-weight: 500;
+}
+
+th {
+    border: 1px solid lightgrey;
+}
+
+
+#chartdiv {
+    width: 100%;
+    height: 800px;
+}
+
+
+
+/* devices 1280px and down */
+@media only screen and (max-width: 1280px) {
+    /*h4*/
+    .mud-primary-text.titolo-lavorazione {
+        font-size: 1.33em;
+    }
+}
+
+.mud-typography-h4.titolo {
+    
+    color:rgba(89,74,226,1)
+}
+
+/*.mud-dialog {
+    max-width: 900px;
+}
+
+.mud-dialog-width-full {
+    max-width: 1200px;
+}*/
+
+html, body {
+    margin: 0;
+    height: 100%; /* can also use viewport units (height: 100vh) */
+}
+
+/* Override dello stile di focus di MudBlazor */
+/*.mud-button-root:focus-visible {
+    outline: 4px solid #7b68ee !important;
+    outline-offset: 4px !important;
+}
+
+.mud-button-root:focus {
+    outline: 4px solid #7b68ee !important;
+    outline-offset: 4px !important;
+}*/
+

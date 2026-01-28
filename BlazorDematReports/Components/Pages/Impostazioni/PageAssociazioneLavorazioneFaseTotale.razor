@@ -1,0 +1,284 @@
+﻿@page "/associazione-fase-totale"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageAssociazioneLavorazioneFaseTotale,LavorazioniFasiTipoTotaleDto,LavorazioniFasiTipoTotaleDto>
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Associazione Lavorazione - Fase - Totale</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+        <MudItem  xs="12" sm="12" md="12" lg="4" xl="4">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+                    <MudCardContent Class="pa-0">
+                        <MudText Typo="Typo.h6">Nuova Associazione</MudText>
+                        </MudCardContent>
+                        <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmit">
+                            <PageAssociazioneTotaliValidationProvider />
+
+                            <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                                <MudAutocomplete @ref="@RefLavorazione" T="string" @bind-Value="Model.NomeProcedura"
+                                                 Label="Lavorazione"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectLavorazione,arg))"
+                                                 MaxItems=null
+                                                 Clearable=true
+                                                 ResetValueOnEmptyText="true"
+                                                 SelectOnActivation="true"
+                                                 Text=@Model!.NomeProcedura
+                                                 For="(() => Model.NomeProcedura)" />
+
+
+                                <MudAutocomplete @ref="@RefFase" T="string" @bind-Value="Model.Fase"
+                                                 Label="Fase"
+                                             SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectFase,arg))"
+                                                 MaxItems=null
+                                                 Clearable=true
+                                                 ResetValueOnEmptyText="true"
+                                             SelectOnActivation="true"
+                                                 Text = "@Model.Fase"
+                                                 For="(() => Model.Fase)" />
+
+
+                                <MudAutocomplete @ref="@RefTipologia" T="string" @bind-Value="Model.TipologiaTotale"
+                                                 Label="Tipologia Totale"
+                                                 SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectTipologiaTotale,arg))"
+                                                 MaxItems=null
+                                                 Clearable=true
+                                                 ResetValueOnEmptyText="true"
+                                                 SelectOnActivation="true"
+                                                 Text="@Model.TipologiaTotale"
+                                                 For="(() => Model.TipologiaTotale)" />
+
+
+                                <div class="justify-end mt-5 d-flex align-center ">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto focus-visible-button" Disabled="@(!IsFormValid)" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                                {
+                                    <p style="color:red;">@ErrorMessage</p>
+                                }
+
+
+                        </MudFocusTrap>
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem  xs="12" sm="12" md="12" lg="8" xl="8">
+            <MudDataGrid T="LavorazioniFasiTipoTotaleDto" Items="@ListLavorazioniFasiTipoTotaleDto" ReadOnly="false" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+            Dense=true Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Breakpoint="Breakpoint.Sm"
+            StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow" Outlined=false Height="100%">
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Tipologie di Totali</MudText>
+                </ToolBarContent>
+                <Columns>
+
+                    <PropertyColumn Property="x => x.IdLavorazioneFaseTipoTotale" Title="ID" Editable=false Sortable="false" Filterable="false" HeaderStyle="width:50px" />
+                    <PropertyColumn Property="x => x.NomeProcedura" Title="NomeProcedura" Editable=false Sortable="true" Filterable="true" />
+
+                    <PropertyColumn Property="x => x.Fase" Title="Fase" Editable=false Sortable="true" Filterable="true">
+                        <EditTemplate>
+                            <MudAutocomplete T="string" @bind-Value="@context.Item.Fase"
+                            Label="Fase"
+                            SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectFase,arg))"
+                            MaxItems=null
+                            Clearable=true
+                            Required="true"
+                            ResetValueOnEmptyText="true"
+                            Text="@context.Item.Fase"
+                            For="(() => Model!.Fase)" />
+                        </EditTemplate>
+                    </PropertyColumn>
+
+
+                    <PropertyColumn Property="x => x.TipologiaTotale" Title="Tipologia Totale" Editable=true Sortable="true" Filterable="true" HeaderStyle="width:400px">
+                        <EditTemplate>
+                            <MudAutocomplete T="string" @bind-Value="@context.Item.TipologiaTotale"
+                            Label="Tipologia Totale"
+                            SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectTipologiaTotale,arg))"
+                            MaxItems=null
+                            Clearable=true
+                            Required="true"
+                            ResetValueOnEmptyText="true"
+                            SelectOnActivation="true"
+                            Text="@context.Item.TipologiaTotale"
+                            For="(() => Model!.TipologiaTotale)" />
+                        </EditTemplate>
+                    </PropertyColumn>
+
+
+                    <TemplateColumn CellClass="d-flex justify-end" Filterable="false" Sortable="false" Editable=false>
+                        <CellTemplate>
+                            <MudStack Row>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                                <MudDivider Vertical="true" FlexItem="true" />
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item.IdLavorazioneFaseTipoTotale,@context.Item.NomeProcedura,  @context.Item.Fase, @context.Item.TipologiaTotale))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                </MudTooltip>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                </Columns>
+
+                <PagerContent>
+                    <MudDataGridPager T="LavorazioniFasiTipoTotaleDto" />
+                </PagerContent>
+
+            </MudDataGrid>
+        </MudItem>
+
+    </MudGrid>
+</MudContainer>
+
+
+
+@code {
+
+    MudAutocomplete<string>? RefLavorazione;
+    MudAutocomplete<string>? RefFase;
+    MudAutocomplete<string>? RefTipologia;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+           {
+               SetEditContext();
+
+               // Avvia tutte le chiamate asincrone in parallelo
+               var listDtoTask = ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+               var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
+               var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+               var tipologieTask = ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliAsync();
+
+               // Attendi che tutte le chiamate siano completate
+               await Task.WhenAll(listDtoTask, lavorazioniTask, fasiTask, tipologieTask);
+
+               // Assegna i risultati
+               ListLavorazioniFasiTipoTotaleDto = listDtoTask.Result;
+               ListProcedureLavorazioni = lavorazioniTask.Result;
+               SetSelectLavorazione();
+
+               ListFasiLavorazione = fasiTask.Result;
+               SetSelectFasi();
+
+               ListTipologieTotali = tipologieTask.Result;
+               SetSelectTipologieTotali();
+
+           }, "Caricamento dati...");
+    }
+
+    protected async Task HandleValidSubmit()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.TipologiaTotale))
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                Model.IdProceduraLavorazione = ListProcedureLavorazioni!.Where(x => x.NomeProcedura == Model.NomeProcedura).First().IdproceduraLavorazione;
+                Model.IdFase = ListFasiLavorazione!.Where(x=> x.FaseLavorazione == Model.Fase).First().IdFaseLavorazione;
+                Model.IdTipologiaTotale = ListTipologieTotali!.Where(x=> x.TipoTotale == Model.TipologiaTotale).First().IdTipoTotale;
+
+                await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.AddLavorazioniFasiTipoTotaleAsync(Model);
+                ListLavorazioniFasiTipoTotaleDto = await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+
+                ResetFormModel();
+
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
+                UiState?.ShowSnackbar("Nuova Tipologia inserita", Severity.Success);
+
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+
+
+    }
+
+    protected async Task OnUpdateRow(LavorazioniFasiTipoTotaleDto item)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(item.NomeProcedura))
+            {
+
+                int idFase = ListFasiLavorazione!.Where(x => x.FaseLavorazione == item.Fase).First().IdFaseLavorazione;
+                int IdTipoTotale = ListTipologieTotali!.Where(x => x.TipoTotale == item.TipologiaTotale).First().IdTipoTotale;
+
+                item.IdFase = idFase;
+                item.IdTipologiaTotale = IdTipoTotale;
+
+                await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.UpdateLavorazioniFasiTipoTotaleAsync(item);
+                ListLavorazioniFasiTipoTotaleDto = await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+
+                UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+
+                ResetFormModel();
+                StateHasChanged();
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("La Procedura non può essere vuota", "OK", Color.Error, "Error");
+                item.NomeProcedura = ValueBeforeEdit!.NomeProcedura;
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+    protected async Task DeleteRecordAsync(int? IdLavorazioneFaseTipoTotale, string? nomeProcedura, string? fase, string? tipo)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + nomeProcedura + " - " + fase + " - " + tipo + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null){
+            if (!result.Canceled)
+            {
+                try
+                {
+
+                    UiState?.ShowOverlay("Eliminazione in corso...");
+                    UiState?.SetMenuDisabled(true);
+
+                    await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.DeleteLavorazioniFasiTipoTotaleAsync((int)IdLavorazioneFaseTipoTotale!);
+                    ListLavorazioniFasiTipoTotaleDto = await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+
+                    UiState?.HideOverlay();
+                    UiState?.SetMenuDisabled(false);
+                    UiState?.ShowSnackbar("Record eliminato", Severity.Success);
+
+                }
+                catch (Exception ex)
+                {
+                    ResetFormModel();
+                    await HandleExceptionFormAsync(ex);
+                }
+            }
+        }
+
+    }
+
+
+}

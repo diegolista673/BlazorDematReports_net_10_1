@@ -1,0 +1,12 @@
+﻿@page "/dashboard-task"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+
+<div style="height:90vh" >
+    <b>Non eliminare i task da questa dashboard per mantenere i riferimenti alle procedure di lavorazioni e/o query associate</b>
+    <p></p>
+    <iframe style="height:100%;" src="@("/hangfire")"></iframe>
+</div>
+
+
+@code {
+}

@@ -1,0 +1,359 @@
+@using DataReading.Dto
+@using BlazorDematReports.Dto
+@using BlazorDematReports.Services.ProcedureEdit
+@inject ProcedureValidationService ValidationService
+@inject BlazorDematReports.Interfaces.IDataService.IServiceFormatoDati ServiceFormatoDati
+@inject BlazorDematReports.Interfaces.IDataService.IServiceRepartiProduzione ServiceRepartiProduzione
+
+<div class="pa-4">
+<div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h6">Informazioni Generali</MudText>
+        @if (_validationResult != null && !_validationResult.IsValid)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Filled.Error">
+                @_validationResult.Errors.Count errori
+            </MudChip>
+        }
+    </div>
+
+    @* Validation Errors *@
+    @if (_validationResult != null && _validationResult.Errors.Any())
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="false">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
+            <strong>Errori di validazione:</strong>
+            <ul class="mb-0 mt-2">
+                @foreach (var error in _validationResult.Errors)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </MudAlert>
+    }
+    
+    @* Validation Warnings *@
+    @if (_validationResult != null && _validationResult.Warnings.Any())
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" ShowCloseIcon="true">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" />
+            <strong>Attenzione:</strong>
+            <ul class="mb-0 mt-2">
+                @foreach (var warning in _validationResult.Warnings)
+                {
+                    <li>@warning</li>
+                }
+            </ul>
+        </MudAlert>
+    }
+
+    <MudGrid Spacing="3">
+        @* Read-only Metadata *@
+
+        <MudItem xs="12" md="4">
+            <MudTextField T="string"
+                          Label="ID Procedura"
+                          Value="@(Model.IdproceduraLavorazione?.ToString() ?? "N/A")"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Tag" />
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudTextField T="string"
+                          Label="Data Creazione"
+                          Value="@Model.DataInserimento.ToString("dd/MM/yyyy HH:mm")"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudTextField T="string"
+                          Label="Procedura Cliente"
+                          Value="@(Model.ProceduraCliente ?? "N/A")"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.AccountBox" />
+        </MudItem>
+
+        @* Sezione Identificazione *@
+        
+        @* Nome Procedura *@
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" 
+                          Label="Nome Procedura" 
+                          @bind-Value="Model.NomeProcedura"
+                          Required="true"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Assignment"
+                          @onblur="@(() => OnFieldChanged())" />
+        </MudItem>
+        
+        @* Centro (Read-only se in edit) *@
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" 
+                          Label="Centro" 
+                          Value="@Model.Centro"
+                          ReadOnly="true"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Business"
+                          HelperText="Centro di lavorazione (non modificabile)" />
+        </MudItem>
+        
+        @* Sezione Configurazione *@
+        
+        @* Formato Dati come select list *@
+        <MudItem xs="12" md="6">
+            <MudSelect T="string" 
+                       Label="Formato Dati Produzione" 
+                       Value="@Model.FormatoDatiProduzione" 
+                       ValueChanged="OnFormatoChanged" 
+                       Required="true"
+                       Variant="Variant.Outlined"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.DataObject"
+                       HelperText="Seleziona il formato"
+                       Dense
+                       Clearable>
+                @if (_formati?.Any() == true)
+                {
+                    @foreach (var f in _formati)
+                    {
+                        <MudSelectItem T="string" Value="@f">@f</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        
+        @* Reparto come select list *@
+        <MudItem xs="12" md="6">
+            <MudSelect T="string" 
+                       Label="Reparto" 
+                       Value="@Model.Reparto" 
+                       ValueChanged="OnRepartoChanged" 
+                       Required="true"
+                       Variant="Variant.Outlined"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.Category"
+                       HelperText="Seleziona il reparto"
+                       Dense
+                       Clearable>
+                @if (_reparti?.Any() == true)
+                {
+                    @foreach (var r in _reparti)
+                    {
+                        <MudSelectItem T="string" Value="@r">@r</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        </MudItem>
+        
+        @* Note *@
+        <MudItem xs="12">
+            <MudTextField T="string" 
+                          Label="Note" 
+                          @bind-Value="Model.Note"
+                          OnBlur="@OnFieldChanged"
+                          Variant="Variant.Outlined"
+                          Lines="4"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Notes"
+                          HelperText="Note aggiuntive sulla procedura (max 500 caratteri)"
+                          MaxLength="500"
+                          Counter="500"
+                          Clearable="true" />
+        </MudItem>
+        
+        @* Sezione Logo *@
+        <MudItem xs="12" Class="mt-4">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">
+                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" Class="mr-2" />
+                Logo Aziendale
+            </MudText>
+            <MudDivider Class="mb-3" />
+        </MudItem>
+        
+        @* Logo Upload e Preview *@
+        <MudItem xs="12">
+            <div class="d-flex align-center gap-4">
+                @* Preview Logo Esistente *@
+                @if (!string.IsNullOrEmpty(Model.LogoBase64))
+                {
+                    <div class="logo-preview-container">
+                        <MudPaper Class="pa-2" Elevation="1" Style="width: 150px; height: 150px;">
+                            <MudImage Src="@Model.LogoBase64" 
+                                      Alt="Logo Procedura" 
+                                      Style="width: 100%; height: 100%; object-fit: contain;" />
+                        </MudPaper>
+                        <MudText Typo="Typo.caption" Class="mt-1 text-center">Logo attuale</MudText>
+                    </div>
+                }
+                
+                @* Upload Control *@
+                <div class="flex-grow-1">
+                    <MudFileUpload T="IBrowserFile" 
+                                   MaximumFileCount="1" 
+                                   Accept=".png,.jpg,.jpeg"
+                                   @bind-Files="Model.LogoFile"
+                                   OnFilesChanged="@OnLogoFileChanged">
+                        <ActivatorContent>
+                            <MudButton HtmlTag="label" 
+                                       Variant="Variant.Outlined" 
+                                       Color="Color.Info" 
+                                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                                       Style="min-width:140px;padding-left:12px;padding-right:12px;">
+                                Logo
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+                    
+                    @* File Info *@
+                    @if (Model.LogoFile != null)
+                    {
+                        <div class="mt-2 d-flex align-center justify-space-between">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" Class="mr-1" />
+                                <MudText Typo="Typo.caption">
+                                    @Model.LogoFile.Name
+                                    @if (Model.FileSizeMB.HasValue)
+                                    {
+                                        <text> - @Model.FileSizeMB.Value.ToString("F2") MB</text>
+                                    }
+                                </MudText>
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.Filled.Clear" 
+                                         Size="Size.Small"
+                                         Color="Color.Error"
+                                         OnClick="@ClearLogoFile" />
+                        </div>
+                    }
+                    
+                    <MudText Typo="Typo.caption" Class="text-muted mt-1">
+                        Formati: PNG, JPG, JPEG. Max: 5 MB
+                    </MudText>
+                </div>
+            </div>
+        </MudItem>
+        
+
+        
+    </MudGrid>
+    
+</div>
+
+@code {
+    [Parameter] public ProcedureLavorazioniDto Model { get; set; } = null!;
+    [Parameter] public EventCallback<ProcedureLavorazioniDto> ModelChanged { get; set; }
+    [Parameter] public EventCallback OnModelChanged { get; set; }
+    
+    private string? _sigla;
+    private ProcedureValidationService.ValidationResult? _validationResult;
+    private List<string> _formati = new();
+    private List<string> _reparti = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var formatoEntities = await ServiceFormatoDati.GetFormatoDatiAsync();
+            if (formatoEntities != null) _formati = formatoEntities.Select(f => f.FormatoDatiProduzione).Distinct().OrderBy(x => x).ToList();
+            var repartiEntities = await ServiceRepartiProduzione.GetRepartiProduzioneAsync();
+            if (repartiEntities != null) _reparti = repartiEntities.Select(r => r.Reparti).Distinct().OrderBy(x => x).ToList();
+        }
+        catch { }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Extract sigla from NomeProcedura if present
+        if (!string.IsNullOrEmpty(Model.NomeProcedura) && Model.NomeProcedura.Contains('_'))
+        {
+            var parts = Model.NomeProcedura.Split('_');
+            _sigla = parts.Length > 1 ? $"_{parts[^1]}" : null;
+        }
+        
+        // Validate on load
+        ValidateModel();
+    }
+    
+    private async Task OnFormatoChanged(string? val)
+    { 
+        Model.FormatoDatiProduzione = val; 
+        if(string.IsNullOrWhiteSpace(val)){ Model.IdformatoDatiProduzione = 0; } 
+        else { 
+            try { 
+                var ent = await ServiceFormatoDati.GetFormatoDatiByTextAsync(val); 
+                if(ent!=null) Model.IdformatoDatiProduzione = ent.IdformatoDati; 
+            } catch { } 
+        } 
+        await OnFieldChanged(); 
+    }
+    private async Task OnRepartoChanged(string? val)
+    { 
+        Model.Reparto = val; 
+        if(string.IsNullOrWhiteSpace(val)){ Model.Idreparti = 0; } 
+        else { 
+            try { 
+                var ent = await ServiceRepartiProduzione.GetRepartiProduzioneByTextAsync(val); 
+                if(ent!=null) Model.Idreparti = ent.IdReparti; 
+            } catch { } 
+        } 
+        await OnFieldChanged(); 
+    }
+
+    private async Task OnFieldChanged()
+    {
+        ValidateModel();
+        await OnModelChanged.InvokeAsync();
+    }
+    
+    private void ValidateModel()
+    {
+        _validationResult = ValidationService.ValidateGeneralInfo(Model);
+    }
+    
+    private async Task OnLogoFileChanged(InputFileChangeEventArgs e)
+    {
+        Model.LogoFile = e.File;
+        if (Model.LogoFile != null)
+        {
+            Model.FileSizeMB = Model.LogoFile.Size / 1024.0 / 1024.0;
+            if (Model.FileSizeMB > 5)
+            {
+                Model.LogoFile = null; Model.FileSizeMB = null; Model.LogoBase64 = null; return; }
+            try
+            {
+                var ext = System.IO.Path.GetExtension(Model.LogoFile.Name).ToLowerInvariant();
+                var contentType = ext switch { ".png" => "image/png", ".jpg" => "image/jpeg", ".jpeg" => "image/jpeg", _ => "image/png" };
+                using var ms = new MemoryStream();
+                await Model.LogoFile.OpenReadStream(5 * 1024 * 1024).CopyToAsync(ms);
+                var bytes = ms.ToArray();
+                Model.FileImg = bytes; // opzionale per persistenza binaria
+                Model.LogoBase64 = $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
+            }
+            catch { Model.LogoBase64 = null; }
+            await OnFieldChanged();
+        }
+    }
+    
+    private async Task ClearLogoFile()
+    {
+        Model.LogoFile = null;
+        Model.FileSizeMB = null;
+        Model.LogoBase64 = null;
+        await OnFieldChanged();
+    }
+}
+
+<style>
+    .logo-preview-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+</style>

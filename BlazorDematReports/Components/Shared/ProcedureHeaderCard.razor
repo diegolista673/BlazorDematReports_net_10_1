@@ -1,0 +1,56 @@
+@using BlazorDematReports.Dto
+
+@* Header con Logo e Navigazione *@
+<MudPaper Class="pa-4 mb-4 d-flex justify-space-between align-center" Elevation="3">
+    <div class="d-flex align-center gap-4">
+        @if (!string.IsNullOrEmpty(LogoBase64))
+        {
+            <MudImage Src="@LogoBase64" 
+                      Alt="Logo" 
+                      Style="object-fit: contain; max-width: 250px; height: auto;" />
+        }
+        else
+        {
+            <MudAvatar Size="Size.Large" Color="Color.Primary" Style="width: 200px; height: 100px;">
+                <MudIcon Icon="@Icons.Material.Filled.Assignment" Style="width: 80px; height: 80px;" />
+            </MudAvatar>
+        }
+    </div>
+    
+    @if (!string.IsNullOrEmpty(NavigationText))
+    {
+        <MudButton Variant="Variant.Text" 
+                   StartIcon="@NavigationIcon" 
+                   OnClick="@OnNavigationClick" 
+                   Color="@NavigationColor">
+            @NavigationText
+        </MudButton>
+    }
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Logo in formato Base64 (data:image/...)
+    /// </summary>
+    [Parameter] public string? LogoBase64 { get; set; }
+    
+    /// <summary>
+    /// Testo del pulsante di navigazione
+    /// </summary>
+    [Parameter] public string? NavigationText { get; set; }
+    
+    /// <summary>
+    /// Icona del pulsante di navigazione
+    /// </summary>
+    [Parameter] public string NavigationIcon { get; set; } = Icons.Material.Filled.ArrowBack;
+    
+    /// <summary>
+    /// Colore del pulsante di navigazione
+    /// </summary>
+    [Parameter] public Color NavigationColor { get; set; } = Color.Secondary;
+    
+    /// <summary>
+    /// Callback quando si clicca sul pulsante di navigazione
+    /// </summary>
+    [Parameter] public EventCallback OnNavigationClick { get; set; }
+}

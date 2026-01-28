@@ -1,0 +1,181 @@
+﻿using Entities.Helpers;
+using LibraryLavorazioni.Lavorazioni.Constants;
+using LibraryLavorazioni.Lavorazioni.Interfaces;
+using LibraryLavorazioni.Lavorazioni.Models;
+using LibraryLavorazioni.Utility;
+using LibraryLavorazioni.Utility.Interfaces;
+using LibraryLavorazioni.Utility.Models;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
+using NLog;
+
+namespace LibraryLavorazioni.Lavorazioni.Handlers
+{
+    /// <summary>
+    /// Handler per la lavorazione ANT_ADER4_SORTER_1_2 seguendo il pattern registry.
+    /// Gestisce l'elaborazione dei dati di produzione dalle sorgenti dati
+    /// associate ai sistemi ADER4 SORTER 1 e 2.
+    /// </summary>
+    public sealed class ANT_ADER4_SORTER_1_2Handler : ILavorazioneHandler
+    {
+        /// <summary>
+        /// Codice identificativo univoco della lavorazione.
+        /// </summary>
+        public string LavorazioneCode => LavorazioniCodes.ANT_ADER4_SORTER_1_2;
+
+        /// <summary>
+        /// Esegue la lavorazione ANT_ADER4_SORTER_1_2 utilizzando il pattern registry e dependency injection.
+        /// </summary>
+        /// <param name="context">Contesto di esecuzione contenente parametri e service provider.</param>
+        /// <param name="ct">Token di cancellazione per gestire l'interruzione dell'operazione.</param>
+        /// <returns>Lista dei dati di lavorazione elaborati.</returns>
+        public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
+        {
+            // Risolve le dipendenze tramite service provider
+            var normalizzatore = context.ServiceProvider.GetRequiredService<INormalizzatoreOperatori>();
+            var gestoreOperatori = context.ServiceProvider.GetRequiredService<IGestoreOperatoriDatiLavorazione>();
+            var elaboratore = context.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
+            var configManager = context.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
+
+            // Crea l'istanza della lavorazione specifica
+            var lavorazione = new ANT_ADER4_SORTER_1_2Processor(normalizzatore, gestoreOperatori, elaboratore, configManager);
+            
+            // Imposta il contesto della lavorazione
+            lavorazione.NomeProcedura = context.NomeProcedura;
+            lavorazione.IDFaseLavorazione = context.IDFaseLavorazione;
+            lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
+            lavorazione.IDCentro = context.IDCentro;
+            lavorazione.StartDataLavorazione = context.StartDataLavorazione;
+            lavorazione.EndDataLavorazione = context.EndDataLavorazione;
+
+            // Esegue la lavorazione
+            return await lavorazione.SetDatiDematAsync();
+        }
+    }
+
+    /// <summary>
+    /// Classe di lavorazione per la procedura ANT_ADER4_SORTER_1_2.
+    /// Implementa la logica di lettura e aggregazione dei dati di produzione dalle sorgenti dati
+    /// associate ai sistemi ADER4 SORTER 1 e 2.
+    /// </summary>
+    internal sealed class ANT_ADER4_SORTER_1_2Processor : BaseLavorazione
+    {
+        private readonly Logger _logger;
+        private readonly ILavorazioniConfigManager _lavorazioniConfigManager;
+
+        /// <summary>
+        /// Inizializza una nuova istanza di ANT_ADER4_SORTER_1_2Processor.
+        /// </summary>
+        /// <param name="normalizzatoreOperatori">Servizio di normalizzazione operatori.</param>
+        /// <param name="gestoreOperatoriDati">Servizio di gestione operatori dati lavorazione.</param>
+        /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
+        /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
+        public ANT_ADER4_SORTER_1_2Processor(
+            INormalizzatoreOperatori normalizzatoreOperatori,
+            IGestoreOperatoriDatiLavorazione gestoreOperatoriDati,
+            IElaboratoreDatiLavorazione elaboratoreDati,
+            ILavorazioniConfigManager lavorazioniConfigManager
+        ) : base(normalizzatoreOperatori, gestoreOperatoriDati, elaboratoreDati)
+        {
+            _lavorazioniConfigManager = lavorazioniConfigManager;
+            _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
+        }
+
+        /// <summary>
+        /// Recupera e aggrega i dati di lavorazione per la procedura ANT_ADER4_SORTER_1_2.
+        /// Esegue la query di produzione su entrambe le connessioni configurate (Sorter 1 e Sorter 2).
+        /// </summary>
+        /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalle fonti dati.</returns>
+        public override async Task<List<DatiLavorazione>> SetDatiDematAsync()
+        {
+            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "GesimCheck_Local_Produzione.Tab_Lavorato");
+
+            var result = new List<DatiLavorazione>();
+            var startDataScan = StartDataLavorazione.ToString("yyyyMMdd");
+            var endDataScan = EndDataLavorazione == null ? startDataScan : EndDataLavorazione.Value.ToString("yyyyMMdd");
+
+            _logger.Info($"[ANT_ADER4_SORTER_1_2] Elaborazione dati per IDFaseLavorazione: {IDFaseLavorazione}, Periodo: {startDataScan} - {endDataScan}");
+
+            if (IDFaseLavorazione == 4)
+            {
+                string query = @"SELECT Username as Operatore, convert(date, dateTime_acquisizione) as DataLavorazione, 
+								 count(coduniF) as Documenti, count(coduniF) as Fogli, (count(coduniF) * 2) as Pagine
+								 FROM [GesimCheck_Local_Produzione].[dbo].[Tab_Lavorato]
+								 WHERE convert(date, dateTime_acquisizione) >= @startDataScan
+								 AND convert(date, dateTime_acquisizione) <= @endDataScan
+								 GROUP BY Username, CONVERT(date, dateTime_acquisizione)";
+
+                async Task LeggiDatiAsync(string connectionString, string sourceName)
+                {
+                    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    try
+                    {
+                        await using var connection = new SqlConnection(connectionString);
+                        await connection.OpenAsync();
+                        
+                        await using var command = new SqlCommand(query, connection);
+                        command.CommandTimeout = 30;
+                        command.Parameters.AddWithValue("@startDataScan", startDataScan);
+                        command.Parameters.AddWithValue("@endDataScan", endDataScan);
+
+                        _logger.Debug($"[ANT_ADER4_SORTER_1_2] Esecuzione query su {sourceName} con timeout: {command.CommandTimeout}s");
+
+                        using var reader = await command.ExecuteReaderAsync();
+                        int recordCount = 0;
+                        while (await reader.ReadAsync())
+                        {
+                            result.Add(new DatiLavorazione
+                            {
+                                Operatore = reader["Operatore"] as string,
+                                DataLavorazione = reader.GetDateTime(reader.GetOrdinal("DataLavorazione")),
+                                Documenti = reader["Documenti"] != DBNull.Value ? Convert.ToInt32(reader["Documenti"]) : null,
+                                Fogli = reader["Fogli"] != DBNull.Value ? Convert.ToInt32(reader["Fogli"]) : null,
+                                Pagine = reader["Pagine"] != DBNull.Value ? Convert.ToInt32(reader["Pagine"]) : null,
+                                AppartieneAlCentroSelezionato = true
+                            });
+                            recordCount++;
+                        }
+
+                        stopwatch.Stop();
+                        _logger.Info($"[ANT_ADER4_SORTER_1_2] Query su {sourceName} completata. " +
+                                    $"Record letti: {recordCount}, " +
+                                    $"Tempo esecuzione: {stopwatch.ElapsedMilliseconds}ms");
+                    }
+                    catch (SqlException sqlEx)
+                    {
+                        stopwatch.Stop();
+                        _logger.Error(sqlEx, $"[ANT_ADER4_SORTER_1_2] Errore SQL su {sourceName}. " +
+                                             $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms, " +
+                                             $"Numero errore: {sqlEx.Number}, " +
+                                             $"Severità: {sqlEx.Class}, " +
+                                             $"Stato: {sqlEx.State}");
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        stopwatch.Stop();
+                        _logger.Error(ex, $"[ANT_ADER4_SORTER_1_2] Errore generico su {sourceName}. " +
+                                         $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms");
+                        throw;
+                    }
+                }
+
+                // Legge dati da entrambe le sorgenti ADER4
+                await LeggiDatiAsync(_lavorazioniConfigManager.CnxnAder4Sorter1!, "ADER4_SORTER_1");
+                await LeggiDatiAsync(_lavorazioniConfigManager.CnxnAder4Sorter2!, "ADER4_SORTER_2");
+            }
+            else
+            {
+                _logger.Warn($"[ANT_ADER4_SORTER_1_2] IDFaseLavorazione {IDFaseLavorazione} non gestito");
+            }
+
+            _logger.Info($"[ANT_ADER4_SORTER_1_2] Elaborazione completata. Record totali ottenuti: {result.Count}");
+
+            return result;
+        }
+    }
+}
+
+
+
+

@@ -1,0 +1,140 @@
+﻿@page "/centri"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageCentri,CentriLavorazioneDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4" >Centri Lavorazione</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+        @*form*@
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+                    <EditForm EditContext="@base.EditContext" OnValidSubmit="@SubmitAsync">
+                        <DataAnnotationsValidator />
+
+                        <div>
+                            <div class="d-inline-flex pa-2"><MudTextField @bind-Value="Model!.Centro" Label="Centro Lavorazione" Variant="Variant.Text" ></MudTextField></div>
+                            <div class="d-inline-flex pa-2 "><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Class="focus-visible-button">Salva</MudButton></div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                        {
+                            <p style="color:red;">@ErrorMessage</p>
+                        }
+
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @*table*@
+        <MudItem xs="12" sm="12" md="12" lg="6" xl="6">
+            <MudTable Items="@ListCentri" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true" Bordered="true"  Class="mt-2" Outlined="true" >
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Elenco Centri</MudText>
+                    <MudSpacer />
+                </ToolBarContent>
+                <HeaderContent>
+                    <MudTh>Idcentro</MudTh>
+                    <MudTh>Centro</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Idcentro">@context.Idcentro</MudTd>
+                    <MudTd DataLabel="Centro">@context.Centro</MudTd>
+                    <MudTd DataLabel="">
+                        <MudTooltip Text="Delete">
+                            <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Idcentro, @context.Centro))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager HorizontalAlignment="HorizontalAlignment.Right" />
+                </PagerContent>
+            </MudTable>
+        </MudItem>
+
+    </MudGrid>
+
+</MudContainer>
+
+
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+           {
+               SetEditContext();
+               ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+
+           }, "Caricamento dati...");
+    }
+
+    protected async Task SubmitAsync()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.Centro))
+            {
+
+                base.UiState?.ShowOverlay("Inserimento in corso...");
+                base.UiState?.SetMenuDisabled(true);
+
+                Model!.Centro = Model!.Centro.ToUpper();
+                await ServiceWrapper!.ServiceCentri.AddCentro(Model);
+                ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+                
+                ResetFormModel();
+
+                base.UiState?.HideOverlay();
+                base.UiState?.SetMenuDisabled(false);
+                base.UiState?.ShowSnackbar("Nuovo Centro inserito", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+    protected async Task DeleteRecordAsync(int idCentro, string centro)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + centro + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled)
+        {
+            try
+            {
+                base.UiState?.ShowOverlay("Eliminazione in corso...");
+                base.UiState?.SetMenuDisabled(true);
+
+                await ServiceWrapper!.ServiceCentri.DeleteAsync(idCentro);
+                base.ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+
+                base.UiState?.HideOverlay();
+                base.UiState?.SetMenuDisabled(false);
+                base.UiState?.ShowSnackbar("Centro eliminato", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                ResetFormModel();
+                await HandleExceptionFormAsync(ex);
+            }
+        }
+    }
+}

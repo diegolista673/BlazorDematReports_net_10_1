@@ -1,0 +1,59 @@
+@startuml CreazioneProduzione
+!theme plain
+skinparam backgroundColor White
+skinparam participant {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+}
+skinparam actor {
+    BackgroundColor LightGreen
+    BorderColor DarkGreen
+}
+skinparam database {
+    BackgroundColor LightYellow
+    BorderColor Orange
+}
+
+title Creazione Task di Produzione
+
+actor Utente
+participant "PageProcedureLavorazioni" as Page
+participant "DialogAddBackgroundTask" as Dialog
+participant "ServiceProcedureLavorazioni" as Service
+participant "ProductionJobScheduler" as Scheduler
+participant "Hangfire" as HF
+database "TaskDaEseguire" as DB
+
+Utente -> Page: 1. Compila Procedura\n(Centro, Cliente, Formato)
+activate Page
+Page -> Page: 2. Aggiunge Fasi via\nDataGridElencoFasiNew
+Utente -> Page: 3. Click "Add Task"
+Page -> Dialog: 4. Apre dialog con contesto\n(Fase, Procedura, Sigla)
+activate Dialog
+
+Utente -> Dialog: 5. Configura task SQL\n(Query, Connection, TimeTask)
+Dialog -> Dialog: 6. Valida query/connection\nasync
+Dialog -> Page: 7. Restituisce TaskDaEseguireDto\ncon configurazione
+deactivate Dialog
+
+Page -> Service: 8. AddProceduraLavorazioneAsync()\ncon Fasi+Tasks
+activate Service
+Service -> DB: 9. INSERT Procedura+\nLavorazioniFasiDataReading+\nTaskDaEseguire
+Service -> Page: 10. Success response
+deactivate Service
+
+Page -> Scheduler: 11. SyncAllAsync()\nper sincronizzazione Hangfire
+activate Scheduler
+Scheduler -> DB: 12. Carica task abilitati\ncon Include navigazioni
+Scheduler -> Scheduler: 13. BuildHangfireKey()\nprod:{id}-{proc}-{fase}
+Scheduler -> HF: 14. AddOrUpdate(key, idTask, cron)
+activate HF
+Scheduler -> DB: 15. UPDATE IdTaskHangFire
+HF -> HF: 16. Schedula recurring job\ncon cron expression
+deactivate HF
+deactivate Scheduler
+deactivate Page
+
+note right of HF: Job schedulato e pronto\nper esecuzione automatica
+
+@enduml

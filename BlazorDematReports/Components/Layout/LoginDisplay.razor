@@ -1,0 +1,36 @@
+﻿@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+
+        <span>
+            <MudText Typo="Typo.body2" Color="Color.Inherit"><MudIcon Icon="@Icons.Material.Filled.AccountCircle" />@context.User.Identity!.Name - @context.User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(x => x.Value).FirstOrDefault()!.ToLower()</MudText>
+        </span>
+
+        <MudButton Href="/Account/Logout"
+                   Target="_self"
+                   Variant="Variant.Text"
+                   EndIcon="@Icons.Material.Filled.Logout"
+                   Color="Color.Inherit"
+                   Style="text-transform:none"
+                   Class="ml-10">
+            Logout
+        </MudButton>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Href="/Account/Login"
+                   Target="_self"
+                   Variant="Variant.Text"
+                   EndIcon="@Icons.Material.Filled.Login"
+                   Color="Color.Inherit"
+                   Style="text-transform:none">
+            Log in
+        </MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+
+
+
+
+

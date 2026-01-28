@@ -1,0 +1,346 @@
+@using Entities.Models.DbApplication
+@using Microsoft.EntityFrameworkCore
+@using DataReading.Infrastructure
+@inject IDbContextFactory<DematReportsContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IProductionJobScheduler ProductionScheduler
+
+<MudPaper Class="pa-4" Elevation="0">
+    @if (_loading)
+    {
+        <div class="d-flex justify-center align-center pa-4">
+            <MudProgressCircular Indeterminate Size="Size.Medium" />
+        </div>
+    }
+    else if (!_configurazioni.Any())
+    {
+        <MudAlert Severity="Severity.Info" Dense>
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                    Nessuna configurazione associata. Clicca "Nuova Configurazione" per iniziare.
+                </div>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Href="@GetNuovaConfigUrl()">
+                    Nuova Configurazione
+                </MudButton>
+            </div>
+        </MudAlert>
+    }
+    else
+    {
+        <div class="d-flex justify-end mb-3">
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Href="@GetNuovaConfigUrl()">
+                Nuova Configurazione
+            </MudButton>
+        </div>
+        
+        <MudGrid>
+            @foreach (var config in _configurazioni)
+            {
+                <MudItem xs="12" md="6">
+                    <MudCard Outlined>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <div class="d-flex align-center gap-2">
+                                    <MudChip T="string" Size="Size.Small" Color="@GetTipoColor(config.TipoFonte)">
+                                        @GetTipoIcon(config.TipoFonte) @config.TipoFonte
+                                    </MudChip>
+                                    <MudText Typo="Typo.h6">@config.NomeConfigurazione</MudText>
+                                </div>
+                                <MudText Typo="Typo.caption" Class="text-muted">@config.CodiceConfigurazione</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               Href="@($"/admin/configura-fonte-dati/{config.IdConfigurazione}")"
+                                               Title="Modifica configurazione" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (!string.IsNullOrWhiteSpace(config.DescrizioneConfigurazione))
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-2">@config.DescrizioneConfigurazione</MudText>
+                            }
+                            
+                            <MudDivider Class="my-2" />
+                            
+                            @* Dettagli tipo specifico *@
+                            @if (config.TipoFonte == "SQL" && !string.IsNullOrWhiteSpace(config.ConnectionStringName))
+                            {
+                                <MudText Typo="Typo.caption" Class="mb-1">
+                                    <strong>Connection:</strong> @config.ConnectionStringName
+                                </MudText>
+                            }
+                            else if (config.TipoFonte == "EmailCSV" && !string.IsNullOrWhiteSpace(config.MailServiceCode))
+                            {
+                                <MudText Typo="Typo.caption" Class="mb-1">
+                                    <strong>Mail Service:</strong> @config.MailServiceCode
+                                </MudText>
+                            }
+                            else if (config.TipoFonte == "HandlerIntegrato" && !string.IsNullOrWhiteSpace(config.HandlerClassName))
+                            {
+                                <MudText Typo="Typo.caption" Class="mb-1">
+                                    <strong>Handler:</strong> @config.HandlerClassName
+                                </MudText>
+                            }
+                            
+                            <MudDivider Class="my-2" />
+                            
+                            <div class="d-flex gap-3">
+                                <MudText Typo="Typo.caption">
+                                    ?? <strong>Mapping:</strong> @config.NumeroMapping fasi
+                                </MudText>
+                                <MudText Typo="Typo.caption">
+                                    ? <strong>Task:</strong> @config.NumeroTask attivi
+                                </MudText>
+                            </div>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Filled" 
+                                       Color="Color.Success" 
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.PlayCircle"
+                                       Disabled="@(config.NumeroTask > 0 || config.NumeroMapping == 0)"
+                                       OnClick="@(() => CreaTaskAsync(config.IdConfigurazione))">
+                                @(config.NumeroTask > 0 ? $"Task già creati ({config.NumeroTask})" : 
+                                  config.NumeroMapping == 0 ? "Aggiungi mapping" : "Crea Task")
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public int IdProceduraLavorazione { get; set; }
+    [Parameter] public EventCallback OnTasksCreated { get; set; }
+    
+    private bool _loading = true;
+    private List<ConfigDto> _configurazioni = new();
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IdProceduraLavorazione > 0)
+        {
+            await LoadConfigurazioniAsync();
+        }
+    }
+    
+    private async Task LoadConfigurazioniAsync()
+    {
+        _loading = true;
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            
+            _configurazioni = await context.ConfigurazioneFontiDatis
+                .Where(c => c.FlagAttiva && 
+                       c.ConfigurazioneFaseCentros.Any(fc => 
+                           fc.FlagAttiva && 
+                           fc.IdProceduraLavorazione == IdProceduraLavorazione))
+                .Select(c => new ConfigDto
+                {
+                    IdConfigurazione = c.IdConfigurazione,
+                    CodiceConfigurazione = c.CodiceConfigurazione,
+                    DescrizioneConfigurazione = c.DescrizioneConfigurazione,
+                    TipoFonte = c.TipoFonte,
+                    ConnectionStringName = c.ConnectionStringName,
+                    MailServiceCode = c.MailServiceCode,
+                    HandlerClassName = c.HandlerClassName,
+                    NumeroMapping = c.ConfigurazioneFaseCentros
+                        .Count(fc => fc.FlagAttiva && fc.IdProceduraLavorazione == IdProceduraLavorazione),
+                    NumeroTask = c.Tasks.Count(t => t.Enabled)
+                })
+                .ToListAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+    
+    private string GetNuovaConfigUrl()
+    {
+        return $"/admin/configura-fonte-dati?idProcedura={IdProceduraLavorazione}";
+    }
+    
+    private async Task CreaTaskAsync(int idConfigurazione)
+    {
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            
+            var config = await context.ConfigurazioneFontiDatis
+                .Include(c => c.ConfigurazioneFaseCentros)
+                .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
+                
+            if (config == null)
+            {
+                Snackbar.Add("Configurazione non trovata", Severity.Warning);
+                return;
+            }
+            
+            int taskCreati = 0;
+            int taskEsistenti = 0;
+            var errori = new List<string>();
+            
+            foreach (var mapping in config.ConfigurazioneFaseCentros.Where(m => m.FlagAttiva))
+            {
+                try
+                {
+                    // Trova LavorazioneFasiDataReading
+                    var lavorazioneFase = await context.LavorazioniFasiDataReadings
+                        .FirstOrDefaultAsync(lf => 
+                            lf.IdProceduraLavorazione == mapping.IdProceduraLavorazione &&
+                            lf.IdFaseLavorazione == mapping.IdFaseLavorazione);
+                            
+                    if (lavorazioneFase == null)
+                    {
+                        errori.Add($"LavorazioneFase non trovata per Fase={mapping.IdFaseLavorazione}");
+                        continue;
+                    }
+                    
+                    // Verifica duplicati
+                    var esiste = await context.TaskDaEseguires
+                        .AnyAsync(t => 
+                            t.IdConfigurazioneDatabase == idConfigurazione &&
+                            t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading);
+                            
+                    if (esiste)
+                    {
+                        taskEsistenti++;
+                        continue;
+                    }
+                    
+                    // Estrai cron
+                    var cron = ExtractCronFromJson(mapping.ParametriExtra);
+                    
+                    // Crea task
+                    var task = new TaskDaEseguire
+                    {
+                        IdTask = 1,
+                        IdLavorazioneFaseDateReading = lavorazioneFase.IdlavorazioneFaseDateReading,
+                        IdConfigurazioneDatabase = idConfigurazione,
+                        CronExpression = cron,
+                        Enabled = true,
+                        Stato = "CONFIGURED",
+                        DataStato = DateTime.Now,
+                        GiorniPrecedenti = 1,
+                        IdTaskHangFire = $"temp-{Guid.NewGuid()}",
+                        // Campi legacy NULL
+                        // Campi legacy rimossi - usa solo IdConfigurazioneDatabase
+                    };
+                    
+                    context.TaskDaEseguires.Add(task);
+                    await context.SaveChangesAsync();
+                    
+                    // Schedule Hangfire
+                    try
+                    {
+                        await ProductionScheduler.AddOrUpdateAsync(task.IdTaskDaEseguire);
+                        taskCreati++;
+                    }
+                    catch (Exception schedEx)
+                    {
+                        errori.Add($"Errore scheduling: {schedEx.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errori.Add($"Errore mapping Fase={mapping.IdFaseLavorazione}: {ex.Message}");
+                }
+            }
+            
+            // Ricarica
+            await LoadConfigurazioniAsync();
+            
+            // Notifica parent
+            if (OnTasksCreated.HasDelegate)
+            {
+                await OnTasksCreated.InvokeAsync();
+            }
+            
+            // Mostra risultati
+            if (taskCreati > 0)
+            {
+                Snackbar.Add($"? {taskCreati} task creati e schedulati!", Severity.Success);
+            }
+            
+            if (taskEsistenti > 0)
+            {
+                Snackbar.Add($"?? {taskEsistenti} task già esistenti", Severity.Info);
+            }
+            
+            if (errori.Any())
+            {
+                foreach (var errore in errori.Take(2))
+                {
+                    Snackbar.Add($"?? {errore}", Severity.Warning);
+                }
+                if (errori.Count > 2)
+                {
+                    Snackbar.Add($"... e altri {errori.Count - 2} errori", Severity.Warning);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"? Errore: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    private static string ExtractCronFromJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "0 5 * * *";
+        try
+        {
+            var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            return dict?.TryGetValue("cron", out var cron) == true 
+                ? cron?.ToString() ?? "0 5 * * *" 
+                : "0 5 * * *";
+        }
+        catch { return "0 5 * * *"; }
+    }
+    
+    private Color GetTipoColor(string tipo) => tipo switch {
+        "SQL" => Color.Primary,
+        "EmailCSV" => Color.Secondary,
+        "HandlerIntegrato" => Color.Tertiary,
+        "Pipeline" => Color.Info,
+        _ => Color.Default
+    };
+    
+    private string GetTipoIcon(string tipo) => tipo switch {
+        "SQL" => "??",
+        "EmailCSV" => "??",
+        "HandlerIntegrato" => "??",
+        "Pipeline" => "??",
+        _ => "?"
+    };
+    
+    private class ConfigDto
+    {
+        public int IdConfigurazione { get; set; }
+        public string NomeConfigurazione { get; set; } = "";
+        public string CodiceConfigurazione { get; set; } = "";
+        public string? DescrizioneConfigurazione { get; set; }
+        public string TipoFonte { get; set; } = "";
+        public string? ConnectionStringName { get; set; }
+        public string? MailServiceCode { get; set; }
+        public string? HandlerClassName { get; set; }
+        public int NumeroMapping { get; set; }
+        public int NumeroTask { get; set; }
+    }
+}

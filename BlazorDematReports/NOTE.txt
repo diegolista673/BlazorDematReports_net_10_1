@@ -1,0 +1,136 @@
+dbcc checkident ('ProcedureCliente',reseed,217)
+
+--insert record a partire dalla riga desiderata di un csv e mantiene identity presente nel csv
+BULK INSERT clienti
+from 'C:\Users\SMARTW\Desktop\clienti.csv'
+with (firstrow = 170,
+	  KEEPIDENTITY,
+      fieldterminator = ',',
+      rowterminator='\n',
+      batchsize=10000,
+      maxerrors=10);
+
+
+proseguire con l'implementazione della configurazione, applicare le regle che sono gia presenti 
+in add task ( ad esempio 1 solo task per fase con lo stessocron, eccc) stabiilre regole per creazione task 
+controllare in edit perchè non salva aggiornamento
+
+test su tutte le possibili configurazioni,
+semplificare o capiere bene le configurazioni json parametri per colonne ecc.
+
+
+crea config solo se esiste tutto, fasi centro ecc..
+
+controllare le lavorazioni che sono in datareading true ma non hanno un job associato
+
+correggere layotut riepilogo fonti dati,
+chiedere perchè necessaria creazione task separato da configurazione
+confiuraione per task specifica per un centro , no scelta di piu centri fasi devono essere ammesse e quelle previste dalla procedura precedentemente salvata
+
+
+
+controllare quando creo il servizio mail 
+
+da iis si possono leggere email?
+
+TODO
+Per le tabelle di appoggio stabilire come eseguire query di controllo per vedere se tutti i dati sono stati caricati esempio ader mensile totali per fatturazione coop
+visualizzare le tabelle di appoggio?
+
+Controllare le varie operazioni fatte con utenti e permessi diversi e ruoli soprattutto per elenco lavoratori, schede totali e impostazioni
+
+Altra utenza quante volte possibile ? pensare di attribuire ad uno scanner piu di un operatore.
+
+Condizione obbligatoria è che ci sia il risultato in Operatore,datalavorazione,Documenti,fogli pagine puoè valere per tutte le lavorazioni?
+testare query dedicata con qualche query integrta che ha campi data diversi 
+
+
+
+Per quando programma è pronto per la produzione
+    database in produzione salvato, importare eventuali procedure nuove , importare produzione sistema  con identity on e produzione operatori
+    modificare documenti isoledigitali ge 2024 2025
+    aggiungere colonna [UtilizzataDaSistema] in tabella fasi lavorazione per distinguere fasi create dal sistema e non modificabili
+    (tutte a false di default tranne procedura completa e no_fase_lavorazione)
+
+
+
+
+
+
+
+
+
+spiegazione di come funziona la logica dei task e serice mail
+
+
+controllare il funzinamento in lettore dati, job mail e job lavorazioni
+
+scrivere documetazione per aggiungere servizi via mail per programmatore eventaulmente aggiungere grafico delle attivita /sequenze
+
+creareservizio mail per ader 4 verona e genova
+
+
+
+
+
+## STATI HANGFIRE SEMPLIFICATI - COMPLETATO ##
+Gli stati dei task Hangfire sono stati semplificati e documentati nel tab Monitoring.
+
+STATI RIMOSSI: SUCCESS, STARTED, RUNNING, STOPPED, PAUSED, IMPORTED
+
+STATI MANTENUTI (3 stati essenziali):
+  1. CONFIGURED (Blu/Info): Task configurato, pronto ma non ancora eseguito
+     - Impostato quando: il task viene creato per la prima volta
+  
+  2. COMPLETED (Verde/Success): Ultima esecuzione completata con successo
+     - Impostato quando: il job Hangfire termina senza eccezioni
+     - Il task continua ad essere schedulato se Enabled = true
+  
+  3. ERROR (Rosso/Error): Ultima esecuzione fallita con errore
+     - Impostato quando: il job Hangfire genera un'eccezione
+     - Il task continua ad essere schedulato se Enabled = true
+     - Dettagli errore salvati nel campo LastError
+
+CICLO DI VITA DEI TASK:
+  Creazione → CONFIGURED (Enabled=true)
+       ↓
+  Hangfire esegue secondo CRON
+       ↓
+  ├─ Esecuzione OK → COMPLETED (rimane schedulato)
+  │     ↓
+  │  Prossima esecuzione → mantiene COMPLETED o va in ERROR se fallisce
+  │
+  └─ Esecuzione KO → ERROR (rimane schedulato)
+        ↓
+     Prossima esecuzione → mantiene ERROR o va in COMPLETED se ha successo
+
+DASHBOARD MONITORING SEMPLIFICATO:
+  
+  KPI Cards (3 card):
+    - Fasi Totali: numero di fasi configurate
+    - Task Totali: numero totale di task nel sistema
+    - Servizi Mail: task con MailServiceCode configurato
+  
+  Distribuzione Stati:
+    - Grafico con CONFIGURED, COMPLETED, ERROR
+  
+  Distribuzione Tipi:
+    - Grafico con Giornaliero, Temporizzato, Mensile
+  
+  DataGrid Fasi (5 colonne):
+    | Fase | Task Totali | Configured | Completed | Error | Data Reading |
+    
+
+    - Ogni colonna mostra conteggio task per stato
+    - Tooltip su ogni header per spiegare cosa rappresenta
+
+NOTA IMPORTANTE:
+  - Tutti i task con Enabled = true vengono eseguiti automaticamente
+  - Gli stati CONFIGURED, COMPLETED, ERROR indicano solo lo stato corrente
+  - Il flag Enabled controlla se il task viene eseguito o meno
+
+
+
+
+
+

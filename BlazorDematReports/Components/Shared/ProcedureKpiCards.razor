@@ -1,0 +1,108 @@
+@using BlazorDematReports.Dto
+@using DataReading.Dto
+
+@* KPI Cards - Statistiche Procedura *@
+<MudGrid Spacing="2" Class="mb-4">
+    @if (ShowFasiTotali)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-3" Elevation="3">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Timeline" Color="Color.Primary" Size="Size.Large" />
+                    <div>
+                        <MudText Typo="Typo.caption" Class="text-muted">Fasi Totali</MudText>
+                        <MudText Typo="Typo.h4">@GetFasiCount()</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+    }
+    
+    @if (ShowTaskConfigurati)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-3" Elevation="3">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Task" Color="Color.Info" Size="Size.Large" />
+                    <div>
+                        <MudText Typo="Typo.caption" Class="text-muted">Task Configurati</MudText>
+                        <MudText Typo="Typo.h4">@GetTaskCount()</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+    }
+    
+    @if (ShowServiziMail)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-3" Elevation="3">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Secondary" Size="Size.Large" />
+                    <div>
+                        <MudText Typo="Typo.caption" Class="text-muted">Servizi Mail</MudText>
+                        <MudText Typo="Typo.h4">@GetMailServicesCount()</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+    }
+    
+    @if (ShowQueryPersonalizzate)
+    {
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-3" Elevation="3">
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Tertiary" Size="Size.Large" />
+                    <div>
+                        <MudText Typo="Typo.caption" Class="text-muted">Query Personalizzate</MudText>
+                        <MudText Typo="Typo.h4">@GetQueryCount()</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// Modello della procedura da visualizzare
+    /// </summary>
+    [Parameter, EditorRequired] public ProcedureLavorazioniDto Model { get; set; } = null!;
+    
+    /// <summary>
+    /// Mostra KPI Fasi Totali
+    /// </summary>
+    [Parameter] public bool ShowFasiTotali { get; set; } = true;
+    
+    /// <summary>
+    /// Mostra KPI Task Configurati
+    /// </summary>
+    [Parameter] public bool ShowTaskConfigurati { get; set; } = true;
+    
+    /// <summary>
+    /// Mostra KPI Servizi Mail
+    /// </summary>
+    [Parameter] public bool ShowServiziMail { get; set; } = true;
+    
+    /// <summary>
+    /// Mostra KPI Query Personalizzate
+    /// </summary>
+    [Parameter] public bool ShowQueryPersonalizzate { get; set; } = true;
+    
+    private int GetFasiCount() => 
+        Model?.LavorazioniFasiDataReadingsDto?.Count(f => f.IdFaseLavorazione != 0) ?? 0;
+    
+    private int GetTaskCount() => 
+        Model?.LavorazioniFasiDataReadingsDto?
+            .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
+            .Count() ?? 0;
+    
+    private int GetMailServicesCount() => 
+        Model?.LavorazioniFasiDataReadingsDto?
+            .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
+            .Count(t => t.IdConfigurazioneDatabase.HasValue) ?? 0;
+    
+    private int GetQueryCount() => 
+        Model?.QueryProcedureLavorazioniDto?.Count ?? 0;
+}

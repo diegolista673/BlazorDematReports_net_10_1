@@ -1,0 +1,63 @@
+@startuml CreazioneMailService
+!theme plain
+skinparam backgroundColor White
+skinparam participant {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+}
+skinparam actor {
+    BackgroundColor LightGreen
+    BorderColor DarkGreen
+}
+skinparam database {
+    BackgroundColor LightYellow
+    BorderColor Orange
+}
+
+title Creazione Servizio Mail
+
+actor Utente
+participant "PageProcedureLavorazioni" as Page
+participant "DialogAddBackgroundTask" as Dialog
+participant "MailImportHandlerRegistry" as Registry
+participant "ServiceProcedureLavorazioni" as Service
+participant "ProductionJobScheduler" as Scheduler
+participant "Hangfire" as HF
+database "TaskDaEseguire" as DB
+
+Utente -> Page: 1. Modifica Procedura esistente\n(Edit mode)
+activate Page
+Page -> Dialog: 2. Apre dialog per fase specifica\ncon contesto procedura
+activate Dialog
+
+Dialog -> Registry: 3. Carica service codes disponibili\nvia HandlerRegistry.Codes
+activate Registry
+Registry -> Dialog: 4. Lista service codes:\n["HERA16.EWS", "EQ4.VR", "EQ4.GE"]
+deactivate Registry
+
+Utente -> Dialog: 5. Seleziona "HERA16.EWS"\ndal dropdown Mail Service
+Dialog -> Dialog: 6. Disabilita automaticamente\ncampi query/connection
+Dialog -> Dialog: 7. Popola MailServiceCode\nnel TaskDaEseguireDto
+Dialog -> Page: 8. Restituisce TaskDaEseguireDto\ncon MailServiceCode valorizzato
+deactivate Dialog
+
+Page -> Service: 9. UpdateProceduraLavorazione\nAndFasiDataReadingAsync()
+activate Service
+Service -> DB: 10. UPDATE TaskDaEseguire\ncon MailServiceCode
+Service -> Page: 11. Success response
+deactivate Service
+
+Page -> Scheduler: 12. SyncAllAsync()\nper schedulazione mail
+activate Scheduler
+Scheduler -> DB: 13. Carica task mail\n(MailServiceCode != null)
+Scheduler -> Scheduler: 14. BuildHangfireKey()\nmail:{id}-{proc}:{service}
+Scheduler -> HF: 15. AddOrUpdate(mailKey, idTask, cron)
+activate HF
+HF -> HF: 16. Schedula recurring job mail\ncon ProductionJobRunner.RunAsync
+deactivate HF
+deactivate Scheduler
+deactivate Page
+
+note right of HF: Job mail schedulato\nper importazione automatica
+
+@enduml

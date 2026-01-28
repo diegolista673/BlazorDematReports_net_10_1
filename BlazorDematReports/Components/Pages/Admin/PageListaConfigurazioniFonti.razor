@@ -1,0 +1,554 @@
+﻿@page "/admin/fonti-dati"
+@using Entities.Models.DbApplication
+@using Microsoft.EntityFrameworkCore
+@using DataReading.Infrastructure
+@inject IDbContextFactory<DematReportsContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IProductionJobScheduler ProductionScheduler
+@inject IDialogService DialogService
+@attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
+
+<PageTitle>Configurazioni Fonti Dati</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <div>
+            <MudText Typo="Typo.h4">
+                Configurazioni Fonti Dati
+            </MudText>
+            <MudText Typo="Typo.body2" Class="text-muted">
+                Gestione centralizzata delle sorgenti dati per produzione
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => Navigation.NavigateTo("/admin/configura-fonte-dati"))">
+            Nuova Configurazione
+        </MudButton>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate />
+    }
+    else if (!_configurazioni.Any())
+    {
+        <MudAlert Severity="Severity.Info" Class="my-4">
+            <MudText>Nessuna configurazione presente. Clicca su "Nuova Configurazione" per iniziare.</MudText>
+        </MudAlert>
+    }
+    else
+    {
+        <MudDataGrid T="ConfigurazioneRiepilogoDto"
+                     Items="@_configurazioni"
+                     Filterable="true"
+                     FilterMode="DataGridFilterMode.Simple"
+                     SortMode="SortMode.Multiple"
+                     Dense
+                     Hover
+                     Striped>
+            <Columns>
+                <PropertyColumn Property="x => x.CodiceConfigurazione" Title="Codice" />
+                <PropertyColumn Property="x => x.NomeConfigurazione" Title="Nome" />
+                
+                <TemplateColumn Title="Tipo">
+                    <CellTemplate>
+                        <MudChip T="string"
+                                 Color="@GetTipoColor(context.Item.TipoFonte)"
+                                 Size="Size.Small">
+                            @context.Item.TipoFonte
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                
+                <TemplateColumn Title="Fasi Configurate" Sortable="false">
+                    <CellTemplate>
+                        @if (context.Item.FasiDettaglio.Any())
+                        {
+                            <MudText Typo="Typo.caption">
+                                @string.Join(", ", context.Item.FasiDettaglio.Distinct())
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted">Nessuna fase</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                
+                <TemplateColumn Title="Schedulazioni" Sortable="false">
+                    <CellTemplate>
+                        @if (context.Item.CronExpressions.Any())
+                        {
+                            <div>
+                                @foreach (var cron in context.Item.CronExpressions.Distinct())
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="mr-1 mb-1">
+                                        ⏰ @GetCronDescription(cron)
+                                    </MudChip>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted">-</MudText>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                
+                <PropertyColumn Property="x => x.NumeroFasi" Title="N. Mapping" />
+                <PropertyColumn Property="x => x.TaskAttivi" Title="Task Attivi" />
+                
+                <TemplateColumn Title="Stato">
+                    <CellTemplate>
+                        @if (context.Item.FlagAttiva)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Attiva</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Disattivata</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                
+                <PropertyColumn Property="x => x.CreatoIl" Title="Creato" Format="dd/MM/yyyy" />
+                
+                <TemplateColumn Title="Azioni" StickyRight>
+                    <CellTemplate>
+                        <MudTooltip Text="Modifica configurazione">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@(() => ModificaConfig(context.Item.IdConfigurazione))" />
+                        </MudTooltip>
+                        
+                        <MudTooltip Text="@(context.Item.NumeroFasi == 0 ? "Aggiungi almeno un mapping prima di creare task" : context.Item.TaskAttivi > 0 ? "Task già creati per questa configurazione" : "Crea task automatici per questa configurazione")">
+                            <MudIconButton Icon="@Icons.Material.Filled.PlayCircle"
+                                           Color="Color.Success"
+                                           Size="Size.Small"
+                                           Disabled="@(context.Item.NumeroFasi == 0 || context.Item.TaskAttivi > 0)"
+                                           OnClick="@(() => CreaTaskAutomaticiAsync(context.Item.IdConfigurazione))" />
+                        </MudTooltip>
+  
+                        
+                        <MudTooltip Text="@(context.Item.TaskAttivi > 0 ? $"Impossibile disattivare: {context.Item.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard." : "Disattiva configurazione (soft delete)")">
+                            <MudIconButton Icon="@Icons.Material.Filled.Block"
+                                           Color="@(context.Item.TaskAttivi > 0 ? Color.Default : Color.Warning)"
+                                           Size="Size.Small"
+                                           Disabled="@(context.Item.TaskAttivi > 0)"
+                                           OnClick="@(() => EliminaConfigAsync(context.Item))" />
+                        </MudTooltip>
+
+                        <MudTooltip Text="Elimina definitivamente la configurazione (hard delete, irreversibile)">
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           Disabled="@(context.Item.TaskAttivi > 0)"
+                                           OnClick="@(() => EliminaConfigDefinitivaAsync(context.Item))" />
+                        </MudTooltip>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            
+            <PagerContent>
+                <MudDataGridPager T="ConfigurazioneRiepilogoDto" />
+            </PagerContent>
+        </MudDataGrid>
+    }
+</MudContainer>
+
+@code {
+
+    private bool _loading = true;
+    private List<ConfigurazioneRiepilogoDto> _configurazioni = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurazioniAsync();
+    }
+
+    private async Task LoadConfigurazioniAsync()
+    {
+        _loading = true;
+        
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+
+            var configs = await context.ConfigurazioneFontiDatis
+                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
+                    .ThenInclude(fc => fc.Procedura)
+                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
+                    .ThenInclude(fc => fc.Fase)
+                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
+                    .ThenInclude(fc => fc.Centro)
+                .Include(c => c.Tasks)
+                .OrderBy(c => c.IdConfigurazione)
+                .ToListAsync();
+
+            _configurazioni = configs.Select(c => new ConfigurazioneRiepilogoDto
+            {
+                IdConfigurazione = c.IdConfigurazione,
+                CodiceConfigurazione = c.CodiceConfigurazione,
+                TipoFonte = c.TipoFonte,
+                FlagAttiva = c.FlagAttiva,
+                CreatoIl = c.CreatoIl,
+                NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva),
+                TaskAttivi = c.Tasks.Count(t => t.Enabled),
+            
+                // Nuovi campi dettaglio
+                FasiDettaglio = c.ConfigurazioneFaseCentros
+                    .Where(fc => fc.FlagAttiva && fc.Fase != null)
+                    .Select(fc => fc.Fase!.FaseLavorazione)
+                    .ToList(),
+            
+                CronExpressions = c.ConfigurazioneFaseCentros
+                    .Where(fc => fc.FlagAttiva)
+                    .Select(fc => ExtractCronFromJson(fc.ParametriExtra))
+                    .ToList(),
+            
+                MappingDettaglio = c.ConfigurazioneFaseCentros
+                    .Where(fc => fc.FlagAttiva)
+                    .Select(fc => new MappingDettaglioDto
+                    {
+                        NomeProcedura = fc.Procedura?.NomeProcedura ?? "N/A",
+                        NomeFase = fc.Fase?.FaseLavorazione ?? "N/A",
+                        NomeCentro = fc.Centro?.Centro ?? "N/A",
+                        Cron = ExtractCronFromJson(fc.ParametriExtra),
+                        ParametriExtra = fc.ParametriExtra
+                    })
+                    .ToList()
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Errore caricamento: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    /// <summary>
+    /// Estrae il cron dal JSON ParametriExtra, se presente.
+    /// </summary>
+    private static string ExtractCronFromJson(string? parametriExtra)
+    {
+        if (string.IsNullOrWhiteSpace(parametriExtra))
+            return "0 5 * * *"; // Default
+    
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(parametriExtra);
+            if (json != null && json.TryGetValue("cron", out var cronValue))
+            {
+                return cronValue?.ToString() ?? "0 5 * * *";
+            }
+        }
+        catch
+        {
+            // JSON malformato
+        }
+    
+        return "0 5 * * *";
+    }
+
+    /// <summary>
+    /// Converte cron expression in descrizione leggibile.
+    /// </summary>
+    private static string GetCronDescription(string cron) => cron switch
+    {
+        "0 5 * * *" => "Giornaliero 05:00",
+        "0 2 * * *" => "Giornaliero 02:00",
+        "0 */4 * * *" => "Ogni 4 ore",
+        "0 * * * *" => "Ogni ora",
+        "0 0 1 * *" => "Mensile (1° giorno)",
+        "0 0 * * 0" => "Settimanale (Domenica)",
+        "0 0 * * 1" => "Settimanale (Lunedì)",
+        _ => cron // Mostra cron raw se custom
+    };
+
+    private void ModificaConfig(int id)
+    {
+        Navigation.NavigateTo($"/admin/configura-fonte-dati/{id}");
+    }
+
+    /// <summary>
+    /// Crea automaticamente task Hangfire per tutti i mapping fase/centro di una configurazione.
+    /// </summary>
+    private async Task CreaTaskAutomaticiAsync(int idConfigurazione)
+    {
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            
+            // Carica configurazione con tutti i mapping
+            var config = await context.ConfigurazioneFontiDatis
+                .Include(c => c.ConfigurazioneFaseCentros)
+                .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
+                
+            if (config == null)
+            {
+                Snackbar.Add("Configurazione non trovata", Severity.Warning);
+                return;
+            }
+            
+            var mappingAttivi = config.ConfigurazioneFaseCentros.Where(m => m.FlagAttiva).ToList();
+            
+            if (!mappingAttivi.Any())
+            {
+                Snackbar.Add("Nessun mapping fase/centro attivo trovato", Severity.Warning);
+                return;
+            }
+            
+            int taskCreati = 0;
+            int taskEsistenti = 0;
+            var errori = new List<string>();
+            
+            foreach (var mapping in mappingAttivi)
+            {
+                try
+                {
+                    // Trova LavorazioneFasiDataReading esistente
+                    var lavorazioneFase = await context.LavorazioniFasiDataReadings
+                        .FirstOrDefaultAsync(lf => 
+                            lf.IdProceduraLavorazione == mapping.IdProceduraLavorazione &&
+                            lf.IdFaseLavorazione == mapping.IdFaseLavorazione);
+                    
+                    if (lavorazioneFase == null)
+                    {
+                        errori.Add($"LavorazioneFase non trovata per Proc={mapping.IdProceduraLavorazione}, Fase={mapping.IdFaseLavorazione}");
+                        continue;
+                    }
+                    
+                        // Verifica se esiste già un task per questa configurazione e lavorazione
+                        var taskEsistente = await context.TaskDaEseguires
+                            .AnyAsync(t => 
+                                t.IdConfigurazioneDatabase == idConfigurazione &&
+                                t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading);
+                    
+                        if (taskEsistente)
+                        {
+                            taskEsistenti++;
+                            continue;
+                        }
+                    
+                        // Estrai cron dai ParametriExtra del mapping (default: 0 5 * * *)
+                        string cronExpression = "0 5 * * *"; // Default
+                        if (!string.IsNullOrWhiteSpace(mapping.ParametriExtra))
+                        {
+                            try
+                            {
+                                var extraParams = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(mapping.ParametriExtra);
+                                if (extraParams != null && extraParams.TryGetValue("cron", out var cronValue))
+                                {
+                                    cronExpression = cronValue?.ToString() ?? "0 5 * * *";
+                                }
+                            }
+                            catch
+                            {
+                                // Usa default se JSON malformato
+                            }
+                        }
+                    
+                    
+                        // Crea nuovo task
+                        var nuovoTask = new TaskDaEseguire
+                        {
+                            IdTask = 1, // Task giornaliero di default
+                            IdLavorazioneFaseDateReading = lavorazioneFase.IdlavorazioneFaseDateReading,
+                            IdConfigurazioneDatabase = idConfigurazione,
+                            Stato = "CONFIGURED",
+                            DataStato = DateTime.Now,
+                            GiorniPrecedenti = 1,
+                            CronExpression = cronExpression, // Usa cron dal mapping
+                            Enabled = true,
+                            IdTaskHangFire = $"temp-{Guid.NewGuid()}" // Temporaneo, verrà sovrascritto da ProductionScheduler
+                        };
+                    
+                        context.TaskDaEseguires.Add(nuovoTask);
+                        await context.SaveChangesAsync();
+                    
+                    // Registra in Hangfire e genera chiave definitiva
+                    try
+                    {
+                        await ProductionScheduler.AddOrUpdateAsync(nuovoTask.IdTaskDaEseguire);
+                        taskCreati++;
+                    }
+                    catch (Exception schedEx)
+                    {
+                        errori.Add($"Errore scheduling task {nuovoTask.IdTaskDaEseguire}: {schedEx.Message}");
+                    }
+                }
+                catch (Exception mappingEx)
+                {
+                    errori.Add($"Errore mapping Proc={mapping.IdProceduraLavorazione}, Fase={mapping.IdFaseLavorazione}: {mappingEx.Message}");
+                }
+            }
+            
+            // Ricarica griglia
+            await LoadConfigurazioniAsync();
+            
+            // Mostra risultati
+            if (taskCreati > 0)
+            {
+                Snackbar.Add($"{taskCreati} task creati e schedulati con successo!", Severity.Success);
+            }
+            
+            if (taskEsistenti > 0)
+            {
+                Snackbar.Add($"ℹ️ {taskEsistenti} task già esistenti", Severity.Info);
+            }
+            
+            if (errori.Any())
+            {
+                foreach (var errore in errori.Take(3)) // Mostra max 3 errori
+                {
+                    Snackbar.Add($" {errore}", Severity.Warning);
+                }
+                if (errori.Count > 3)
+                {
+                    Snackbar.Add($"... e altri {errori.Count - 3} errori", Severity.Warning);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($" Errore creazione task: {ex.Message}", Severity.Error);
+        }
+    }
+
+
+
+    private async Task EliminaConfigAsync(ConfigurazioneRiepilogoDto config)
+    {
+        // Doppio controllo: verifica task attivi
+        if (config.TaskAttivi > 0)
+        {
+            Snackbar.Add($" Impossibile eliminare: {config.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard.", Severity.Warning);
+            return;
+        }
+
+        // Dialog di conferma
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Sei sicuro di voler disattivare la configurazione '{config.NomeConfigurazione}'? I mapping verranno mantenuti ma la configurazione non sarà più utilizzabile.",
+            ["ButtonText"] = "Disattiva",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Eliminazione", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            var entity = await context.ConfigurazioneFontiDatis.FindAsync(config.IdConfigurazione);
+            if (entity != null)
+            {
+                entity.FlagAttiva = false; // Soft delete
+                entity.ModificatoIl = DateTime.Now;
+                await context.SaveChangesAsync();
+                await LoadConfigurazioniAsync();
+                Snackbar.Add("Configurazione disattivata con successo", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($" Errore eliminazione: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task EliminaConfigDefinitivaAsync(ConfigurazioneRiepilogoDto config)
+    {
+        // Doppio controllo: verifica task attivi
+        if (config.TaskAttivi > 0)
+        {
+            Snackbar.Add($"Impossibile eliminare: {config.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard.", Severity.Warning);
+            return;
+        }
+
+        // Dialog di conferma
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Sei sicuro di voler ELIMINARE DEFINITIVAMENTE la configurazione '{config.NomeConfigurazione}'?",
+            ["ButtonText"] = "Elimina definitivamente",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Eliminazione Definitiva", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            var entity = await context.ConfigurazioneFontiDatis
+                .Include(c => c.ConfigurazioneFaseCentros)
+                .Include(c => c.Tasks)
+                .FirstOrDefaultAsync(c => c.IdConfigurazione == config.IdConfigurazione);
+            if (entity != null)
+            {
+                // Rimuovi mapping e task associati solo se presenti
+                if (entity.ConfigurazioneFaseCentros != null && entity.ConfigurazioneFaseCentros.Count > 0)
+                    context.ConfigurazioneFaseCentros.RemoveRange(entity.ConfigurazioneFaseCentros);
+                if (entity.Tasks != null && entity.Tasks.Count > 0)
+                    context.TaskDaEseguires.RemoveRange(entity.Tasks);
+                context.ConfigurazioneFontiDatis.Remove(entity);
+                await context.SaveChangesAsync();
+                await LoadConfigurazioniAsync();
+                Snackbar.Add("Configurazione eliminata definitivamente", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Errore eliminazione definitiva: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetTipoColor(string tipo) => tipo switch
+    {
+        "SQL" => Color.Primary,
+        "EmailCSV" => Color.Secondary,
+        "HandlerIntegrato" => Color.Tertiary,
+        "Pipeline" => Color.Info,
+        _ => Color.Default
+    };
+
+
+
+    private class ConfigurazioneRiepilogoDto
+    {
+        public int IdConfigurazione { get; set; }
+        public string CodiceConfigurazione { get; set; } = null!;
+        public string NomeConfigurazione { get; set; } = null!;
+        public string TipoFonte { get; set; } = null!;
+        public bool FlagAttiva { get; set; }
+        public DateTime CreatoIl { get; set; }
+        public int NumeroFasi { get; set; }
+        public int TaskAttivi { get; set; }
+        
+        // Nuovi campi per dettagli
+        public List<string> FasiDettaglio { get; set; } = new();
+        public List<string> CronExpressions { get; set; } = new();
+        public List<MappingDettaglioDto> MappingDettaglio { get; set; } = new();
+    }
+    
+    private class MappingDettaglioDto
+    {
+        public string NomeProcedura { get; set; } = null!;
+        public string NomeFase { get; set; } = null!;
+        public string NomeCentro { get; set; } = null!;
+        public string Cron { get; set; } = "0 5 * * *";
+        public string? ParametriExtra { get; set; }
+    }
+}

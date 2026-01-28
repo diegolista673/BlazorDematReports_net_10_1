@@ -1,0 +1,132 @@
+@using BlazorDematReports.Dto
+
+@* Griglia Informazioni Procedura *@
+<MudPaper Class="pa-4 mb-4" Elevation="3">
+    <MudGrid Spacing="2">
+        
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                    Cliente
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@Model.NomeCliente</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Primary" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="mr-1" />
+                    Procedura Cliente
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@Model.ProceduraCliente</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" Class="mr-1" />
+                    Procedura Lavorazione
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@Model.NomeProcedura</MudText>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Info" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Fingerprint" Size="Size.Small" Class="mr-1" />
+                    ID Procedura
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@Model.IdproceduraLavorazione</MudText>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Primary" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
+                    Centro
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@Model.Centro</MudText>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Warning" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Class="mr-1" />
+                    Reparto
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@Model.Reparto</MudText>
+            </MudPaper>
+        </MudItem>
+        
+  
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="mr-1" />
+                    Formato Dati
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@(Model.FormatoDatiProduzione ?? "N/A")</MudText>
+            </MudPaper>
+        </MudItem>
+        
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Success" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" />
+                    Data Creazione
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1">@Model.DataInserimento.ToString("dd/MM/yyyy")</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Class="pa-2" Outlined="true">
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="text-uppercase" Style="font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Notes" Size="Size.Small" Class="mr-1" />
+                    Note
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mt-1">@Model.Note</MudText>
+            </MudPaper>
+        </MudItem>
+        
+    </MudGrid>
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Modello della procedura da visualizzare
+    /// </summary>
+    [Parameter, EditorRequired] public ProcedureLavorazioniDto Model { get; set; } = null!;
+    
+    // /// <summary>
+    // /// Mostra il campo Cliente (usato in Scheda Lavorazione)
+    // /// </summary>
+    // [Parameter] public bool ShowCliente { get; set; } = false;
+    
+    // /// <summary>
+    // /// Mostra il campo Procedura Cliente
+    // /// </summary>
+    // [Parameter] public bool ShowProceduraCliente { get; set; } = true;
+    
+    // /// <summary>
+    // /// Mostra il campo Formato Dati
+    // /// </summary>
+    // [Parameter] public bool ShowFormatoDati { get; set; } = true;
+    
+    // /// <summary>
+    // /// Mostra il campo Data Creazione
+    // /// </summary>
+    // [Parameter] public bool ShowDataCreazione { get; set; } = true;
+    
+    // /// <summary>
+    // /// Mostra il campo Note
+    // /// </summary>
+    // [Parameter] public bool ShowNote { get; set; } = true;
+}

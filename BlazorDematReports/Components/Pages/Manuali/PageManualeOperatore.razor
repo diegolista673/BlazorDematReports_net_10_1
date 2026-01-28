@@ -1,0 +1,381 @@
+﻿@page "/manuale-operatore"
+@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO, USER")]
+@inject IJSRuntime JSRuntime
+@inject BlazorDematReports.Services.UIServices.IPdfExportService PdfExportService
+@using System.Text.RegularExpressions
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Manuale Operatore</MudText>
+<MudDivider Class="border-solid border-1 mud-border-primary"></MudDivider>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+    @if (isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+        <MudText>Caricamento manuale operatore...</MudText>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+    }
+    else
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="searchTerm" Label="Cerca nel manuale operatore" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" OnAdornmentClick="PerformSearch" OnKeyDown="OnSearchKeyDown" Clearable="true" OnClearButtonClick="ClearSearch" Immediate="true" />
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudButton Variant="Variant.Filled" Color="MudBlazor.Color.Primary" StartIcon="@Icons.Material.Filled.Search" OnClick="PerformSearch" FullWidth="true">Cerca</MudButton>
+            </MudItem>
+            <MudItem xs="6" md="2">
+                <MudButton Variant="Variant.Filled" Color="MudBlazor.Color.Secondary" StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearSearch" FullWidth="true" Disabled="@string.IsNullOrWhiteSpace(searchTerm)">Pulisci</MudButton>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudButton Variant="Variant.Filled" Color="MudBlazor.Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="ExportToPdf" FullWidth="true" Disabled="@isExportingPdf">
+                    @if (isExportingPdf)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        <span class="ml-2">Esportando...</span>
+                    }
+                    else { <span>Esporta PDF</span> }
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudExpansionPanels Class="mb-4">
+            <MudExpansionPanel Text="Indice Sezioni (clic per andare alla sezione)">
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var s in manualSections)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="MudBlazor.Color.Primary" Size="Size.Small" Class="@(activeSectionId==s.Id?"indice-attivo":"")" OnClick="@(() => ScrollToSection(s.Id))">@s.Number @s.Title</MudButton>
+                    }
+                </div>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+
+        <MudPaper Class="pa-4" Elevation="2" Style="max-height:80vh; overflow-y:auto; font-size:14px; scroll-behavior:smooth; position:relative;" id="manuale-operatore-content">
+            <div class="manuale-operatore-html">
+                @((MarkupString)displayedHtml)
+            </div>
+        </MudPaper>
+
+        @if (!string.IsNullOrEmpty(searchTerm) && searchResults > 0)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-2">Trovate @searchResults occorrenze di "@searchTerm"</MudAlert>
+        }
+        else if (!string.IsNullOrEmpty(searchTerm) && searchResults == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-2">Nessun risultato trovato per "@searchTerm"</MudAlert>
+        }
+    }
+</MudContainer>
+
+<style>
+    .manuale-sezione-titolo { margin-top:30px; margin-bottom:6px; font-weight:600; font-size:18px; }
+    .manuale-sottotitolo { margin-top:16px; font-weight:600; font-size:15px; }
+    .manuale-paragrafo { margin:2px 0 10px 0; line-height:1.55; }
+    mark.highlight-search { background:#ffeb3b; padding:1px 2px; font-weight:600; }
+    .indice-attivo { border-color: var(--mud-palette-primary)!important; font-weight:600; }
+    .section-selected { outline:2px solid var(--mud-palette-primary); background:rgba(0,123,255,.08); border-radius:4px; }
+    .anchor-offset { position:relative; top:-70px; visibility:hidden; }
+</style>
+
+@code {
+    private class ManualSection
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N");
+        public string Number { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public List<string> Paragraphs { get; set; } = new();
+        public List<ManualSubSection> Subsections { get; set; } = new();
+    }
+    private class ManualSubSection
+    {
+        public ManualSubSection(string title, List<string> lines, bool rawHtml = false){ Title = title; Lines = lines; RawHtml = rawHtml; }
+        public string Title { get; set; }
+        public List<string> Lines { get; set; }
+        public bool RawHtml { get; set; }
+    }
+
+    private string errorMessage = string.Empty;
+    private bool isLoading = true;
+    private bool isExportingPdf = false;
+    private string searchTerm = string.Empty;
+    private int searchResults = 0;
+    private string activeSectionId = string.Empty;
+
+    private List<ManualSection> manualSections = new();
+    private string manualHtmlOriginal = string.Empty;
+    private string displayedHtml = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadManualeContent();
+    }
+
+    private async Task LoadManualeContent()
+    {
+        try
+        {
+            isLoading = true;
+            manualSections = BuildOperatorManualSections();
+            manualHtmlOriginal = BuildHtmlFromSections(manualSections);
+            displayedHtml = manualHtmlOriginal;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Errore durante il caricamento del manuale operatore: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private List<ManualSection> BuildOperatorManualSections()
+    {
+        var list = new List<ManualSection>();
+        int n = 0;
+        ManualSection Add(string title, Action<ManualSection> build)
+        { n++; var sec = new ManualSection { Number = n + ".", Title = title, Id = "sec-op-" + n }; build(sec); list.Add(sec); return sec; }
+
+        // 1 INTRODUZIONE
+        Add("INTRODUZIONE", s =>
+        {
+            s.Paragraphs.Add("DEmatReports consente agli operatori di inserire, controllare e analizzare la produzione documentale.");
+            s.Subsections.Add(new ManualSubSection("Scopo", new(){"Guidare l'utente nell'utilizzo quotidiano della piattaforma.","Descrivere flussi base e funzioni chiave."}));
+            s.Subsections.Add(new ManualSubSection("Ruoli", new(){"USER: inserimento produzione.","CAPOTURNO: supervisione turno e report.","SUPERVISOR/ADMIN: configurazioni complete.","RESPONSABILE: governance e controllo qualità."}));
+        });
+
+        // 2 ACCESSO E NAVIGAZIONE
+        Add("ACCESSO E NAVIGAZIONE", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Requisiti", new(){"Browser moderno (Edge/Chrome/Firefox).","Credenziali fornite dall'amministratore.","Connessione stabile."}));
+            s.Subsections.Add(new ManualSubSection("Login", new(){"Aprire URL aziendale.","Inserire username/password.","Verificare ruolo mostrato in alto."}));
+            s.Subsections.Add(new ManualSubSection("Layout", new(){"Menu laterale per funzioni.","Barra superiore con info utente.","Area centrale per le pagine operative."}));
+        });
+
+        // 3 FUNZIONALITÀ PER RUOLO
+        Add("FUNZIONALITÀ PER RUOLO", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("User", new(){"Carica Dati produzione.","Visualizza/gestisce produzione propria.","Consulta manuali."}));
+            s.Subsections.Add(new ManualSubSection("Capoturno", new(){"Tutte funzioni user.","Report lavorazioni e scheda lavorazione.","Gestione operatori e grafici produzione."}));
+            s.Subsections.Add(new ManualSubSection("Supervisor/Admin", new(){"Configurazioni avanzate.","Gestione ruoli e utenti.","Task background e data manager."}));
+        });
+
+        // 4 INSERIMENTO PRODUZIONE
+        Add("INSERIMENTO PRODUZIONE", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Carica Dati - Procedura", new(){"1. Aprire Produzione > Carica Dati.","2. Selezionare data e operatore.","3. Scegliere lavorazione e fase.","4. Inserire valori (Documenti/Fogli/Pagine/Scarti).","5. Salvare (validazioni duplicate e campi richiesti)."}));
+            s.Subsections.Add(new ManualSubSection("Validazioni", new(){"Campi obbligatori richiesti.","Nessun valore negativo.","Almeno un totale > 0.","Controllo combinazione (data+operatore+fase)."}));
+            s.Subsections.Add(new ManualSubSection("Errori Comuni", new(){"Record duplicato -> verificare già inserito.","Campi disabilitati -> completare dati precedenti.","Valori respinti -> controllare formato numerico."}));
+        });
+
+        // 5 GESTIONE OPERATORI
+        Add("GESTIONE OPERATORI", s =>
+        {
+            s.Paragraphs.Add("Per supervisori e oltre: consente analisi produttività e anomalie.");
+            s.Subsections.Add(new ManualSubSection("Passi", new(){"Accedere a Produzione > Gestione Operatori.","Impostare intervallo date.","Filtrare per centro.","Analizzare indicatori aggregati."}));
+            s.Subsections.Add(new ManualSubSection("Output", new(){"Totali per operatore.","Anomalie evidenziate.","Aggregati per centro."}));
+        });
+
+        // 6 REPORT & GRAFICI
+        Add("REPORT E GRAFICI", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Report Totali", new(){"Intervallo date + filtri.","Export Excel/PDF.","Visualizzazione aggregati per lavorazione."}));
+            s.Subsections.Add(new ManualSubSection("Report Completo", new(){"Dettaglio riga produzione.","Analisi performance per operatore."}));
+            s.Subsections.Add(new ManualSubSection("Grafico Produzione", new(){"Distribuzione e trend.","Filtri dinamici.","Supporto decisionale rapido."}));
+        });
+
+        // 7 CONFIGURAZIONI
+        Add("CONFIGURAZIONI", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Anagrafiche", new(){"Centri, Clienti, Operatori.","Gestibili da supervisor/admin."}));
+            s.Subsections.Add(new ManualSubSection("Lavorazioni", new(){"Procedure e Fasi.","Mapping fasi-totali."}));
+            s.Subsections.Add(new ManualSubSection("Normalizzazione", new(){"Mappatura alias operatore.","Garantisce coerenza nomi."}));
+        });
+
+        // 8 RISOLUZIONE PROBLEMI
+        Add("RISOLUZIONE PROBLEMI", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Accesso", new(){"Impossibile login -> verificare credenziali e rete.","Menu ridotto -> controllare ruolo."}));
+            s.Subsections.Add(new ManualSubSection("Inserimento", new(){"Duplicato -> modificare record esistente.","Validazione fallita -> controllare campi obbligatori."}));
+            s.Subsections.Add(new ManualSubSection("Performance", new(){"Report lento -> ridurre intervallo date.","UI lenta -> chiudere tab superflue."}));
+        });
+
+        // 9 BEST PRACTICES
+        Add("BEST PRACTICES", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Inserimento", new(){"Registrare giornalmente.","Verificare dati prima del salvataggio.","Evitare accumulo arretrato."}));
+            s.Subsections.Add(new ManualSubSection("Report", new(){"Applicare filtri mirati.","Esportare periodicamente.","Condividere solo dati necessari."}));
+        });
+
+        // 10 WORKFLOW TIPICI
+        Add("WORKFLOW TIPICI", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Operatore", new(){"Login.","Carica Dati.","Verifica produzione.","Logout."}));
+            s.Subsections.Add(new ManualSubSection("Capoturno", new(){"Login.","Analisi produzione team.","Report turno.","Correzioni/validazioni.","Logout."}));
+            s.Subsections.Add(new ManualSubSection("Amministratore", new(){"Verifica stato job.","Gestione utenti/ruoli.","Aggiornamento configurazioni."}));
+        });
+
+        // 11 GLOSSARIO
+        Add("GLOSSARIO", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Termini", new(){"Centro: unità organizzativa.","Fase: step di lavorazione.","Lavorazione: tipologia processo.","Normalizzazione: standardizzazione nomi.","Totali: KPI aggregati.","Turno: finestra operativa."}));
+        });
+
+        // 12 SUPPORTO
+        Add("SUPPORTO", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Contatti", new(){"Email supporto: <inserire>","Telefono: <inserire>","Orari: <inserire>"}));
+            s.Subsections.Add(new ManualSubSection("Emergenza", new(){"Documentare problema.","Contattare supporto.","Non modificare configurazioni critiche."}));
+        });
+
+        // 13 VERSIONI
+        Add("VERSIONI", s =>
+        {
+            s.Subsections.Add(new ManualSubSection("Storico", new(){"v1.0 Manuale iniziale."}));
+            s.Subsections.Add(new ManualSubSection("Aggiornamenti Futuri", new(){"Controllare periodicamente la sezione manuali.","Aggiornamenti notificati via email."}));
+        });
+
+        // 14 LETTORE DATI (aggiornato con rawHtml true per diagrammi)
+        Add("LETTORE DATI", s =>
+        {
+            s.Paragraphs.Add("Servizio applicativo responsabile dell'acquisizione, normalizzazione ed inserimento dei dati di produzione (manuale o schedulato). Integra pipeline con Hangfire e servizi di normalizzazione.");
+            s.Subsections.Add(new ManualSubSection("Scopo", new(){
+                "Recuperare dati grezzi da query parametrizzate o logiche integrate.",
+                "Applicare normalizzazioni operatori e regole di business.",
+                "Persistenza su ProduzioneSistema evitando duplicati e preservando inserimenti manuali.",
+                "Tracciare esito operazioni tramite TaskDataReadingAggiornamento."}));
+            s.Subsections.Add(new ManualSubSection("Caratteristiche", new(){
+                "Supporto doppio flusso: manuale (utente) e servizio periodico (Hangfire).",
+                "Validazione sintattica e semantica query (nomi colonne, parametri date).",
+                "Normalizzazione nomi operatori (alias -> identità) prima del salvataggio.",
+                "Rimozione dati auto-generati preesistenti nel range selezionato mantenendo quelli manuali.",
+                "Gestione estensibile lavorazioni via attributi ProcessingLavorazioneAttribute e factory.",
+                "Logging strutturato + misurazione tempi (Stopwatch)."}));
+            s.Subsections.Add(new ManualSubSection("Flusso Principale", new(){
+                "1. Recupero configurazione Task (GetTaskAsync / BuildTaskDtoAsync).",
+                "2. Determinazione intervallo date (manuale o calcolato).",
+                "3. Costruzione Richiesta (GetRichiestaDatiLavorazione).",
+                "4. Lettura dati: LavorazioneIntegrata o LavorazioneDefault (query).",
+                "5. Normalizzazione + Elaborazione (ElaboraDatiLavorazioneAsync).",
+                "6. Pulizia record auto nel periodo e inserimento nuovi.",
+                "7. Salvataggio esito aggiornamento (TaskDataReadingAggiornamento).",
+                "8. Gestione errori centralizzata (GestisciEccezioneSetDatiProduzioneAsync)."}));
+            s.Subsections.Add(new ManualSubSection("Metodi Chiave", new(){
+                "GetTaskAsync: recupera e compone DTO del task (incl. job Hangfire).",
+                "GetRichiestaDatiLavorazione: prepara oggetto richiesta in base a tipo e configurazione.",
+                "ProcessLavorazioneDefaultAsync: esegue query parametrica e converte in lista dati.",
+                "GetInstanceLavorazioneIntegrataAsync: istanzia lavorazione custom derivata da BaseLavorazione.",
+                "FillDataOnTablesAsync: pulizia/inserimento dati su ProduzioneSistema + auditing.",
+                "SetDatiProduzioneAsync: orchestratore end-to-end.",
+                "HandleExceptionAsync / GestisciEccezioneSetDatiProduzioneAsync: mapping eccezioni + logging.",
+                "ValidateConnectionAndQueryAsync: validazione preventiva connessione e query."}));
+            s.Subsections.Add(new ManualSubSection("Schema Concettuale", new(){
+                "<div class='diagram-block'>+----------------------+          +-------------------------+\n|   TaskDaEseguire     |  ----->  |  LettoreDati            |\n| (config / query /    |          |  - GetTaskAsync         |\n|  flags)              |          |  - GetRichiesta...      |\n+----------+-----------+          |  - FillDataOnTablesAsync|\n           |                      +-----------+-------------+\n           |                                  |\n           v                                  v\n+----------------------+        +---------------------------+\n|  Lavorazione (base)  |        |  Normalizzatore / Mapper  |\n|  Integrata / Default |        +---------------------------+\n+----------+-----------+                                  |\n           |                                            (DTO)\n           v                                              |\n+----------------------+        +---------------------------+\n|  Dati Grezzi / Query | -----> |  ElaboratoreDati          |\n+----------+-----------+        +-----------+---------------+\n                                               | (dati elab.)\n                                               v\n                                   +--------------------------+\n                                   |   ProduzioneSistema      |\n                                   +--------------------------+\n</div>"}, true));
+            s.Subsections.Add(new ManualSubSection("Diagramma Attività", new(){
+                "<div class='diagram-block'>Start\n  |\n  v\n[GetTaskAsync]\n  | (OK)\n  v\n[GetRichiestaDatiLavorazione]\n  |-->[QueryIntegrata?]-- yes -->[Istanzia LavorazioneIntegrata]\n  |                                |\n  |                                v\n  |                             [SetDatiDematAsync]\n  |                                |\n  |-- no ------------------------>[ProcessLavorazioneDefaultAsync]\n  |                                |\n  v                                v\n[ElaboraDatiLavorazioneAsync]  (lista dati)\n  |\n  v\n[FillDataOnTablesAsync]\n  |-->(Esito OK)-->[TaskDataReadingAggiornamento OK]\n  |-->(Errore)---->[GestisciEccezioneSetDatiProduzioneAsync]\n  |                                 |\n  |                                 v\n  |                           [HandleExceptionAsync]\n  v\n End</div>"}, true));
+            s.Subsections.Add(new ManualSubSection("Note Operative", new(){
+                "Gli operatori visualizzano solo risultati normalizzati, non i dati grezzi.",
+                "I record inseriti manualmente non vengono sovrascritti dal servizio automatico.",
+                "Intervalli di lettura ampi aumentano il tempo di elaborazione: usare range mirati.",
+                "In caso di errori ripetuti controllare query e parametri CRON del task."}));
+        });
+
+        return list;
+    }
+
+    private string BuildHtmlFromSections(List<ManualSection> sections)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var s in sections)
+        {
+            sb.AppendLine($"<div class='manuale-sezione' id='{s.Id}'>");
+            sb.AppendLine($"<a class='anchor-offset' id='{s.Id}-anchor'></a>");
+            sb.AppendLine($"<div class='manuale-sezione-titolo'>{s.Number} {System.Web.HttpUtility.HtmlEncode(s.Title)}</div>");
+            foreach (var p in s.Paragraphs)
+                sb.AppendLine($"<div class='manuale-paragrafo'>{System.Web.HttpUtility.HtmlEncode(p)}</div>");
+            foreach (var sub in s.Subsections)
+            {
+                var subId = s.Id + "-" + Slug(sub.Title);
+                sb.AppendLine($"<div class='manuale-sottotitolo' id='{subId}'>{System.Web.HttpUtility.HtmlEncode(sub.Title)}</div>");
+                foreach (var line in sub.Lines)
+                {
+                    if (sub.RawHtml)
+                        sb.AppendLine(line);
+                    else
+                        sb.AppendLine($"<div class='manuale-paragrafo'>{System.Web.HttpUtility.HtmlEncode(line)}</div>");
+                }
+            }
+            sb.AppendLine("</div>");
+        }
+        sb.AppendLine("<div class='manuale-paragrafo' style='margin-top:35px;font-style:italic;'>Fine manuale operatore.</div>");
+        return sb.ToString();
+    }
+
+    private string Slug(string input) => Regex.Replace(input.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+
+    private void PerformSearch()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm)) { ClearSearch(); return; }
+        var pattern = Regex.Escape(searchTerm);
+        var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        searchResults = regex.Matches(System.Web.HttpUtility.HtmlDecode(manualHtmlOriginal)).Count;
+        displayedHtml = searchResults == 0 ? manualHtmlOriginal : regex.Replace(manualHtmlOriginal, m => $"<mark class='highlight-search'>{System.Web.HttpUtility.HtmlEncode(m.Value)}</mark>");
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    { searchTerm = string.Empty; searchResults = 0; displayedHtml = manualHtmlOriginal; StateHasChanged(); }
+
+    private async Task ScrollToSection(string id)
+    {
+        activeSectionId = id;
+        await JSRuntime.InvokeVoidAsync("scrollToManualSection", "manuale-operatore-content", id);
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    { if (e.Key == "Enter") PerformSearch(); }
+
+    private async Task ExportToPdf()
+    {
+        try
+        {
+            isExportingPdf = true; StateHasChanged();
+            var plain = Regex.Replace(manualHtmlOriginal, "<[^>]+>", string.Empty);
+            var fileName = $"Manuale_Operatore_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+            var pdfBytes = await PdfExportService.GeneratePdfFromTextAsync(plain, "MANUALE OPERATORE");
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(pdfBytes), "application/pdf");
+            await JSRuntime.InvokeVoidAsync("showNotification", "Manuale operatore esportato in PDF con successo!", "success");
+        }
+        catch (Exception ex)
+        { await JSRuntime.InvokeVoidAsync("showNotification", $"Errore durante l'esportazione PDF: {ex.Message}", "error"); }
+        finally { isExportingPdf = false; StateHasChanged(); }
+    }
+}
+
+<script>
+    window.scrollToManualSection = (containerId, sectionId) => {
+        const container = document.getElementById(containerId);
+        const element = document.getElementById(sectionId);
+        if (container && element) {
+            const top = element.offsetTop - 10;
+            container.scrollTo({ top: top, behavior: 'smooth' });
+            element.classList.add('section-selected');
+            setTimeout(()=> element.classList.remove('section-selected'), 2000);
+        }
+    };
+    window.downloadFile = (fileName, base64Data, contentType) => {
+        const linkSource = `data:${contentType};base64,${base64Data}`;
+        const a = document.createElement('a');
+        a.href = linkSource;
+        a.download = fileName;
+        a.click();
+    };
+    window.showNotification = (m,t) => { if(t==='success') console.log(''+m); else console.error(' '+m); };
+</script>
+
+
+
+

@@ -1,0 +1,247 @@
+﻿@page "/tipologie-totali"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageTipoTotali,TipologieTotaliDto,TipologieTotaliDto>
+
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Tipologia Totali Dedicati</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+        <MudItem xs="12" sm="12" md="12" lg="4" xl="4" >
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+
+                    <MudCardContent Class="pa-0">
+                        <MudText Typo="Typo.h6">Nuova Tipologia</MudText>
+                    </MudCardContent>
+
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+
+                            <MudTextField @bind-Value="Model!.TipoTotale" Label="Tipo Totale" Variant="Variant.Text" oninput="this.value=this.value.toUpperCase()"
+                                            Required=true
+                                          For="(() => Model!.TipoTotale)"
+                                        Clearable=true Class="mt-5">
+                            </MudTextField>
+
+
+                            <div class="justify-end mt-5 d-flex align-center ">
+                                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" Disabled="@(!IsFormValid)" StartIcon="@Icons.Material.Filled.Save">Salva</MudButton>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <p style="color:red;">@ErrorMessage</p>
+                            }
+
+                        </MudFocusTrap>
+                    </EditForm>
+
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="12" md="12" lg="8" xl="8">
+            <MudDataGrid T="TipologieTotaliDto" Items="@ListTipologieTotaliDto" ReadOnly="false" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+                         Dense=true Striped="true" Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" Hover=true Breakpoint="Breakpoint.Sm"
+                         StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow" Outlined=false Height="100%">
+                <ToolBarContent>
+                    <MudText Typo="Typo.h6">Tipologie di Totali</MudText>
+                </ToolBarContent>
+                <Columns>
+
+                    <PropertyColumn Property="x => x.IdTipoTotale" Title="ID" Editable=false Sortable="false" Filterable="false" HeaderStyle="width:50px" />
+                    <PropertyColumn Property="x => x.TipoTotale" Title="Tipo Totale" Editable=true Sortable="true" Filterable="true" HeaderStyle="width:400px">
+                    </PropertyColumn>
+                    <TemplateColumn CellClass="d-flex justify-end" HeaderStyle="width:50px">
+                        <CellTemplate>
+                            <MudStack Row>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                                <MudDivider Vertical="true" FlexItem="true" />
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.IdTipoTotale, @context.Item.TipoTotale!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                </MudTooltip>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="TipologieTotaliDto" />
+                </PagerContent>
+
+            </MudDataGrid>
+        </MudItem>
+
+    </MudGrid>
+
+</MudContainer>
+
+
+
+@code {
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+           {
+               UiState?.SetMenuDisabled(true);
+               SetEditContext();
+               ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+
+               ErrorMessage = "";
+               Layout!.ResetFooter();
+
+
+           }, "Caricamento dati...");
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Model!.TipoTotale))
+            {
+                Model!.TipoTotale = Model.TipoTotale.ToUpper();
+
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Inserimento in corso...");
+
+                await ServiceWrapper!.ServiceTipologieTotali.AddTipologieTotaliAsync(Model);
+                ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+
+                Snackbar!.Clear();
+                Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomCenter;
+                Snackbar.Add("Nuova Tipologia inserita", Severity.Success);
+
+                Model.TipoTotale = "";
+                base.ErrorMessage = "";
+
+                IsFormValid = false;
+
+            }
+        }
+        catch (DbUpdateException ex)
+            when ((ex.InnerException as SqlException)?.Number == 2627)
+        {
+            IsFormValid = false;
+            Model!.TipoTotale = "";
+             UiState?.SetMenuDisabled(false);
+            UiState?.HideOverlay();
+            Logger!.LogError(ex.Message.ToString());
+            await NotificationDialog!.ShowNotification("Record duplicato", "OK", Color.Error, "Error");
+        }
+        catch (Exception ex)
+        {
+            IsFormValid = false;
+            Model!.TipoTotale = "";
+             UiState?.SetMenuDisabled(false);
+            UiState?.HideOverlay();
+            Logger!.LogError(ex.Message.ToString());
+            await NotificationDialog!.ShowNotification("Error on submit", "OK", Color.Error, "Error");
+        }
+
+    }
+
+    protected async Task OnUpdateRow(TipologieTotaliDto item)
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(item.TipoTotale))
+            {
+                await ServiceWrapper!.ServiceTipologieTotali.UpdateTipologieTotaliAsync(item);
+                ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+
+                Snackbar!.Clear();
+                Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomCenter;
+                Snackbar.Add("Update eseguito", Severity.Success);
+                
+            }
+            else
+            {
+                await NotificationDialog!.ShowNotification("Il campo TipoTotale non può essere vuoto", "OK", Color.Error, "Error");
+                item.TipoTotale = ValueBeforeEdit!.TipoTotale;
+            }
+        }
+        catch (DbUpdateException ex)
+        when ((ex.InnerException as SqlException)?.Number == 2627)
+        {
+            IsFormValid = false;
+            Logger!.LogError(ex.Message.ToString());
+            ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+            await NotificationDialog!.ShowNotification("Tipologia duplicata", "OK", Color.Error, "Error");
+        }
+        catch (Exception ex)
+        {
+            IsFormValid = false;
+            Logger!.LogError(ex.Message.ToString());
+            ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+            await NotificationDialog!.ShowNotification("Error on Update", "OK", Color.Error, "Error");
+        }
+    }
+
+
+    protected async Task DeleteRecordAsync(int IdTipoTotale, string tipo)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Eliminare : " + tipo + " ?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+        
+        var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled)
+        {
+            try
+            {
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
+
+                await ServiceWrapper!.ServiceTipologieTotali.DeleteTipologieTotaliAsync(IdTipoTotale);
+                ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+
+                UiState?.HideOverlay();
+                 UiState?.SetMenuDisabled(false);
+                base.ErrorMessage = "";
+
+                Snackbar!.Clear();
+                Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomCenter;
+                Snackbar.Add("Tipologia eliminata", Severity.Success);
+
+            }
+            catch (DbUpdateException ex)
+                when ((ex.InnerException as SqlException)?.Number == 547)
+            {
+                UiState?.HideOverlay();
+                 UiState?.SetMenuDisabled(false);
+                Logger!.LogError(ex.Message.ToString());
+                await NotificationDialog!.ShowNotification("The DELETE statement conflicted with the REFERENCE constraint", "OK", Color.Error, "Error");
+            }
+            catch (Exception ex)
+            {
+                UiState?.HideOverlay();
+                 UiState?.SetMenuDisabled(false);
+                Logger!.LogError(ex.Message.ToString());
+                await NotificationDialog!.ShowNotification("Error on Delete", "OK", Color.Error, "Error");
+            }
+        }
+    }
+
+
+
+}

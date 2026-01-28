@@ -1,0 +1,372 @@
+@using DataReading.Dto
+@using BlazorDematReports.Dto
+@using Entities.Models.DbApplication
+@using BlazorDematReports.Interfaces.IDataService
+@inject IServiceWrapper ServiceWrapper
+@inject IDialogService DialogService
+@inject ILogger<ProcedurePhasesViewer> Logger
+
+<div class="pa-4">
+    
+@* Header *@
+    <div class="d-flex justify-space-between align-center mb-4">
+        <div>
+            <MudText Typo="Typo.h6">Fasi di Lavorazione</MudText>
+            <MudText Typo="Typo.body2" Class="text-muted">
+                Gestisci le fasi e i relativi task della procedura
+            </MudText>
+        </div>
+        <MudChip T="string" 
+                 Size="Size.Medium" 
+                 Color="@(Model?.LavorazioniFasiDataReadingsDto?.Any() == true ? Color.Success : Color.Default)"
+                 Icon="@Icons.Material.Filled.Timeline">
+            @(Model?.LavorazioniFasiDataReadingsDto?.Where(f => f.IdFaseLavorazione != 0).Count() ?? 0) fasi
+        </MudChip>
+    </div>
+    
+    @* Info Alert *@
+    <MudAlert Severity="Severity.Info" Class="mb-4" ShowCloseIcon="false">
+        <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+        <strong>Nota:</strong> Le fasi rappresentano gli step della procedura di lavorazione. 
+        Ogni fase può avere task configurati per l'elaborazione automatica dei dati.
+    </MudAlert>
+    
+    @* Add Phase Section *@
+    <MudExpansionPanels Class="mb-4" Elevation="0">
+        <MudExpansionPanel Text="Aggiungi Nuova Fase"
+                          Icon="@Icons.Material.Filled.Add"
+                          IsInitiallyExpanded="false">
+            
+            <MudGrid Spacing="3" Class="pa-2">
+                <MudItem xs="12" sm="12" md="8" lg="6" xl="6" Class="d-flex align-center flex-row">
+                    <MudSelect T="int?" 
+                               Label="Seleziona Fase" 
+                               @bind-Value="_selectedPhaseId"
+                               Required="true"
+                               Variant="Variant.Text"
+                               HelperText="Seleziona una fase da aggiungere alla procedura"
+                               Clearable=true>
+                        <MudSelectItem T="int?" Value="@((int?)null)">
+                            -- Seleziona Fase --
+                        </MudSelectItem>
+                        @if (_availablePhases != null)
+                        {
+                            @foreach (var fase in _availablePhases.Where(f => !_assignedPhaseIds.Contains(f.IdFaseLavorazione)))
+                            {
+                                <MudSelectItem T="int?" Value="@fase.IdFaseLavorazione">
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Timeline" 
+                                                 Color="Color.Primary" 
+                                                 Class="mr-2" 
+                                                 Size="Size.Small" />
+                                        <MudText>@fase.FaseLavorazione</MudText>
+                                    </div>
+                                </MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                </MudItem>
+                
+                <MudItem xs="12" sm="12" md="4" lg="6" xl="6" Class="d-flex align-center justify-content-xs-center justify-content-sm-end justify-content-md-end justify-content-lg-start justify-content-xl-start ">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@AddPhaseAsync"
+                               Disabled="@(_selectedPhaseId == null)"
+                               FullWidth="false">
+                        Aggiungi
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+            
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+    
+    @* Messages *@
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <MudAlert Severity="@_messageSeverity" 
+                  ShowCloseIcon="true" 
+                  CloseIconClicked="@ClearMessage"
+                  Class="mb-4">
+            @_message
+        </MudAlert>
+    }
+    
+    @* Fasi List - GRID LAYOUT *@
+    <MudText Typo="Typo.h6" Class="mb-3">Fasi Configurate</MudText>
+    
+    @if (Model?.LavorazioniFasiDataReadingsDto?.Any(f => f.IdFaseLavorazione != 0) == true)
+    {
+        <MudGrid Spacing="2">
+            @foreach (var fase in Model.LavorazioniFasiDataReadingsDto.Where(f => f.IdFaseLavorazione != 0).OrderBy(f => f.FaseLavorazione))
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="1" Style="height:100%;">
+                        <MudCardContent Class="d-flex flex-column" Style="height:100%;">
+                            <div class="d-flex align-center gap-2 mb-2">
+                                <MudIcon Icon="@GetPhaseIcon(fase)" 
+                                         Color="@(fase.FlagDataReading ? Color.Success : Color.Default)" 
+                                         Size="Size.Small" />
+                                <MudText Typo="Typo.subtitle1">@fase.FaseLavorazione</MudText>
+                            </div>
+                            <MudDivider Class="my-2" />
+                            <div class="d-flex flex-column gap-1" Style="flex:1;">
+                                <div class="d-flex align-center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Small" Class="mr-1" />
+                                    <MudText Typo="Typo.caption">@(fase.TaskDaEseguireDto?.Count ?? 0) task</MudText>
+                                </div>
+                                <div class="d-flex align-center">
+                                    <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Small" Class="mr-1" />
+                                    <MudText Typo="Typo.caption">Grafico: @(fase.FlagGraficoDocumenti ? "Sì" : "No")</MudText>
+                                </div>
+                                <div class="d-flex align-center">
+                                    <MudIcon Icon="@Icons.Material.Filled.DataObject" Size="Size.Small" Class="mr-1" />
+                                    <MudText Typo="Typo.caption">Data Reading: @(fase.FlagDataReading ? "Attivo" : "Inattivo")</MudText>
+                                </div>
+                            </div>
+                        </MudCardContent>
+
+                        <MudCardActions Class="d-flex flex-column gap-1 px-3 pb-3">
+                            <MudButton Variant="Variant.Text" 
+                                       StartIcon="@Icons.Material.Filled.Delete" 
+                                       Size="Size.Small"
+                                       Color="Color.Error" 
+                                       OnClick="@(() => RemovePhaseAsync(fase))" 
+                                       FullWidth="true"
+                                       Disabled="@(fase.TaskDaEseguireDto?.Any() == true)">
+                                Rimuovi Fase
+                            </MudButton>
+                            @if (fase.TaskDaEseguireDto?.Any() == true)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Error" Style="text-align:center; font-size:0.7rem;">
+                                    Rimuovi prima tutti i task
+                                </MudText>
+                            }
+                        </MudCardActions>
+
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.Warning">
+            <strong>Nessuna fase configurata</strong><br />
+            Usa il pannello sopra per aggiungere fasi a questa procedura di lavorazione.
+        </MudAlert>
+    }
+    
+</div>
+
+@code {
+    [Parameter] public ProcedureLavorazioniDto Model { get; set; } = null!;
+    [Parameter] public EventCallback<ProcedureLavorazioniDto> ModelChanged { get; set; }
+    [Parameter] public EventCallback OnModelChanged { get; set; }
+    
+    private List<FasiLavorazione>? _availablePhases;
+    private HashSet<int> _assignedPhaseIds = new();
+    private int? _selectedPhaseId;
+    private string? _message;
+    private Severity _messageSeverity = Severity.Info;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAvailablePhasesAsync();
+        UpdateAssignedPhaseIds();
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        UpdateAssignedPhaseIds();
+    }
+    
+    private async Task LoadAvailablePhasesAsync()
+    {
+        try
+        {
+            _availablePhases = await ServiceWrapper.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error loading available phases");
+            SetErrorMessage("Errore nel caricamento delle fasi disponibili");
+        }
+    }
+    
+    private void UpdateAssignedPhaseIds()
+    {
+        _assignedPhaseIds = Model?.LavorazioniFasiDataReadingsDto?
+            .Where(f => f.IdFaseLavorazione != 0)
+            .Select(f => f.IdFaseLavorazione)
+            .ToHashSet() ?? new HashSet<int>();
+    }
+    
+    private async Task AddPhaseAsync()
+    {
+        try
+        {
+            if (_selectedPhaseId == null || _selectedPhaseId == 0)
+            {
+                SetErrorMessage("Seleziona una fase valida");
+                return;
+            }
+            
+            var selectedPhase = _availablePhases?.FirstOrDefault(f => f.IdFaseLavorazione == _selectedPhaseId.Value);
+            if (selectedPhase == null)
+            {
+                SetErrorMessage("Fase non trovata");
+                return;
+            }
+            
+            // Verifica se la fase è già presente
+            if (_assignedPhaseIds.Contains(_selectedPhaseId.Value))
+            {
+                SetErrorMessage($"La fase '{selectedPhase.FaseLavorazione}' è già presente");
+                return;
+            }
+            
+            // Crea il nuovo DTO fase
+            var newPhase = new LavorazioniFasiDataReadingDto
+            {
+                IdFaseLavorazione = selectedPhase.IdFaseLavorazione,
+                FaseLavorazione = selectedPhase.FaseLavorazione,
+                IdProceduraLavorazione = Model.IdproceduraLavorazione ?? 0,
+                FlagDataReading = false,
+                FlagGraficoDocumenti = false,
+                TaskDaEseguireDto = new List<TaskDaEseguireDto>()
+            };
+            
+            // Aggiungi alla lista
+            if (Model.LavorazioniFasiDataReadingsDto == null)
+            {
+                Model.LavorazioniFasiDataReadingsDto = new List<LavorazioniFasiDataReadingDto>();
+            }
+            
+            Model.LavorazioniFasiDataReadingsDto.Add(newPhase);
+            
+            // Aggiorna gli ID assegnati
+            UpdateAssignedPhaseIds();
+            
+            // Reset selezione
+            _selectedPhaseId = null;
+            
+            SetSuccessMessage($"Fase '{selectedPhase.FaseLavorazione}' aggiunta con successo");
+            
+            // Forza re-render del componente corrente
+            StateHasChanged();
+            
+            // Notifica il componente padre
+            await OnModelChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error adding phase");
+            SetErrorMessage($"Errore durante l'aggiunta della fase: {ex.Message}");
+        }
+    }
+    
+    private async Task RemovePhaseAsync(LavorazioniFasiDataReadingDto fase)
+    {
+        try
+        {
+            // Verifica se ci sono task associati
+            if (fase.TaskDaEseguireDto?.Any() == true)
+            {
+                SetErrorMessage($"Impossibile rimuovere la fase '{fase.FaseLavorazione}': rimuovi prima tutti i task associati");
+                return;
+            }
+            
+            // Mostra dialog di conferma
+            var parameters = new DialogParameters
+            {
+                ["ContentText"] = $"Sei sicuro di voler rimuovere la fase '{fase.FaseLavorazione}'?",
+                ["ButtonText"] = "Rimuovi",
+                ["Color"] = Color.Error
+            };
+            
+            var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small };
+            var dialog = await DialogService.ShowAsync<Dialog>("Conferma Rimozione", parameters, options);
+            var result = await dialog.Result;
+            
+            if (!result.Canceled)
+            {
+                // Rimuovi la fase
+                Model.LavorazioniFasiDataReadingsDto?.Remove(fase);
+                
+                // Aggiorna gli ID assegnati
+                UpdateAssignedPhaseIds();
+                
+                SetSuccessMessage($"Fase '{fase.FaseLavorazione}' rimossa con successo");
+                
+                // Forza re-render del componente corrente
+                StateHasChanged();
+                
+                // Notifica il componente padre
+                await OnModelChanged.InvokeAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error removing phase");
+            SetErrorMessage($"Errore durante la rimozione della fase: {ex.Message}");
+        }
+    }
+    
+    private string GetPhaseIcon(LavorazioniFasiDataReadingDto fase)
+    {
+        return fase.FlagDataReading ? Icons.Material.Filled.DataObject : Icons.Material.Filled.Timeline;
+    }
+    
+    private string GetTaskTypeName(int taskType)
+    {
+        return taskType switch
+        {
+            1 => "Giornaliero",
+            2 => "Temporizzato",
+            3 => "Mensile",
+            _ => "Sconosciuto"
+        };
+    }
+    
+    private Color GetTaskTypeColor(int taskType)
+    {
+        return taskType switch
+        {
+            1 => Color.Primary,
+            2 => Color.Secondary,
+            3 => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+    
+    private Color GetStatusColor(string? stato)
+    {
+        return stato?.ToUpper() switch
+        {
+            "STARTED" or "RUNNING" => Color.Success,
+            "CONFIGURED" => Color.Info,
+            "STOPPED" or "ERROR" => Color.Error,
+            "PAUSED" => Color.Warning,
+            _ => Color.Default
+        };
+    }
+    
+    private void SetErrorMessage(string msg)
+    {
+        _message = msg;
+        _messageSeverity = Severity.Error;
+    }
+    
+    private void SetSuccessMessage(string msg)
+    {
+        _message = msg;
+        _messageSeverity = Severity.Success;
+    }
+    
+    private void ClearMessage()
+    {
+        _message = null;
+    }
+}

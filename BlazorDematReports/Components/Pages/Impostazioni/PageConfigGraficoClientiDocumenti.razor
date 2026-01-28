@@ -1,0 +1,235 @@
+﻿@page "/config-grafico-documenti"
+@attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@inherits BaseComponentPage<PageConfigGraficoClientiDocumenti,ReportAnnualeDto,ProcedureLavorazioniDto>
+
+<MudText Typo="Typo.h4" Class="titolo ml-4" >Configurazione Grafico Clienti-Documenti</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
+
+<MudContainer  MaxWidth="MaxWidth.False" >
+    <MudGrid Class="mt-2 ">
+
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+            <MudCard Style="height: 100%">
+                <MudCardContent>
+                    <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
+                        <PageGestioneOperatoriValidationProvider />
+                        <div>
+                            <div class="d-inline-flex pa-2">
+                                <MudSelect T=int? @bind-Value="Model!.IdCentro" Label="Select Centro" Style="width:200px"
+                                        Required=true
+                                        For="(() => Model!.IdCentro)"
+                                        Clearable=true>
+
+                                    @if (ListCentri != null)
+                                    {
+                                        @foreach (CentriLavorazione item in ListCentri)
+                                        {
+                                            <MudSelectItem T=int? Value="@item.Idcentro">@item.Centro</MudSelectItem>
+                                        }
+                                    }
+
+                                </MudSelect>
+                            </div>
+
+                            <div class="d-inline-flex pa-2 "><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="focus-visible-button"  StartIcon="@Icons.Material.Filled.TableView" Disabled="@(!IsFormValid)">Report</MudButton></div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                        {
+                            <p style="color:red;">@ErrorMessage</p>
+                        }
+
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+
+        @*table*@
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+            <MudDataGrid T="ProcedureLavorazioniDto" Items="@ListProcedureLavorazioniDto" ReadOnly="false" Filterable="true" FilterMode="@FilterMode" FilterCaseSensitivity="@CaseSensitivity"
+            Bordered=true EditMode="DataGridEditMode.Form" EditTrigger="DataGridEditTrigger.Manual" EditDialogOptions="@maxWidth" 
+            Height="100%" Hover="true" FixedHeader=true Outlined=true Breakpoint=Breakpoint.Sm Dense=true
+            StartedEditingItem="@StartedEditingItem" CanceledEditingItem="@CanceledEditingItem" CommittedItemChanges="@OnUpdateRow">
+                <Columns>
+
+                    <PropertyColumn Property="x => x.IdproceduraLavorazione" Title="ID" Editable=false Sortable="false" Filterable="false" >
+                        <EditTemplate>
+                        </EditTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.NomeProcedura" Title="Lavorazione" Editable=false Sortable="true" Filterable="true">
+                        <EditTemplate>
+                        </EditTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Fasi in grafico" >
+                        <CellTemplate>
+                            <MudStack Row>
+                                @if (context.Item.LavorazioniFasiDataReadingsDto != null){
+                                    @foreach (var el in context.Item.LavorazioniFasiDataReadingsDto){
+                                        @if (@el.FlagGraficoDocumenti == true){
+
+                                            @if (string.Equals(@el.FaseLavorazione, "scansione", StringComparison.OrdinalIgnoreCase)) 
+                                            {
+                                                <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@el.FaseLavorazione</MudChip>
+                                            }
+                                            else if (string.Equals(@el.FaseLavorazione, "data_entry", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <MudChip T="string" Color="Color.Info" Size="Size.Small">@el.FaseLavorazione</MudChip>
+                                            }
+                                            else{
+                                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">@el.FaseLavorazione</MudChip> 
+                                            }
+                                        }
+                                    }
+                                }
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.Centro" Title="Centro" Editable=false Sortable="false" Filterable="false">
+                        <EditTemplate>
+                            @if (context.Item.LavorazioniFasiDataReadingsDto!.Count > 1)
+                            {
+                                <MudCheckBox @bind-value="@context.Item.FlagAbilitaMultiFaseGrafico" Class="mr-5">Abilita MultiFase in Grafico</MudCheckBox>
+                            }
+                            <MudSimpleTable Hover="true" Outlined=true Dense="true" Bordered="true" Striped="true" FixedHeader=true Style="height:300px;" Class="d-flex mud-width-full">
+                                <caption style="padding: 10px;caption-side: top; text-align: left;">
+                                    <MudText Typo="Typo.subtitle2">(*)Normalmente si considera una sola fase di lavorazione, altrimenti nel caso in cui siano presenti più fasi selezionare Abilita MultiFase </MudText>
+                                </caption>
+                                <thead>
+                                    <tr>
+                                        <th>(*)Fase</th>
+                                        <th>Grafico</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (context.Item.LavorazioniFasiDataReadingsDto != null)
+                                    {
+                                        @foreach (var row in context.Item.LavorazioniFasiDataReadingsDto)
+                                        {
+                                            <tr>
+                                                <td>@row.FaseLavorazione</td>
+                                                <td><MudCheckBox Color="Color.Primary" ValueChanged="@((bool e) => OnCheckedChanged(e, context.Item, row))" Value="@row.FlagGraficoDocumenti"></MudCheckBox></td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+
+                            </MudSimpleTable>
+
+                        </EditTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn  Filterable="false">
+                        <CellTemplate>
+                            <div class="d-flex justify-content-between ">
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Size="@Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="@context.Actions.StartEditingItemAsync" />
+                                </MudTooltip>
+                            </div>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="ProcedureLavorazioniDto" />
+                </PagerContent>
+
+            </MudDataGrid>
+        </MudItem>
+
+    </MudGrid>
+
+
+</MudContainer>
+
+
+@code {
+
+    DialogOptions maxWidth = new DialogOptions() { MaxWidth = MaxWidth.Large };
+    bool FlagAbilitaMultiFaseGrafico { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RunWithOverlay(async () =>
+       {
+           SetEditContext();
+           ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+
+       }, "Caricamento dati...");
+    }
+
+
+    protected async Task HandleValidSubmitAsync()
+    {
+        try
+        {
+            if (Model!.IdCentro != null)
+            {
+                UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Recupero dati in corso...");
+
+                ListProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetProcedureLavorazioniDtoByCentroAsync((int)Model!.IdCentro);
+
+                UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+
+            }
+        }
+        catch (Exception ex)
+        {
+            UiState?.HideOverlay();
+            UiState?.SetMenuDisabled(false);
+            Logger!.LogError(ex.Message.ToString());
+            await NotificationDialog!.ShowNotification(ex.Message.ToString(), "OK", Color.Error, "Error");
+        }
+    }
+
+
+    protected async Task OnUpdateRow(ProcedureLavorazioniDto item)
+    {
+        try
+        {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Update in corso...");
+
+            await ServiceWrapper!.ServiceProcedureLavorazioni.UpdateProceduraLavorazioneAndFasiDataReadingASync(item);
+            ListProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetProcedureLavorazioniDtoByCentroAsync((int)item.Idcentro!);
+
+            UiState?.SetMenuDisabled(false);
+            UiState?.HideOverlay();
+            UiState?.ShowSnackbar("Update eseguito", Severity.Success);
+
+        }
+        catch (Exception ex)
+        {
+            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ResetFormModel();
+            await HandleExceptionFormAsync(ex);
+        }
+    }
+
+    void OnCheckedChanged(bool arg, ProcedureLavorazioniDto ProcedureLavorazioniDto, LavorazioniFasiDataReadingDto row)
+    {
+        //se più di una fase ammessa in grafico documenti
+        if (ProcedureLavorazioniDto.FlagAbilitaMultiFaseGrafico == true)
+        {
+            row.FlagGraficoDocumenti = arg;
+        }
+        else
+        {
+            //una sola fase ammessa in grafico documenti
+            foreach (var item in ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto!)
+            {
+                item.FlagGraficoDocumenti = false;
+            }
+
+            row.FlagGraficoDocumenti = arg;
+        }
+
+
+    }
+
+
+
+
+
+}

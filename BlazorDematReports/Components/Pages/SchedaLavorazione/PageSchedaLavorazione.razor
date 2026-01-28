@@ -1,0 +1,588 @@
+﻿@page "/scheda-lavorazione"
+@page "/scheda-lavorazione/{IdproceduraLavorazione:int}"
+@using DataReading.Dto
+@using BlazorDematReports.Dto
+@using BlazorDematReports.Components.Shared
+@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
+@inherits BaseComponentPage<PageSchedaLavorazione,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
+@inject NavigationManager NavManager
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<MudText Typo="Typo.h4" Class="titolo ml-4">Scheda Lavorazione</MudText>
+
+<MudDivider Class="border-solid border-1 mud-border-primary"></MudDivider>
+
+@if (_initializing)
+{
+    <div class="d-flex justify-center align-center pa-8">
+        <MudProgressCircular Size="Size.Large" Indeterminate="true" Color="Color.Primary" />
+    </div>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="pa-0">
+        @* Card per selezione lavorazione *@
+        <MudCard Outlined="true" Elevation="2" Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Class="mr-2" />
+                    Seleziona Lavorazione
+                </MudText>
+                
+                <MudAutocomplete T="string"
+                                 Label="Lavorazione"
+                                 SearchFunc="@((string arg, CancellationToken ct) => SearchFromSelect(base.SelectLavorazione, arg))"
+                                 MaxItems="null"
+                                 Clearable="true"
+                                 ResetValueOnEmptyText="true"
+                                 SelectOnActivation="true"
+                                 Required="true"
+                                 Value="@_selectedLavorazione"
+                                 ValueChanged="@OnValueChangedLavorazioneAsync"
+                                 Variant="Variant.Outlined"
+                                 Adornment="Adornment.Start"
+                                 AdornmentIcon="@Icons.Material.Filled.Assignment"
+                                 HelperText="Cerca e seleziona una lavorazione per visualizzare il riepilogo completo"/>
+            </MudCardContent>
+        </MudCard>
+
+        @if (_currentModel != null && !string.IsNullOrEmpty(_selectedLavorazione))
+        {
+            @* Logo *@
+            <ProcedureHeaderCard LogoBase64="@_currentModel.LogoBase64" />
+            
+            @* Informazioni Procedura *@
+            <ProcedureInfoGrid Model="@_currentModel"/>
+            
+            @* KPI Cards *@
+            <ProcedureKpiCards Model="@_currentModel" />
+        }
+        else if (string.IsNullOrEmpty(_selectedLavorazione))
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                Seleziona una lavorazione dal menu a tendina per visualizzare il riepilogo completo
+            </MudAlert>
+        }
+    </MudContainer>
+
+    @* Container per gli Expansion Panels *@
+    @if (!_isLoading && _currentModel != null)
+    {
+        <MudContainer MaxWidth="MaxWidth.Large" Class="pa-0">
+
+            @* CONTENUTO: Expansion Panels *@
+            <MudExpansionPanels Elevation="3" Class="mb-4">
+                
+                @* Fasi di Lavorazione Expansion Panel *@
+                <MudExpansionPanel Text="Fasi di Lavorazione" 
+                                  Icon="@Icons.Material.Filled.Timeline" 
+                                  IsInitiallyExpanded="true">
+                    <ChildContent>
+                        @if (_currentModel.LavorazioniFasiDataReadingsDto?.Any(f => f.IdFaseLavorazione != 0) == true)
+                        {
+                            <MudGrid Spacing="2" Class="pa-2">
+                                @foreach (var fase in _currentModel.LavorazioniFasiDataReadingsDto.Where(f => f.IdFaseLavorazione != 0).OrderBy(f => f.FaseLavorazione))
+                                {
+                                    <MudItem xs="12" sm="6" md="4" lg="3">
+                                        <MudCard Elevation="1" Style="height:100%;">
+                                            <MudCardContent Class="d-flex flex-column" Style="height:100%;">
+                                                <div class="d-flex align-center gap-2 mb-2">
+                                                    <MudIcon Icon="@GetPhaseIcon(fase)" 
+                                                             Color="@(fase.FlagDataReading ? Color.Success : Color.Default)" 
+                                                             Size="Size.Small" />
+                                                    <MudText Typo="Typo.subtitle1">@fase.FaseLavorazione</MudText>
+                                                </div>
+                                                <MudDivider Class="my-2" />
+                                                <div class="d-flex flex-column gap-1" Style="flex:1;">
+                                                    <div class="d-flex align-center">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Small" Class="mr-1" />
+                                                        <MudText Typo="Typo.caption">@(fase.TaskDaEseguireDto?.Count ?? 0) task</MudText>
+                                                    </div>
+                                                    <div class="d-flex align-center">
+                                                        <MudIcon Icon="@Icons.Material.Filled.BarChart" 
+                                                                 Size="Size.Small" 
+                                                                 Class="mr-1" 
+                                                                 Color="@(fase.FlagGraficoDocumenti ? Color.Success : Color.Default)" />
+                                                        <MudText Typo="Typo.caption" 
+                                                                 Color="@(fase.FlagGraficoDocumenti ? Color.Success : Color.Default)">
+                                                            Grafico: @(fase.FlagGraficoDocumenti ? "Sì" : "No")
+                                                        </MudText>
+                                                    </div>
+                                                    <div class="d-flex align-center">
+                                                        <MudIcon Icon="@Icons.Material.Filled.DataObject" 
+                                                                 Size="Size.Small" 
+                                                                 Class="mr-1" 
+                                                                 Color="@(fase.FlagDataReading ? Color.Success : Color.Default)" />
+                                                        <MudText Typo="Typo.caption" 
+                                                                 Color="@(fase.FlagDataReading ? Color.Success : Color.Default)">
+                                                            Data Reading: @(fase.FlagDataReading ? "Attivo" : "Inattivo")
+                                                        </MudText>
+                                                    </div>
+                                                </div>
+                                            </MudCardContent>
+                                        </MudCard>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Class="ma-2">Nessuna fase configurata</MudAlert>
+                        }
+                    </ChildContent>
+                </MudExpansionPanel>
+                
+                @* Task Configurati Expansion Panel *@
+                <MudExpansionPanel Text="Task Configurati" 
+                                  Icon="@Icons.Material.Filled.Task" 
+                                  IsInitiallyExpanded="false">
+                    <ChildContent>
+                        @{
+                            var allTasks = _currentModel.LavorazioniFasiDataReadingsDto?
+                                .Where(f => f.TaskDaEseguireDto?.Any() == true)
+                                .SelectMany(f => f.TaskDaEseguireDto.Select(t => new { Fase = f, Task = t }))
+                                .ToList();
+                        }
+                        @if (allTasks?.Any() == true)
+                        {
+                            <MudGrid Spacing="2" Class="pa-2">
+                                @foreach (var item in allTasks)
+                                {
+                                    <MudItem xs="12" sm="6" md="4" lg="3">
+                                        <MudCard Elevation="1" Style="height:100%;">
+                                            <MudCardHeader>
+                                                <CardHeaderContent>
+                                                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">@item.Fase.FaseLavorazione</MudText>
+                                                    <MudText Typo="Typo.h6">@item.Task.TaskName</MudText>
+                                                </CardHeaderContent>
+                                                <CardHeaderActions>
+                                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(item.Task.Stato)">
+                                                        @(item.Task.Stato ?? "CONFIGURED")
+                                                    </MudChip>
+                                                </CardHeaderActions>
+                                            </MudCardHeader>
+                                            <MudCardContent>
+                                                <MudText Typo="Typo.body2" Class="mb-2">@item.Task.Descrizione</MudText>
+                                                <MudDivider Class="my-2" />
+                                                <div class="d-flex flex-column gap-1">
+                                                    @if (item.Task.IdConfigurazioneDatabase.HasValue)
+                                                    {
+                                                        <div class="d-flex align-center">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Class="mr-1" Color="Color.Primary" />
+                                                            <MudText Typo="Typo.caption">Configurazione: ID @item.Task.IdConfigurazioneDatabase</MudText>
+                                                        </div>
+                                                    }
+                                                    @if (item.Task.TimeTask.HasValue)
+                                                    {
+                                                        <div class="d-flex align-center">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
+                                                            <MudText Typo="Typo.caption">Orario: @item.Task.TimeTask.Value.ToString(@"hh\:mm")</MudText>
+                                                        </div>
+                                                    }
+                                                    <div class="d-flex align-center">
+                                                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" />
+                                                        <MudText Typo="Typo.caption">Giorni precedenti: @item.Task.GiorniPrecedenti</MudText>
+                                                    </div>
+                                                </div>
+                                            </MudCardContent>
+                                        </MudCard>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Class="ma-2">Nessun task configurato</MudAlert>
+                        }
+                    </ChildContent>
+                </MudExpansionPanel>
+                
+                @* Query Personalizzate Expansion Panel *@
+                <MudExpansionPanel Text="Query Personalizzate" 
+                                  Icon="@Icons.Material.Filled.Search" 
+                                  IsInitiallyExpanded="false">
+                    <ChildContent>
+                        @if (_currentModel.QueryProcedureLavorazioniDto?.Any() == true)
+                        {
+                            <MudGrid Spacing="2" Class="pa-2">
+                                @foreach (var query in _currentModel.QueryProcedureLavorazioniDto)
+                                {
+                                    <MudItem xs="12" sm="6" md="4" lg="3">
+                                        <MudCard Elevation="1" Style="height:100%;">
+                                            <MudCardHeader>
+                                                <CardHeaderContent>
+                                                    <MudText Typo="Typo.h6">@query.Titolo</MudText>
+                                                </CardHeaderContent>
+                                            </MudCardHeader>
+                                            <MudCardContent>
+                                                <div class="d-flex flex-column gap-2">
+                                                    @if (!string.IsNullOrEmpty(query.Note))
+                                                    {
+                                                        <div class="d-flex align-start">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Notes" Size="Size.Small" Class="mr-2" />
+                                                            <div>
+                                                                <MudText Typo="Typo.caption" Class="text-muted">Note</MudText>
+                                                                <MudText Typo="Typo.body2">@query.Note</MudText>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    
+                                                    @if (!string.IsNullOrEmpty(query.Descrizione))
+                                                    {
+                                                        <div>
+                                                            <div class="d-flex align-center justify-space-between mb-1">
+                                                                <div class="d-flex align-center">
+                                                                    <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                                                                    <MudText Typo="Typo.caption" Class="text-muted">Query SQL (Archivio)</MudText>
+                                                                </div>
+                                                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                                                              Size="Size.Small" 
+                                                                              Color="Color.Primary"
+                                                                              Title="Copia query nella clipboard"
+                                                                              OnClick="@(async () => await CopyToClipboardAsync(query.Descrizione))" />
+                                                            </div>
+                                                            <MudExpansionPanels Dense="true" Elevation="0" Class="mt-1">
+                                                                <MudExpansionPanel Text="Visualizza Query" Dense="true">
+                                                                    <MudPaper Class="pa-4" Style="background-color: #f5f5f5; overflow-x: auto; max-height: 500px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;">
+                                                                        <code style="font-size: 0.875rem; white-space: pre-wrap; word-break: break-word; line-height: 1.6; font-family: 'Courier New', monospace;">@query.Descrizione</code>
+                                                                    </MudPaper>
+                                                                </MudExpansionPanel>
+                                                            </MudExpansionPanels>
+                                                        </div>
+                                                    }
+                                                    
+                                                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                                                        <MudText Typo="Typo.caption">
+                                                            Le query archiviate sono utilizzabili solo esternamente. 
+                                                            Per task automatici, configura in <MudLink Href="/admin/fonti-dati" Typo="Typo.caption">Fonti Dati</MudLink>.
+                                                        </MudText>
+                                                    </MudAlert>
+                                                </div>
+                                            </MudCardContent>
+                                        </MudCard>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Class="ma-2">Nessuna query personalizzata configurata</MudAlert>
+                        }
+                    </ChildContent>
+                </MudExpansionPanel>
+                
+                @* Servizi Mail Unificati Expansion Panel *@
+                <MudExpansionPanel Text="Servizi Mail Unificati" 
+                                  Icon="@Icons.Material.Filled.Email" 
+                                  IsInitiallyExpanded="false">
+                    <ChildContent>
+                        @{
+                            var mailServices = _currentModel.LavorazioniFasiDataReadingsDto?
+                                .FirstOrDefault(f => f.IdFaseLavorazione == 0)?.TaskDaEseguireDto?
+                                .Where(t => t.IdConfigurazioneDatabase.HasValue)
+                                .ToList();
+                        }
+                        @if (mailServices?.Any() == true)
+                        {
+                            <MudAlert Severity="Severity.Info" Class="ma-2 mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                                <strong>Elaborazione Unificata:</strong> Questi servizi elaborano dati per tutte le fasi della procedura
+                            </MudAlert>
+                            
+                            <MudGrid Spacing="2" Class="pa-2">
+                                @foreach (var service in mailServices)
+                                {
+                                    <MudItem xs="12" sm="6" md="4" lg="3">
+                                        <MudCard Elevation="1" Style="height:100%;">
+                                            <MudCardHeader>
+                                                <CardHeaderContent>
+                                                    <div class="d-flex align-center gap-2">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Primary" />
+                                                        <MudText Typo="Typo.h6">Config ID: @service.IdConfigurazioneDatabase</MudText>
+                                                    </div>
+                                                </CardHeaderContent>
+                                                <CardHeaderActions>
+                                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(service.Stato)">
+                                                        @(service.Stato ?? "CONFIGURED")
+                                                    </MudChip>
+                                                </CardHeaderActions>
+                                            </MudCardHeader>
+                                            <MudCardContent>
+                                                <MudText Typo="Typo.body2" Class="mb-2">@service.Descrizione</MudText>
+                                                <MudDivider Class="my-2" />
+                                                <div class="d-flex flex-column gap-1">
+                                                    <div class="d-flex align-center">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Small" Class="mr-1" />
+                                                        <MudText Typo="Typo.caption">Task: @service.TaskName</MudText>
+                                                    </div>
+                                                    @if (service.TimeTask.HasValue)
+                                                    {
+                                                        <div class="d-flex align-center">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
+                                                            <MudText Typo="Typo.caption">Orario: @service.TimeTask.Value.ToString(@"hh\:mm")</MudText>
+                                                        </div>
+                                                    }
+                                                    <div class="d-flex align-center">
+                                                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" />
+                                                        <MudText Typo="Typo.caption">Giorni precedenti: @service.GiorniPrecedenti</MudText>
+                                                    </div>
+                                                </div>
+                                            </MudCardContent>
+                                        </MudCard>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Class="ma-2">Nessun servizio mail unificato configurato</MudAlert>
+                        }
+                    </ChildContent>
+                </MudExpansionPanel>
+                
+            </MudExpansionPanels>
+        </MudContainer>
+    }
+}
+
+@code {
+    [Parameter] public int? IdproceduraLavorazione { get; set; }
+    
+    private string? _selectedLavorazione;
+    private ProcedureLavorazioniDto? _currentModel;
+    private bool _isLoading = false;
+    private bool _initializing = true;
+    private int? _lastLoadedId;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _initializing = true;
+            UiState?.ShowOverlay("Caricamento lavorazioni...");
+            
+            // Carica liste per autocomplete
+            ListProcedureLavorazioni = await ServiceWrapper!.ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
+            SetSelectLavorazione();
+            
+            // Se c'è un ID nel parametro, carica quella procedura
+            if (IdproceduraLavorazione.HasValue)
+            {
+                await LoadProceduraByIdAsync(IdproceduraLavorazione.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error initializing PageSchedaLavorazione");
+            UiState?.ShowSnackbar($"Errore durante l'inizializzazione: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _initializing = false;
+            UiState?.HideOverlay();
+        }
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        // Evita reload se stiamo già caricando o se è lo stesso ID
+        if (_isLoading || _initializing) return;
+        
+        // Gestisce il cambio di parametro quando si naviga con un ID diverso
+        if (IdproceduraLavorazione.HasValue && IdproceduraLavorazione != _lastLoadedId)
+        {
+            await LoadProceduraByIdAsync(IdproceduraLavorazione.Value);
+        }
+        else if (!IdproceduraLavorazione.HasValue && _lastLoadedId.HasValue)
+        {
+            // Parametro rimosso, reset dello stato
+            ClearCurrentModel();
+        }
+    }
+    
+    private async Task LoadProceduraByIdAsync(int id)
+    {
+        if (_isLoading) return;
+        
+        try
+        {
+            _isLoading = true;
+            _lastLoadedId = id;
+            UiState?.ShowOverlay("Caricamento scheda lavorazione...");
+            
+            var loadedModel = await ServiceWrapper!.ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoByIDAsync(id);
+            
+            if (loadedModel != null)
+            {
+                _currentModel = loadedModel;
+                _selectedLavorazione = loadedModel.NomeProcedura;
+                Logger?.LogInformation("Loaded procedure {ProcedureId}: {ProcedureName}", id, loadedModel.NomeProcedura);
+            }
+            else
+            {
+                UiState?.ShowSnackbar($"Lavorazione con ID {id} non trovata", Severity.Warning);
+                ClearCurrentModel();
+            }
+            
+            // Forza il refresh dell'UI
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error loading procedure {ProcedureId}", id);
+            UiState?.ShowSnackbar($"Errore nel caricamento: {ex.Message}", Severity.Error);
+            ClearCurrentModel();
+        }
+        finally
+        {
+            _isLoading = false;
+            UiState?.HideOverlay();
+        }
+    }
+    
+    private async Task OnValueChangedLavorazioneAsync(string? lavorazione)
+    {
+        _selectedLavorazione = lavorazione;
+        
+        if (string.IsNullOrEmpty(lavorazione))
+        {
+            ClearCurrentModel();
+            NavManager.NavigateTo("/scheda-lavorazione", replace: true);
+            return;
+        }
+        
+        if (_isLoading) return;
+        
+        try
+        {
+            UiState?.ShowOverlay("Caricamento lavorazione...");
+            
+            var procedura = ListProcedureLavorazioni?.FirstOrDefault(x => x.NomeProcedura == lavorazione);
+            
+            if (procedura?.IdproceduraLavorazione != null && procedura.IdproceduraLavorazione > 0)
+            {
+                var loadedModel = await ServiceWrapper!.ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoByIDAsync(procedura.IdproceduraLavorazione);
+                
+                if (loadedModel != null)
+                {
+                    _currentModel = loadedModel;
+                    _lastLoadedId = procedura.IdproceduraLavorazione;
+                    NavManager.NavigateTo($"/scheda-lavorazione/{procedura.IdproceduraLavorazione}", replace: true);
+                    UiState?.ShowSnackbar($"Lavorazione '{lavorazione}' caricata", Severity.Success);
+                }
+            }
+            else
+            {
+                ClearCurrentModel();
+                UiState?.ShowSnackbar("Lavorazione non trovata", Severity.Warning);
+            }
+            
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error loading procedure: {ProcedureName}", lavorazione);
+            UiState?.ShowSnackbar($"Errore nel caricamento: {ex.Message}", Severity.Error);
+            ClearCurrentModel();
+        }
+        finally
+        {
+            UiState?.HideOverlay();
+        }
+    }
+    
+    private void ClearCurrentModel()
+    {
+        _currentModel = null;
+        _selectedLavorazione = null;
+        _lastLoadedId = null;
+    }
+    
+    private Color GetStatusColor(string? stato, bool? attivaFlag = null)
+    {
+        if (attivaFlag.HasValue)
+            return attivaFlag.Value ? Color.Success : Color.Error;
+        return stato?.ToUpper() switch
+        {
+            "COMPLETED" => Color.Success,
+            "CONFIGURED" => Color.Info,
+            "ERROR" => Color.Error,
+            _ => Color.Default
+        };
+    }
+    
+    private string GetPhaseIcon(LavorazioniFasiDataReadingDto fase)
+    {
+        return fase.FlagDataReading 
+            ? Icons.Material.Filled.CheckCircle 
+            : Icons.Material.Filled.Timeline;
+    }
+    
+    private async Task CopyToClipboardAsync(string text)
+    {
+        try
+        {
+            // Usa la funzione JavaScript con fallback multipli
+            var result = await JSRuntime.InvokeAsync<ClipboardResult>("clipboardHelper.copyText", text);
+            
+            if (result.Success)
+            {
+                Logger?.LogInformation("Query copiata usando metodo: {Method}", result.Method);
+                UiState?.ShowSnackbar("Query copiata nella clipboard!", Severity.Success);
+            }
+            else
+            {
+                Logger?.LogWarning("Errore copia clipboard: {Error}", result.Error);
+                UiState?.ShowSnackbar($"Impossibile copiare: {result.Error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Errore durante la copia nella clipboard");
+            UiState?.ShowSnackbar($"Errore: {ex.Message}", Severity.Error);
+        }
+    }
+    
+    // Classe per deserializzare il risultato JavaScript
+    private class ClipboardResult
+    {
+        public bool Success { get; set; }
+        public string? Method { get; set; }
+        public string? Error { get; set; }
+        public string? Details { get; set; }
+    }
+    
+    public new void Dispose()
+    {
+        _currentModel = null;
+        _selectedLavorazione = null;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

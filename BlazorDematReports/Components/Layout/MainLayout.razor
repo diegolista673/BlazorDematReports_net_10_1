@@ -1,0 +1,191 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager navigationManager;
+@inject IJSRuntime js;
+@inject UiStateService UiState
+@inject ISnackbar Snackbar
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider FullWidth="true"
+MaxWidth="MaxWidth.ExtraSmall"
+CloseButton="true"
+Position="DialogPosition.Center"
+CloseOnEscapeKey="true" />
+<MudSnackbarProvider />
+
+<PageTitle>DematReports</PageTitle>
+
+<MudLayout >
+    <MudAppBar Elevation="1" >
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h5" Class="ml-3">Demat Reports</MudText>
+        <MudSpacer />
+        <LoginDisplay></LoginDisplay>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" >
+        <MyNavMenu></MyNavMenu>
+    </MudDrawer>
+    <MudMainContent name="main" Class="mt-4" >
+        <CascadingValue Value="this">
+            <div class="content" px="4" style="padding-bottom:100px">
+                @Body
+            </div>
+        </CascadingValue>
+    </MudMainContent>
+    <MudScrollToTop Style="height:80px;overflow: auto;">
+        <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowUpward" />
+    </MudScrollToTop>
+    <MudAppBar Elevation="1" Style="text-align: right;top: auto; bottom: 0; height:25px" Dense="true" Fixed="true" >
+        <MudText Inline = "true" Align="Align.Right" Style="font-size:small; text-align:end " >@FooterText</MudText>
+    </MudAppBar>
+    <MudOverlay Visible="@IsOverlayVisible" LightBackground="true">
+        <div class="d-flex justify-space-around ">
+            <MudText Typo="Typo.h4">@OverlayMessage</MudText>
+            <MudProgressCircular Size="Size.Large" Indeterminate="true" />
+        </div>
+    </MudOverlay>
+    <MudOverlay Visible="@IsVisibleEditing" LightBackground="true">
+        <div class="d-flex justify-space-around ">
+            <MudText Typo="Typo.h4">@TextEditOverlay</MudText>
+            <MudProgressCircular Size="Size.Large" Indeterminate="true" />
+        </div>
+    </MudOverlay>
+</MudLayout>
+
+
+@code
+{
+
+    [CascadingParameter] public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    bool _drawerOpen = true;
+    private string FooterText = "";
+    private bool IsOverlayVisible;
+    private string? OverlayMessage;
+    private bool IsMenuDisabled;
+    private bool IsVisibleEditing;
+    private string? TextEditOverlay;
+
+    protected override void OnInitialized()
+    {
+        UiState.OnOverlayChanged += HandleOverlayChanged;
+        UiState.OnMenuDisabledChanged += HandleMenuDisabledChanged;
+        UiState.OnSnackbarRequested += HandleSnackbarRequested;
+        UiState.OnEditOverlayChanged += HandleEditOverlayChanged;
+    }
+
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await js.InitializeInactivityTimer(DotNetObjectReference.Create(this));
+        }
+
+    }
+
+    /// <summary>
+    /// Handles the overlay visibility and message updates.
+    /// </summary>
+    /// <param name="visible"></param>
+    /// <param name="message"></param>
+    private void HandleOverlayChanged(bool visible, string? message)
+    {
+        InvokeAsync(() =>
+        {
+            IsOverlayVisible = visible;
+            OverlayMessage = message;
+            StateHasChanged();
+        });
+
+    }
+
+
+    /// <summary>
+    /// Handles the menu disabled state changes.
+    /// </summary>
+    /// <param name="disabled"></param>
+    private void HandleMenuDisabledChanged(bool disabled)
+    {
+        InvokeAsync(() =>
+        {
+            IsMenuDisabled = disabled;
+            StateHasChanged();
+        });
+    }
+
+
+
+    /// <summary>
+    /// Handles the snackbar requests to display messages to the user.
+    /// </summary>
+    /// <param name="message"></param>
+    /// <param name="severity"></param>
+    private void HandleSnackbarRequested(string message, Severity severity)
+    {
+        Snackbar!.Clear();
+        Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomCenter;
+        Snackbar.Add(message, severity);
+    }
+
+    /// <summary>
+    /// Handles the edit overlay visibility and message updates.
+    /// </summary>
+    /// <param name="visible"></param>
+    /// <param name="message"></param>
+    private void HandleEditOverlayChanged(bool visible, string? message)
+    {
+        InvokeAsync(() =>
+        {
+            IsVisibleEditing = visible;
+            TextEditOverlay = message;
+            StateHasChanged();
+        });
+    }
+
+    [JSInvokable]
+    public async Task Logout()
+    {
+        var authState = await AuthenticationState!;
+        if (authState.User.Identity!.IsAuthenticated)
+        {
+
+            navigationManager.NavigateTo("/Account/logout?", true);
+        }
+    }
+
+    // You could also have a public property that can be set from other components
+    public string DynamicFooterText
+    {
+        get => FooterText;
+        set
+        {
+            FooterText = value;
+            StateHasChanged(); // Important to re-render the layout
+        }
+    }
+
+    public void UpdateFooter()
+    {
+        DynamicFooterText = "I dati presentati sono a scopo indicativo e potrebbero non essere completi";
+    }
+
+    public void ResetFooter()
+    {
+        DynamicFooterText = "";
+    }
+
+    public void Dispose()
+    {
+        UiState.OnOverlayChanged -= HandleOverlayChanged;
+        UiState.OnMenuDisabledChanged -= HandleMenuDisabledChanged;
+        UiState.OnSnackbarRequested -= HandleSnackbarRequested;
+        UiState.OnEditOverlayChanged -= HandleEditOverlayChanged;
+    }
+
+}}
