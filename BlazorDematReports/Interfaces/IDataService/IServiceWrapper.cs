@@ -49,5 +49,7 @@
         IServiceTaskDaEseguire ServiceTaskDaEseguire { get; }
         /// <summary>Servizio per la gestione dei ruoli.</summary>
         IServiceRuoli ServiceRuoli { get; }
+        /// <summary>Servizio per la gestione della configurazione fonti dati.</summary>
+        IServiceConfigurazioneFontiDati ServiceConfigurazioneFontiDati { get; }
     }
 }

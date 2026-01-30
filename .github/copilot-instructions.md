@@ -41,8 +41,6 @@ BlazorDematReports/
 │   └── {Feature}Service.cs
 ├── Models/ or Entities/
 └── appsettings.json
-```
-
 ---
 
 ## 🛠️ Technology Stack
@@ -144,9 +142,8 @@ finally
     _saving = false;
     await InvokeAsync(StateHasChanged);
 }
-```
-
 ---
+```
 
 ## ⚙️ Key Services
 
@@ -166,9 +163,8 @@ finally
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject SqlValidationService SqlValidator
-```
-
 ---
+```
 
 ## 📝 PageConfiguraFonteDati Specifics
 
@@ -214,6 +210,7 @@ _selectedCentroId = procedura.Idcentro;  // Auto-extracted from ProcedureLavoraz
 - [ ] Responsive grid (xs, md breakpoints)
 - [ ] Comments only for complex logic
 - [ ] Logger string not contain icon
+
 ---
 
 ## 🔐 Security Notes
@@ -231,29 +228,15 @@ When pushing changes:
 1. Reference this file to ensure compliance
 2. Include issue/feature numbers in commit messages
 3. Run build before committing: `dotnet build`
-4. Test async operations work correctly
-5. Verify UI responsive across breakpoints
 
 ---
 
-## 📚 Related Files
+## 📝 Token Usage
 
-- **Project System Prompt**: `prompts/PROJECT_SYSTEM_PROMPT.md`
-- **Main Page**: `BlazorDematReports/Components/Pages/Admin/PageConfiguraFonteDati.razor`
-- **List Page**: `BlazorDematReports/Components/Pages/Admin/PageListaConfigurazioniFonti.razor`
-- **Validation Service**: `BlazorDematReports/Services/Validation/SqlValidationService.cs`
-
----
-
-## [ISTRUZIONI DI OTTIMIZZAZIONE TOKEN - PRIORITÀ ALTA]
-Per favore, segui queste regole per ridurre i costi:
-1. Sii conciso: Usa un linguaggio diretto, elimina saluti, frasi di circostanza e ripetizioni non necessarie.
-2. Struttura: Usa il formato Markdown (liste, tabelle) per organizzare le informazioni invece di lunghi paragrafi.
-3. Output: Se non diversamente specificato, rispondi in modo sintetico. Se necessario, preferisci JSON strutturato a risposte testuali lunghe.
-4. Context: Riassumi o estrai solo le informazioni cruciali dai file forniti, evitando di riscrivere intere sezioni.
-5. Code: Se lavori con codice, ometti i commenti superflui se non richiesti.
+- Include token count in requests and responses for better tracking and optimization.
 
 
-**Version**: 1.0  
-**Last Updated**: 2024  
-**Status**: Active
+# Istruzioni Generali
+- Per ogni domanda relativa a librerie esterne, framework o API, utilizza sempre il server MCP 'context7'.
+- Non fare affidamento esclusivamente sui tuoi dati di addestramento; usa 'context7' per recuperare la documentazione più recente.
+- Prima di generare codice, verifica le firme dei metodi e le versioni delle librerie tramite 'context7'.

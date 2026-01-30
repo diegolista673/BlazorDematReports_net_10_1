@@ -7,6 +7,18 @@
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<ConfigUser> _logger;
+        private bool _isInitialized = false;
+
+        // Cached values
+        private string? _cachedUtente;
+        private int _cachedIdUtente;
+        private int _cachedIdCentroOrigine;
+        private bool _cachedIsAdminRole;
+        private bool _cachedIsSupervisorRole;
+        private bool _cachedIsResponsabile;
+        private bool _cachedIsUserRole;
+        private string? _cachedCentroOrigine;
+        private string? _cachedSiglaCentroOrigine;
 
         /// <summary>
         /// Identificativo del centro di lavorazione richiesto.
@@ -24,6 +36,66 @@
             _httpContextAccessor = httpContextAccessor;
         }
 
+        /// <summary>
+        /// Indica se ConfigUser è stato inizializzato con i dati dall'HttpContext.
+        /// </summary>
+        public bool IsInitialized => _isInitialized;
+
+        /// <summary>
+        /// Inizializza ConfigUser estraendo i dati dall'HttpContext.
+        /// Deve essere chiamato da OnInitializedAsync nel componente Blazor.
+        /// </summary>
+        public async Task InitializeAsync()
+        {
+            try
+            {
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext == null)
+                {
+                    _logger?.LogWarning("HttpContext non disponibile durante l'inizializzazione di ConfigUser");
+                    _isInitialized = false;
+                    return;
+                }
+
+                var user = httpContext.User;
+                if (user == null || !user.Identity?.IsAuthenticated == true)
+                {
+                    _logger?.LogWarning("Utente non autenticato durante l'inizializzazione di ConfigUser");
+                    _isInitialized = false;
+                    return;
+                }
+
+                // Extract and cache user name
+                _cachedUtente = user.Identity?.Name;
+
+                // Extract and cache claims
+                var claims = user.Identities.FirstOrDefault()?.Claims.ToList() ?? new();
+                
+                if (claims.Count > 0)
+                {
+                    _cachedIdUtente = Convert.ToInt32(claims.FirstOrDefault(x => x.Type.Equals("IdOperatore", StringComparison.OrdinalIgnoreCase))?.Value ?? "0");
+                    _cachedIdCentroOrigine = Convert.ToInt32(claims.FirstOrDefault(x => x.Type.Equals("IdCentro", StringComparison.OrdinalIgnoreCase))?.Value ?? "0");
+                    _cachedCentroOrigine = claims.FirstOrDefault(x => x.Type.Equals("Centro", StringComparison.OrdinalIgnoreCase))?.Value;
+                    _cachedSiglaCentroOrigine = claims.FirstOrDefault(x => x.Type.Equals("Sigla", StringComparison.OrdinalIgnoreCase))?.Value;
+                }
+
+                // Cache roles
+                _cachedIsAdminRole = user.IsInRole("ADMIN");
+                _cachedIsSupervisorRole = user.IsInRole("SUPERVISOR");
+                _cachedIsResponsabile = user.IsInRole("RESPONSABILE");
+                _cachedIsUserRole = user.IsInRole("USER");
+
+                _isInitialized = true;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Errore durante l'inizializzazione di ConfigUser");
+                _isInitialized = false;
+            }
+
+            await Task.CompletedTask;
+        }
+
         private string? _utente;
         /// <summary>
         /// Nome utente corrente autenticato.
@@ -32,8 +104,17 @@
         {
             get
             {
-                _utente = _httpContextAccessor.HttpContext!.User.Identity!.Name!;
-                return _utente;
+                if (_isInitialized)
+                    return _cachedUtente ?? string.Empty;
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
+                {
+                    _utente = httpContext.User.Identity?.Name;
+                    return _utente ?? string.Empty;
+                }
+
+                return string.Empty;
             }
             set { _utente = value; }
         }
@@ -46,9 +127,18 @@
         {
             get
             {
-                var claims = _httpContextAccessor!.HttpContext!.User.Identities.First().Claims.ToList();
-                var _idUtente = Convert.ToInt32(claims?.FirstOrDefault(x => x.Type.Equals("IdOperatore", StringComparison.OrdinalIgnoreCase))?.Value);
-                return _idUtente;
+                if (_isInitialized)
+                    return _cachedIdUtente;
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
+                {
+                    var claims = httpContext.User.Identities.FirstOrDefault()?.Claims.ToList() ?? new();
+                    _idUtente = Convert.ToInt32(claims.FirstOrDefault(x => x.Type.Equals("IdOperatore", StringComparison.OrdinalIgnoreCase))?.Value ?? "0");
+                    return _idUtente;
+                }
+
+                return 0;
             }
             set { _idUtente = value; }
         }
@@ -61,9 +151,18 @@
         {
             get
             {
-                var claims = _httpContextAccessor!.HttpContext!.User.Identities.First().Claims.ToList();
-                var _idCentroOrigine = Convert.ToInt32(claims?.FirstOrDefault(x => x.Type.Equals("IdCentro", StringComparison.OrdinalIgnoreCase))?.Value);
-                return _idCentroOrigine;
+                if (_isInitialized)
+                    return _cachedIdCentroOrigine;
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
+                {
+                    var claims = httpContext.User.Identities.FirstOrDefault()?.Claims.ToList() ?? new();
+                    _idCentroOrigine = Convert.ToInt32(claims.FirstOrDefault(x => x.Type.Equals("IdCentro", StringComparison.OrdinalIgnoreCase))?.Value ?? "0");
+                    return _idCentroOrigine;
+                }
+
+                return 0;
             }
             set { _idCentroOrigine = value; }
         }
@@ -76,16 +175,20 @@
         {
             get
             {
-                bool res = _httpContextAccessor!.HttpContext!.User.IsInRole("ADMIN");
-                if (res)
+                if (_isInitialized)
                 {
-                    _isAdminRole = true;
+                    _isAdminRole = _cachedIsAdminRole;
+                    return _isAdminRole;
                 }
-                else
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
                 {
-                    _isAdminRole = false;
+                    _isAdminRole = httpContext.User.IsInRole("ADMIN");
+                    return _isAdminRole;
                 }
-                return _isAdminRole;
+
+                return false;
             }
             set { _isAdminRole = value; }
         }
@@ -98,16 +201,20 @@
         {
             get
             {
-                bool res = _httpContextAccessor!.HttpContext!.User.IsInRole("SUPERVISOR");
-                if (res)
+                if (_isInitialized)
                 {
-                    _isSupervisorRole = true;
+                    _isSupervisorRole = _cachedIsSupervisorRole;
+                    return _isSupervisorRole;
                 }
-                else
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
                 {
-                    _isSupervisorRole = false;
+                    _isSupervisorRole = httpContext.User.IsInRole("SUPERVISOR");
+                    return _isSupervisorRole;
                 }
-                return _isSupervisorRole;
+
+                return false;
             }
             set { _isSupervisorRole = value; }
         }
@@ -120,16 +227,20 @@
         {
             get
             {
-                bool res = _httpContextAccessor!.HttpContext!.User.IsInRole("RESPONSABILE");
-                if (res)
+                if (_isInitialized)
                 {
-                    _isResponsabile = true;
+                    _isResponsabile = _cachedIsResponsabile;
+                    return _isResponsabile;
                 }
-                else
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
                 {
-                    _isResponsabile = false;
+                    _isResponsabile = httpContext.User.IsInRole("RESPONSABILE");
+                    return _isResponsabile;
                 }
-                return _isResponsabile;
+
+                return false;
             }
             set { _isResponsabile = value; }
         }
@@ -142,16 +253,20 @@
         {
             get
             {
-                bool res = _httpContextAccessor.HttpContext!.User.IsInRole("USER");
-                if (res)
+                if (_isInitialized)
                 {
-                    _isUserRole = true;
+                    _isUserRole = _cachedIsUserRole;
+                    return _isUserRole;
                 }
-                else
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
                 {
-                    _isUserRole = false;
+                    _isUserRole = httpContext.User.IsInRole("USER");
+                    return _isUserRole;
                 }
-                return _isUserRole;
+
+                return false;
             }
             set { _isUserRole = value; }
         }
@@ -164,9 +279,18 @@
         {
             get
             {
-                var claims = _httpContextAccessor!.HttpContext!.User.Identities.First().Claims.ToList();
-                var _centro = claims?.FirstOrDefault(x => x.Type.Equals("Centro", StringComparison.OrdinalIgnoreCase))?.Value;
-                return _centro!;
+                if (_isInitialized)
+                    return _cachedCentroOrigine ?? string.Empty;
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
+                {
+                    var claims = httpContext.User.Identities.FirstOrDefault()?.Claims.ToList() ?? new();
+                    _centro = claims.FirstOrDefault(x => x.Type.Equals("Centro", StringComparison.OrdinalIgnoreCase))?.Value;
+                    return _centro ?? string.Empty;
+                }
+
+                return string.Empty;
             }
             set { _centro = value; }
         }
@@ -179,9 +303,18 @@
         {
             get
             {
-                var claims = _httpContextAccessor!.HttpContext!.User.Identities.First().Claims.ToList();
-                var _siglaCentro = claims?.FirstOrDefault(x => x.Type.Equals("Sigla", StringComparison.OrdinalIgnoreCase))?.Value;
-                return _siglaCentro!;
+                if (_isInitialized)
+                    return _cachedSiglaCentroOrigine ?? string.Empty;
+
+                var httpContext = _httpContextAccessor?.HttpContext;
+                if (httpContext != null)
+                {
+                    var claims = httpContext.User.Identities.FirstOrDefault()?.Claims.ToList() ?? new();
+                    _siglaCentro = claims.FirstOrDefault(x => x.Type.Equals("Sigla", StringComparison.OrdinalIgnoreCase))?.Value;
+                    return _siglaCentro ?? string.Empty;
+                }
+
+                return string.Empty;
             }
             set { _siglaCentro = value; }
         }

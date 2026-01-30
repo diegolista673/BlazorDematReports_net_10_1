@@ -180,9 +180,9 @@ public static class Program
     private static void RegisterServices(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<UiStateService>();
-        builder.Services.AddSingleton<ConfigUser>();
         builder.Services.AddSingleton<ILavorazioniConfigManager, LavorazioniConfigManager>();
 
+        builder.Services.AddScoped<ConfigUser>();
         builder.Services.AddScoped<INormalizzatoreOperatori, NormalizzatoreOperatori>();
         builder.Services.AddScoped<IGestoreOperatoriDatiLavorazione, GestoreOperatoriDatiLavorazione>();
         builder.Services.AddScoped<IElaboratoreDatiLavorazione, ElaboratoreDatiLavorazione>();
@@ -205,6 +205,10 @@ public static class Program
         
         // Servizio validazione SQL (sicurezza SQL injection + test connessioni)
         builder.Services.AddScoped<SqlValidationService>();
+
+        // Servizi per Configurazione Fonti Dati
+        builder.Services.AddScoped<ICronSchedulingService, CronSchedulingService>();
+        builder.Services.AddScoped<IConfigurazioneDataReaderService, ConfigurazioneDataReaderService>();
 
         // Registrazione handler lavorazioni SQL
         builder.Services.AddScoped<ILavorazioneHandler, DefaultLavorazioneHandler>();

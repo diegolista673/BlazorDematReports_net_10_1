@@ -43,7 +43,7 @@ namespace BlazorDematReports.Services.DataService
         private readonly Lazy<IServiceTabellaTask> _serviceTabellaTask;
         private readonly Lazy<IServiceTaskDaEseguire> _serviceTaskDaEseguire;
         private readonly Lazy<IServiceRuoli> _serviceRuoli;
-
+        private readonly Lazy<IServiceConfigurazioneFontiDati> _serviceConfigurazioneFontiDati;
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per tutti i servizi di gestione dati.
         /// </summary>
@@ -82,6 +82,7 @@ namespace BlazorDematReports.Services.DataService
             _serviceCentriVisibili = new Lazy<IServiceCentriVisibili>(() => new ServiceCentriVisibili(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceCentriVisibili>()));
             _serviceTabellaTask = new Lazy<IServiceTabellaTask>(() => new ServiceTabellaTask(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTabellaTask>()));
             _serviceTaskDaEseguire = new Lazy<IServiceTaskDaEseguire>(() => new ServiceTaskDaEseguire(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTaskDaEseguire>()));
+            _serviceConfigurazioneFontiDati = new Lazy<IServiceConfigurazioneFontiDati>(() => new ServiceConfigurazioneFontiDati(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceConfigurazioneFontiDati>()));
         }
 
         /// <inheritdoc/>
@@ -149,5 +150,7 @@ namespace BlazorDematReports.Services.DataService
 
         /// <inheritdoc/>
         public IServiceRuoli ServiceRuoli => _serviceRuoli.Value;
+        /// <inheritdoc/>
+        public IServiceConfigurazioneFontiDati ServiceConfigurazioneFontiDati => _serviceConfigurazioneFontiDati.Value;
     }
 }

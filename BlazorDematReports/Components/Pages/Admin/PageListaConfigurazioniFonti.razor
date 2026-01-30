@@ -2,7 +2,9 @@
 @using Entities.Models.DbApplication
 @using Microsoft.EntityFrameworkCore
 @using DataReading.Infrastructure
+@using BlazorDematReports.Interfaces.IDataService
 @inject IDbContextFactory<DematReportsContext> DbFactory
+@inject IServiceWrapper ServiceWrapper
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IProductionJobScheduler ProductionScheduler
@@ -11,159 +13,166 @@
 
 <PageTitle >Configurazioni Fonti Dati</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <div class="d-flex justify-space-between align-center mb-4">
-        <div>
-            <MudText Typo="Typo.h4" Class="titolo ">
-                Configurazioni Fonti Dati
-            </MudText>
-            <MudText Typo="Typo.body2" Class="text-muted">
-                Gestione centralizzata delle sorgenti dati per produzione
-            </MudText>
-        </div>
-        
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="@(() => Navigation.NavigateTo("/admin/configura-fonte-dati"))">
-            Nuova Configurazione
-        </MudButton>
+<MudText Typo="Typo.h4" Class="titolo ml-4">Configurazioni Fonti Dati</MudText>
+<MudText Typo="Typo.body2" Class="text-muted ml-4">Gestione centralizzata delle sorgenti dati per produzione</MudText>
 
-    </div>
-    
+<MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
 
-    @if (_loading)
-    {
-        <MudProgressLinear Color="Color.Primary" Indeterminate />
-    }
-    else if (!_configurazioni.Any())
-    {
-        <MudAlert Severity="Severity.Info" Class="my-4">
-            <MudText>Nessuna configurazione presente. Clicca su "Nuova Configurazione" per iniziare.</MudText>
-        </MudAlert>
-    }
-    else
-    {
-        <MudDivider Class="border-solid border-1 mud-border-primary mb-2"></MudDivider>
+<MudContainer MaxWidth="MaxWidth.False">
+    <MudGrid Class="mt-2 ">
 
-        <MudDataGrid T="ConfigurazioneRiepilogoDto"
-                     Items="@_configurazioni"
-                     Filterable="true"
-                     FilterMode="DataGridFilterMode.Simple"
-                     SortMode="SortMode.Multiple"
-                     Dense
-                     Hover
-                     Striped>
-            <Columns>
-                <PropertyColumn Property="x => x.CodiceConfigurazione" Title="Codice" />
-                <PropertyColumn Property="x => x.Descrizione" Title="Descrizione" />
-                
-                <TemplateColumn Title="Tipo">
-                    <CellTemplate>
-                        <MudChip T="string"
-                                 Color="@GetTipoColor(context.Item.TipoFonte)"
-                                 Size="Size.Small">
-                            @context.Item.TipoFonte
-                        </MudChip>
-                    </CellTemplate>
-                </TemplateColumn>
-                
-                <TemplateColumn Title="Fasi Configurate" Sortable="false">
-                    <CellTemplate>
-                        @if (context.Item.FasiDettaglio.Any())
-                        {
-                            <MudText Typo="Typo.caption">
-                                @string.Join(", ", context.Item.FasiDettaglio.Distinct())
-                            </MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.caption" Class="text-muted">Nessuna fase</MudText>
-                        }
-                    </CellTemplate>
-                </TemplateColumn>
-                
-                <TemplateColumn Title="Schedulazioni" Sortable="false">
-                    <CellTemplate>
-                        @if (context.Item.CronExpressions.Any())
-                        {
-                            <div>
-                                @foreach (var cron in context.Item.CronExpressions.Distinct())
+        @*form*@
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled"
+                        Color="Color.Primary"
+                        StartIcon="@Icons.Material.Filled.Add"
+                        OnClick="@(() => Navigation.NavigateTo("/admin/configura-fonte-dati"))">
+                Nuova Configurazione
+            </MudButton>
+        </MudItem>
+
+        @*table*@
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
+            @if (_loading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate />
+            }
+            else if (!_configurazioni.Any())
+            {
+                <MudAlert Severity="Severity.Info" Class="my-4">
+                    <MudText>Nessuna configurazione presente. Clicca su "Nuova Configurazione" per iniziare.</MudText>
+                </MudAlert>
+            }
+            else
+            {
+
+                <MudDataGrid T="ConfigurazioneRiepilogoDto"
+                             Items="@_configurazioni"
+                             Filterable="true"
+                             FilterMode="DataGridFilterMode.Simple"
+                             SortMode="SortMode.Multiple"
+                             ReadOnly="false" 
+                             Striped="true"  
+                             Dense=true 
+                             Bordered=true 
+                             Hover=true 
+                             Breakpoint="Breakpoint.Sm"
+                             Outlined=false 
+                             Height="100%">
+                    <Columns>
+                        <PropertyColumn Property="x => x.CodiceConfigurazione" Title="Codice" />
+                        <PropertyColumn Property="x => x.Descrizione" Title="Descrizione" />
+
+                        <TemplateColumn Title="Tipo">
+                            <CellTemplate>
+                                <MudChip T="string"
+                                         Color="@GetTipoColor(context.Item.TipoFonte)"
+                                         Size="Size.Small">
+                                    @context.Item.TipoFonte
+                                </MudChip>
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Fasi Configurate" Sortable="false">
+                            <CellTemplate>
+                                @if (context.Item.FasiDettaglio.Any())
                                 {
-                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="mr-1 mb-1">
-                                        ⏰ @GetCronDescription(cron)
-                                    </MudChip>
+                                    <MudText Typo="Typo.caption">
+                                        @string.Join(", ", context.Item.FasiDettaglio.Distinct())
+                                    </MudText>
                                 }
-                            </div>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.caption" Class="text-muted">-</MudText>
-                        }
-                    </CellTemplate>
-                </TemplateColumn>
-                
-                <PropertyColumn Property="x => x.NumeroFasi" Title="N. Mapping" />
-                <PropertyColumn Property="x => x.TaskAttivi" Title="Task Attivi" />
-                
-                <TemplateColumn Title="Stato">
-                    <CellTemplate>
-                        @if (context.Item.FlagAttiva)
-                        {
-                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Attiva</MudChip>
-                        }
-                        else
-                        {
-                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Disattivata</MudChip>
-                        }
-                    </CellTemplate>
-                </TemplateColumn>
-                
-                <PropertyColumn Property="x => x.CreatoIl" Title="Creato" Format="dd/MM/yyyy" />
-                
-                <TemplateColumn Title="Azioni" StickyRight>
-                    <CellTemplate>
-                        <MudTooltip Text="Modifica configurazione">
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Color="Color.Primary"
-                                           Size="Size.Small"
-                                           OnClick="@(() => ModificaConfig(context.Item.IdConfigurazione))" />
-                        </MudTooltip>
-                        
-                        <MudTooltip Text="@(context.Item.NumeroFasi == 0 ? "Aggiungi almeno un mapping prima di creare task" : context.Item.TaskAttivi > 0 ? "Task già creati per questa configurazione" : "Crea task automatici per questa configurazione")">
-                            <MudIconButton Icon="@Icons.Material.Filled.PlayCircle"
-                                           Color="Color.Success"
-                                           Size="Size.Small"
-                                           Disabled="@(context.Item.NumeroFasi == 0 || context.Item.TaskAttivi > 0)"
-                                           OnClick="@(() => CreaTaskAutomaticiAsync(context.Item.IdConfigurazione))" />
-                        </MudTooltip>
-  
-                        
-                        <MudTooltip Text="@(context.Item.TaskAttivi > 0 ? $"Impossibile disattivare: {context.Item.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard." : "Disattiva configurazione (soft delete)")">
-                            <MudIconButton Icon="@Icons.Material.Filled.Block"
-                                           Color="@(context.Item.TaskAttivi > 0 ? Color.Default : Color.Warning)"
-                                           Size="Size.Small"
-                                           Disabled="@(context.Item.TaskAttivi > 0)"
-                                           OnClick="@(() => EliminaConfigAsync(context.Item))" />
-                        </MudTooltip>
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Class="text-muted">Nessuna fase</MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
 
-                        <MudTooltip Text="Elimina definitivamente la configurazione (hard delete, irreversibile)">
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
-                                           Color="Color.Error"
-                                           Size="Size.Small"
-                                           Disabled="@(context.Item.TaskAttivi > 0)"
-                                           OnClick="@(() => EliminaConfigDefinitivaAsync(context.Item))" />
-                        </MudTooltip>
-                    </CellTemplate>
-                </TemplateColumn>
-            </Columns>
-            
-            <PagerContent>
-                <MudDataGridPager T="ConfigurazioneRiepilogoDto" />
-            </PagerContent>
-        </MudDataGrid>
-    }
+                        <TemplateColumn Title="Schedulazioni" Sortable="false">
+                            <CellTemplate>
+                                @if (context.Item.CronExpressions.Any())
+                                {
+                                    <div>
+                                        @foreach (var cron in context.Item.CronExpressions.Distinct())
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="mr-1 mb-1">
+                                                ⏰ @GetCronDescription(cron)
+                                            </MudChip>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Class="text-muted">-</MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <PropertyColumn Property="x => x.NumeroFasi" Title="N. Mapping" Filterable="false" />
+                        <PropertyColumn Property="x => x.TaskAttivi" Title="Task Attivi" Filterable="false" />
+
+                        <TemplateColumn Title="Stato">
+                            <CellTemplate>
+                                @if (context.Item.FlagAttiva)
+                                {
+                                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Attiva</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Default" Size="Size.Small">Disattivata</MudChip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Azioni" StickyRight>
+                            <CellTemplate>
+                                <MudTooltip Text="Modifica configurazione">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => ModificaConfig(context.Item.IdConfigurazione))" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="@(context.Item.NumeroFasi == 0 ? "Aggiungi almeno un mapping prima di creare task" : context.Item.TaskAttivi > 0 ? "Task già creati per questa configurazione" : "Crea task automatici per questa configurazione")">
+                                    <MudIconButton Icon="@Icons.Material.Filled.PlayCircle"
+                                                   Color="Color.Success"
+                                                   Size="Size.Small"
+                                                   Disabled="@(context.Item.NumeroFasi == 0 || context.Item.TaskAttivi > 0)"
+                                                   OnClick="@(() => CreaTaskAutomaticiAsync(context.Item.IdConfigurazione))" />
+                                </MudTooltip>
+
+
+                                <MudTooltip Text="@(context.Item.TaskAttivi > 0 ? $"Impossibile disattivare: {context.Item.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard." : "Disattiva configurazione (soft delete)")">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Block"
+                                                   Color="@(context.Item.TaskAttivi > 0 ? Color.Default : Color.Warning)"
+                                                   Size="Size.Small"
+                                                   Disabled="@(context.Item.TaskAttivi > 0)"
+                                                   OnClick="@(() => EliminaConfigAsync(context.Item))" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Elimina definitivamente la configurazione (hard delete, irreversibile)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   Disabled="@(context.Item.TaskAttivi > 0)"
+                                                   OnClick="@(() => EliminaConfigDefinitivaAsync(context.Item))" />
+                                </MudTooltip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+
+                    <PagerContent>
+                        <MudDataGridPager T="ConfigurazioneRiepilogoDto" />
+                    </PagerContent>
+                </MudDataGrid>
+            }
+        </MudItem>
+
+
+    </MudGrid>
 </MudContainer>
+
+
 
 @code {
 
@@ -178,89 +187,8 @@
     private async Task LoadConfigurazioniAsync()
     {
         _loading = true;
-        
-        try
-        {
-            await using var context = await DbFactory.CreateDbContextAsync();
-
-            var configs = await context.ConfigurazioneFontiDatis
-                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
-                    .ThenInclude(fc => fc.Procedura)
-                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
-                    .ThenInclude(fc => fc.Fase)
-                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
-                    .ThenInclude(fc => fc.Centro)
-                .Include(c => c.Tasks)
-                .OrderBy(c => c.IdConfigurazione)
-                .ToListAsync();
-
-            _configurazioni = configs.Select(c => new ConfigurazioneRiepilogoDto
-            {
-                IdConfigurazione = c.IdConfigurazione,
-                CodiceConfigurazione = c.CodiceConfigurazione,
-                Descrizione = c.DescrizioneConfigurazione!,
-                TipoFonte = c.TipoFonte,
-                FlagAttiva = c.FlagAttiva,
-                CreatoIl = c.CreatoIl,
-                NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva),
-                TaskAttivi = c.Tasks.Count(t => t.Enabled),
-            
-                // Nuovi campi dettaglio
-                FasiDettaglio = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva && fc.Fase != null)
-                    .Select(fc => fc.Fase!.FaseLavorazione)
-                    .ToList(),
-            
-                CronExpressions = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva)
-                    .Select(fc => ExtractCronFromJson(fc.ParametriExtra))
-                    .ToList(),
-            
-                MappingDettaglio = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva)
-                    .Select(fc => new MappingDettaglioDto
-                    {
-                        NomeProcedura = fc.Procedura?.NomeProcedura ?? "N/A",
-                        NomeFase = fc.Fase?.FaseLavorazione ?? "N/A",
-                        NomeCentro = fc.Centro?.Centro ?? "N/A",
-                        Cron = ExtractCronFromJson(fc.ParametriExtra),
-                        ParametriExtra = fc.ParametriExtra
-                    })
-                    .ToList()
-            }).ToList();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Errore caricamento: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    /// <summary>
-    /// Estrae il cron dal JSON ParametriExtra, se presente.
-    /// </summary>
-    private static string ExtractCronFromJson(string? parametriExtra)
-    {
-        if (string.IsNullOrWhiteSpace(parametriExtra))
-            return "0 5 * * *"; // Default
-    
-        try
-        {
-            var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(parametriExtra);
-            if (json != null && json.TryGetValue("cron", out var cronValue))
-            {
-                return cronValue?.ToString() ?? "0 5 * * *";
-            }
-        }
-        catch
-        {
-            // JSON malformato
-        }
-    
-        return "0 5 * * *";
+        _configurazioni = await ServiceWrapper.ServiceConfigurazioneFontiDati.GetConfigurazioneFontiDatiDtoAsync();
+        _loading = false;
     }
 
     /// <summary>
@@ -428,7 +356,6 @@
         }
     }
 
-
     private async Task EliminaConfigAsync(ConfigurazioneRiepilogoDto config)
     {
         // Doppio controllo: verifica task attivi
@@ -494,26 +421,12 @@
         if (result.Canceled)
             return;
 
-        try
-        {
-            await using var context = await DbFactory.CreateDbContextAsync();
-            var entity = await context.ConfigurazioneFontiDatis
-                .Include(c => c.ConfigurazioneFaseCentros)
-                .Include(c => c.Tasks)
-                .FirstOrDefaultAsync(c => c.IdConfigurazione == config.IdConfigurazione);
-            if (entity != null)
+            try
             {
-                // Rimuovi mapping e task associati solo se presenti
-                if (entity.ConfigurazioneFaseCentros != null && entity.ConfigurazioneFaseCentros.Count > 0)
-                    context.ConfigurazioneFaseCentros.RemoveRange(entity.ConfigurazioneFaseCentros);
-                if (entity.Tasks != null && entity.Tasks.Count > 0)
-                    context.TaskDaEseguires.RemoveRange(entity.Tasks);
-                context.ConfigurazioneFontiDatis.Remove(entity);
-                await context.SaveChangesAsync();
+                await ServiceWrapper!.ServiceConfigurazioneFontiDati.DeleteConfigurazioneFontiDatiAsync(config.IdConfigurazione);
                 await LoadConfigurazioniAsync();
                 Snackbar.Add("Configurazione eliminata definitivamente", Severity.Success);
             }
-        }
         catch (Exception ex)
         {
             Snackbar.Add($"Errore eliminazione definitiva: {ex.Message}", Severity.Error);
@@ -530,30 +443,4 @@
     };
 
 
-
-    private class ConfigurazioneRiepilogoDto
-    {
-        public int IdConfigurazione { get; set; }
-        public string CodiceConfigurazione { get; set; } = null!;
-        public string Descrizione { get; set; } = null!;
-        public string TipoFonte { get; set; } = null!;
-        public bool FlagAttiva { get; set; }
-        public DateTime CreatoIl { get; set; }
-        public int NumeroFasi { get; set; }
-        public int TaskAttivi { get; set; }
-        
-        // Nuovi campi per dettagli
-        public List<string> FasiDettaglio { get; set; } = new();
-        public List<string> CronExpressions { get; set; } = new();
-        public List<MappingDettaglioDto> MappingDettaglio { get; set; } = new();
-    }
-    
-    private class MappingDettaglioDto
-    {
-        public string NomeProcedura { get; set; } = null!;
-        public string NomeFase { get; set; } = null!;
-        public string NomeCentro { get; set; } = null!;
-        public string Cron { get; set; } = "0 5 * * *";
-        public string? ParametriExtra { get; set; }
-    }
 }

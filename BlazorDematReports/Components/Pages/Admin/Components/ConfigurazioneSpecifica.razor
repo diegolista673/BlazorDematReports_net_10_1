@@ -1,0 +1,206 @@
+@using Entities.Models.DbApplication
+@using MudBlazor
+@using LibraryLavorazioni.Shared.Discovery
+
+<MudItem xs="12">
+    <MudText Typo="Typo.h6" Class="mb-3">3. Configurazione Specifica</MudText>
+</MudItem>
+
+@if (TipoFonte == "SQL")
+{
+    <MudItem xs="12" md="6">
+        <MudSelect T="string" 
+                   @bind-Value="ConnectionStringName"
+                   Label="Connection String"
+                   Variant="Variant.Outlined"
+                   Required="true">
+            @foreach (var cs in ConnectionStrings)
+            {
+                <MudSelectItem Value="@cs">@cs</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Elevation="3" Class="pa-4 mb-3">
+            <MudText Typo="Typo.body2" Class="mb-2"><b>Linee guida per le query SQL:</b></MudText>
+            
+            <MudText Typo="Typo.body2" Class="mb-1">1. <b>Formato dei risultati:</b></MudText>
+            <ul style="margin-left: 20px;">
+                <li><MudText Typo="Typo.body2">Il risultato deve indicare il numero di documenti, fogli, pagine raggruppati per data di lavorazione e operatore.</MudText></li>
+                <li><MudText Typo="Typo.body2">L'intestazione deve corrispondere esattamente a: <b>Operatore, DataLavorazione, Documenti, Fogli, Pagine</b></MudText></li>
+            </ul>
+
+            <MudText Typo="Typo.body2" Class="mb-1 mt-2">2. <b>Identificazione univoca degli operatori:</b></MudText>
+            <ul style="margin-left: 20px;">
+                <li><MudText Typo="Typo.body2">Utilizzare una clausola WHERE con criteri specifici (es: department = 'genova')</MudText></li>
+                <li><MudText Typo="Typo.body2"><b>Attenzione:</b> Se non è possibile identificare operatori e centro, il sistema proverà a riconoscerli automaticamente. Se non riconosciuti verranno eliminati.</MudText></li>
+            </ul>
+
+            <MudText Typo="Typo.body2" Class="mb-1 mt-2">3. <b>Parametrizzazione delle date:</b></MudText>
+            <ul style="margin-left: 20px;">
+                <li><MudText Typo="Typo.body2">Sostituire le date con i parametri <code>@@StartDate</code> e <code>@@EndDate</code></MudText></li>
+            </ul>
+
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.caption"><b>Esempio:</b></MudText>
+            <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap;" Class="mt-1">
+                SELECT op_scan AS <b>Operatore</b>,
+                       CONVERT(DATE, data_scan) AS <b>DataLavorazione</b>,
+                       COUNT(*) AS <b>Documenti</b>,
+                       SUM(CONVERT(INT, num_pag))/2 AS <b>Fogli</b>,
+                       SUM(CONVERT(INT, num_pag)) AS <b>Pagine</b>
+                FROM z0072370_rdmkt_28aut_ge_uda_dettaglio
+                WHERE <b>department = 'genova'</b>
+                  AND data_scan >= <b>@@StartDate</b>
+                  AND data_scan &lt;= <b>@@EndDate</b>
+                GROUP BY op_scan, CONVERT(DATE, data_scan)
+            </MudText>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudTextField @bind-Value="TestoQuery"
+                      Label="Query SQL"
+                      Variant="Variant.Outlined"
+                      Lines="15"
+                      Required="true"
+                      Style="font-family: monospace;" spellcheck="false" />
+        <MudText Typo="Typo.caption" Class="mt-1">
+            Parametri obbligatori: @@StartDate, @@EndDate | Colonne obbligatorie: Operatore, DataLavorazione, Documenti, Fogli, Pagine
+        </MudText>
+    </MudItem>
+
+    <MudItem xs="12" Class="d-flex gap-2 mt-2">
+        <MudButton Variant="Variant.Outlined" 
+                   Color="Color.Info"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.Cable"
+                   OnClick="OnTestConnection"
+                   Disabled='@(TestingConnection || string.IsNullOrWhiteSpace(ConnectionStringName))'>
+            @if (TestingConnection) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+            Test Connessione
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" 
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.VerifiedUser"
+                   OnClick="OnValidateQuery"
+                   Disabled='@(ValidatingQuery || string.IsNullOrWhiteSpace(TestoQuery))'>
+            @if (ValidatingQuery) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
+            Valida Query
+        </MudButton>
+    </MudItem>
+
+    @if (!string.IsNullOrWhiteSpace(ValidationMessage))
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="@ValidationSeverity" Dense Elevation="1" Class="mb-2">
+                @ValidationMessage
+            </MudAlert>
+        </MudItem>
+    }
+}
+else if (TipoFonte == "EmailCSV")
+{
+    <MudItem xs="12" md="6">
+        <MudSelect T="string" 
+                   @bind-Value="MailServiceCode"
+                   Label="Mail Service"
+                   Variant="Variant.Outlined"
+                   Required="true">
+            @foreach (var ms in MailServices)
+            {
+                <MudSelectItem Value="@ms">@ms</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+}
+else if (TipoFonte == "HandlerIntegrato")
+{
+    <MudItem xs="12" md="6">
+        <MudSelect T="string" 
+                   @bind-Value="HandlerClassName"
+                   Label="Handler C#"
+                   Variant="Variant.Outlined"
+                   Required="true">
+            @foreach (var handler in AvailableHandlers)
+            {
+                <MudSelectItem Value="@handler.ClassName">@handler.ClassName</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+}
+else if (TipoFonte == "Pipeline")
+{
+    <MudItem xs="12" md="6">
+        <MudSelect T="string" 
+                   @bind-Value="ConnectionStringName"
+                   Label="Connection String Base"
+                   Variant="Variant.Outlined">
+            @foreach (var cs in ConnectionStrings)
+            {
+                <MudSelectItem Value="@cs">@cs</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12">
+        <MudAlert Severity="Severity.Info">Pipeline multi-step in sviluppo.</MudAlert>
+    </MudItem>
+}
+
+@code {
+    [Parameter]
+    public string? TipoFonte { get; set; }
+
+    [Parameter]
+    public string? ConnectionStringName { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ConnectionStringNameChanged { get; set; }
+
+    [Parameter]
+    public string? TestoQuery { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> TestoQueryChanged { get; set; }
+
+    [Parameter]
+    public string? MailServiceCode { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> MailServiceCodeChanged { get; set; }
+
+    [Parameter]
+    public string? HandlerClassName { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> HandlerClassNameChanged { get; set; }
+
+    [Parameter]
+    public List<string> ConnectionStrings { get; set; } = new();
+
+    [Parameter]
+    public List<string> MailServices { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<HandlerInfo> AvailableHandlers { get; set; } = new List<HandlerInfo>();
+
+    [Parameter]
+    public bool TestingConnection { get; set; }
+
+    [Parameter]
+    public bool ValidatingQuery { get; set; }
+
+    [Parameter]
+    public string? ValidationMessage { get; set; }
+
+    [Parameter]
+    public Severity ValidationSeverity { get; set; } = Severity.Info;
+
+    [Parameter]
+    public EventCallback OnTestConnection { get; set; }
+
+    [Parameter]
+    public EventCallback OnValidateQuery { get; set; }
+}
