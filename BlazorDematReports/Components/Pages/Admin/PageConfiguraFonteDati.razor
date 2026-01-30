@@ -36,47 +36,49 @@
             <MudItem xs="12"><MudDivider /></MudItem>
 
             @* Procedura Selector *@
-            <ProceduraSelector SelectedLavorazione="_selectedLavorazione"
-                              SelectedLavorazioneChanged="@OnValueChangedLavorazioneAsync"
-                              CodiceConfigurazione="_config.CodiceConfigurazione"
-                              SearchFunc="@((string arg) => SearchFromSelect(base.SelectLavorazione, arg))" />
+            <ProceduraSelector SelectedLavorazione="@_selectedLavorazione"
+                               SelectedLavorazioneChanged="@OnValueChangedLavorazioneAsync"
+                               CodiceConfigurazione="@_config.CodiceConfigurazione"
+                               SearchFunc="@((string arg) => SearchFromSelect(base.SelectLavorazione, arg))" />
 
             <MudItem xs="12"><MudDivider /></MudItem>
 
             @* Configurazione Specifica *@
-            <ConfigurazioneSpecifica TipoFonte="_config.TipoFonte"
-                                    ConnectionStringName="_config.ConnectionStringName"
+            <ConfigurazioneSpecifica TipoFonte="@_config.TipoFonte"
+                                    ConnectionStringName="@_config.ConnectionStringName"
                                     ConnectionStringNameChanged="@((string? v) => { _config.ConnectionStringName = v; InvokeAsync(StateHasChanged); })"
-                                    TestoQuery="_config.TestoQuery"
+                                    TestoQuery="@_config.TestoQuery"
                                     TestoQueryChanged="@((string? v) => { _config.TestoQuery = v; InvokeAsync(StateHasChanged); })"
-                                    MailServiceCode="_config.MailServiceCode"
+                                    MailServiceCode="@_config.MailServiceCode"
                                     MailServiceCodeChanged="@((string? v) => { _config.MailServiceCode = v; InvokeAsync(StateHasChanged); })"
-                                    HandlerClassName="_config.HandlerClassName"
+                                    HandlerClassName="@_config.HandlerClassName"
                                     HandlerClassNameChanged="@((string? v) => { _config.HandlerClassName = v; InvokeAsync(StateHasChanged); })"
-                                    ConnectionStrings="_connectionStrings"
-                                    MailServices="_mailServices"
-                                    AvailableHandlers="_availableHandlers"
-                                    TestingConnection="_testingConnection"
-                                    ValidatingQuery="_validatingQuery"
-                                    ValidationMessage="_validationMessage"
-                                    ValidationSeverity="_validationSeverity"
+                                    ConnectionStrings="@_connectionStrings"
+                                    MailServices="@_mailServices"
+                                    AvailableHandlers="@_availableHandlers"
+                                    TestingConnection="@_testingConnection"
+                                    ValidatingQuery="@_validatingQuery"
+                                    ValidationMessage="@_validationMessage"
+                                    ValidationSeverity="@_validationSeverity"
                                     OnTestConnection="@(async () => await TestConnectionAsync())"
                                     OnValidateQuery="@(async () => await ValidateQueryAsync())" />
 
             <MudItem xs="12"><MudDivider /></MudItem>
 
             @* Mapping Configurazione *@
-            <MappingConfigurazione Mappings="_mappingFasi"
-                                  Fasi="_fasiPerProcedura"
-                                  PresetCrons="_presetCrons"
-                                  DescrizioneConfigurazione="_config.DescrizioneConfigurazione"
+            <MappingConfigurazione Mappings="@_mappingFasi"
+                                  Fasi="@_fasiPerProcedura"
+                                  PresetCrons="@_presetCrons"
+                                  DescrizioneConfigurazione="@_config.DescrizioneConfigurazione"
                                   DescrizioneConfigurazioneChanged="@((string? v) => { _config.DescrizioneConfigurazione = v; InvokeAsync(StateHasChanged); })"
                                   DisabledState='@(_config.TipoFonte == "SQL" && !_queryValidated)'
                                   CanAddMapping='@(_selectedIdProcedura > 0 && _selectedCentroId > 0 && !(_config.TipoFonte == "SQL" && !_queryValidated))'
                                   OnAggiungiMapping="@AggiungiMappingAsync"
                                   OnRimuoviMapping="@RimuoviMappingAsync"
                                   GetCronValue="@GetCronFromMapping"
-                                  OnCronChanged="@OnCronChangedAsync" />
+                                  OnCronChanged="@OnCronChangedAsync"  
+                                  GiorniPrecedenti="@(_config.GiorniPrecedenti ?? 1)"
+                                  GiorniPrecedentiChanged="@(v => { _config.GiorniPrecedenti = v; InvokeAsync(StateHasChanged); })" />
 
             <MudItem xs="12"><MudDivider Class="my-4" /></MudItem>
 
@@ -146,7 +148,8 @@
             SetSelectLavorazione();
 
             // Carica connection strings
-            _connectionStrings = DataReaderService.GetConnectionStrings(Configuration);
+            var conStrings = DataReaderService.GetConnectionStrings(Configuration);
+            _connectionStrings.AddRange(conStrings);
 
             // Carica handler disponibili
             _availableHandlers = HandlerDiscoveryService.AvailableHandlers;

@@ -10,26 +10,20 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
+controllare se in configurazione vengono riportate solo le lavorazioni che sono datareading true
+sistemre l'aggiunta dei giorni da considerare, controllare lo stato della casella anche in edit procedura
+controllare perchè esistono 2 servizi mail per 28 aut
 
-proseguire con l'implementazione della configurazione, applicare le regle che sono gia presenti 
-in add task ( ad esempio 1 solo task per fase con lo stessocron, eccc) stabiilre regole per creazione task 
-controllare in edit perchè non salva aggiornamento
+implementare la configurazione per il servizio mail
+implementare la logica per gli handler
+implemetnare la logica per i multi step hanlder?
 
-test su tutte le possibili configurazioni,
+
 semplificare o capiere bene le configurazioni json parametri per colonne ecc.
 
 
-crea config solo se esiste tutto, fasi centro ecc..
-
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
-correggere layotut riepilogo fonti dati,
-chiedere perchè necessaria creazione task separato da configurazione
-confiuraione per task specifica per un centro , no scelta di piu centri fasi devono essere ammesse e quelle previste dalla procedura precedentemente salvata
-
-
-
-controllare quando creo il servizio mail 
 
 da iis si possono leggere email?
 

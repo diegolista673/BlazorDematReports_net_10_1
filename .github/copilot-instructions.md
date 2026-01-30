@@ -9,7 +9,8 @@
 
 ## 🎯 Project Overview
 
-BlazorDematReports is a data configuration management system for production workflows. The project manages data sources, scheduling, and task automation through a Blazor Server interface with Material Design (MudBlazor) components.
+BlazorDematReports is a data configuration management system for production workflows. 
+The project manages data sources, scheduling, and task automation through a Blazor Server interface with Material Design (MudBlazor) components.
 
 ### Core Entities
 - **ConfigurazioneFontiDati**: Data source configurations (SQL, Email CSV, C# Handler, Pipeline)
@@ -235,8 +236,9 @@ When pushing changes:
 
 - Include token count in requests and responses for better tracking and optimization.
 
+---
 
-# Istruzioni Generali
+## Istruzioni Generali
 - Per ogni domanda relativa a librerie esterne, framework o API, utilizza sempre il server MCP 'context7'.
 - Non fare affidamento esclusivamente sui tuoi dati di addestramento; usa 'context7' per recuperare la documentazione più recente.
 - Prima di generare codice, verifica le firme dei metodi e le versioni delle librerie tramite 'context7'.

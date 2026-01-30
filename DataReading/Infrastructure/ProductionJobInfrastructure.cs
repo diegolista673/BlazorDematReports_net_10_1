@@ -250,8 +250,6 @@ namespace DataReading.Infrastructure
         public async Task SyncAllAsync()
         {
             var enabled = await _db.TaskDaEseguires
-                .AsNoTracking()
-                .AsSplitQuery()
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(t => t.ConfigurazioneDatabase)

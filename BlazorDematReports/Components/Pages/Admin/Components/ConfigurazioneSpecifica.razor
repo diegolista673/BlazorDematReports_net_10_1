@@ -10,7 +10,8 @@
 {
     <MudItem xs="12" md="6">
         <MudSelect T="string" 
-                   @bind-Value="ConnectionStringName"
+                   Value="@ConnectionStringName"
+                   ValueChanged="OnConnectionStringNameChanged"
                    Label="Connection String"
                    Variant="Variant.Outlined"
                    Required="true">
@@ -60,15 +61,22 @@
     </MudItem>
 
     <MudItem xs="12">
-        <MudTextField @bind-Value="TestoQuery"
+        <MudTextField 
+                      Value="@TestoQuery"
+                      TextChanged="OnTestoQueryChanged"
                       Label="Query SQL"
                       Variant="Variant.Outlined"
                       Lines="15"
                       Required="true"
                       Style="font-family: monospace;" spellcheck="false" />
-        <MudText Typo="Typo.caption" Class="mt-1">
-            Parametri obbligatori: @@StartDate, @@EndDate | Colonne obbligatorie: Operatore, DataLavorazione, Documenti, Fogli, Pagine
-        </MudText>
+        <MudStack Direction="Column" >
+            <MudText Typo="Typo.caption">
+                Parametri obbligatori: @@StartDate, @@EndDate | Colonne obbligatorie: Operatore, DataLavorazione, Documenti, Fogli, Pagine
+            </MudText>
+            <MudText Typo="Typo.caption">
+                NB* - Se in edit aggiorno la query il task schedulato si aggiorna automaticamente
+            </MudText>
+        </MudStack>
     </MudItem>
 
     <MudItem xs="12" Class="d-flex gap-2 mt-2">
@@ -203,4 +211,16 @@ else if (TipoFonte == "Pipeline")
 
     [Parameter]
     public EventCallback OnValidateQuery { get; set; }
+
+
+    private async Task OnConnectionStringNameChanged(string? value)
+    {
+        await ConnectionStringNameChanged.InvokeAsync(value);
+    }
+
+    private async Task OnTestoQueryChanged(string? value)
+    {
+        await TestoQueryChanged.InvokeAsync(value);
+    }
 }
+
