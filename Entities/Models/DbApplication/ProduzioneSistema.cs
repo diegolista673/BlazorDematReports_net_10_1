@@ -37,19 +37,10 @@ public partial class ProduzioneSistema
 
     public int IdCentro { get; set; }
 
-    /// <summary>
-    /// ID evento estratto da email (es. HERA16, ADER4).
-    /// </summary>
     public string? EventoId { get; set; }
 
-    /// <summary>
-    /// Nome allegato CSV processato.
-    /// </summary>
     public string? NomeAllegato { get; set; }
 
-    /// <summary>
-    /// Centro identificato (VERONA, GENOVA, etc.).
-    /// </summary>
     public string? CentroElaborazione { get; set; }
 
     public virtual CentriLavorazione IdCentroNavigation { get; set; } = null!;

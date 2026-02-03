@@ -11,18 +11,19 @@ with (firstrow = 170,
       maxerrors=10);
 
 
-se previsto lettura diretta per fasi di lavorazione anche da parte dei csv che arrivano dalle email serve ancora la fase procedura completa?
 
-controllare perchè esistono 2 servizi mail per 28 aut
+come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
 
 implementare la configurazione per il servizio mail
 implementare la logica per gli handler
 implemetnare la logica per i multi step hanlder?
 
 
+
 semplificare o capiere bene le configurazioni json parametri per colonne ecc.
 
-
+va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo
+come conteggiare i servizi mail associati alla lavorazione?
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
 
@@ -50,7 +51,7 @@ Per quando programma è pronto per la produzione
 
  
 
-spiegazione di come funziona la logica dei task e serice mail
+
 
 
 controllare il funzinamento in lettore dati, job mail e job lavorazioni

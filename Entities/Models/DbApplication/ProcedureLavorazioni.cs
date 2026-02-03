@@ -33,6 +33,8 @@ public partial class ProcedureLavorazioni
 
     public string? NomeServizio { get; set; }
 
+    public virtual ICollection<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; } = new List<ConfigurazioneFaseCentro>();
+
     public virtual FormatoDati IdformatoDatiProduzioneNavigation { get; set; } = null!;
 
     public virtual Operatori? IdoperatoreNavigation { get; set; }

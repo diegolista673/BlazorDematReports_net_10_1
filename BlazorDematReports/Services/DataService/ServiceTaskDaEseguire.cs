@@ -40,8 +40,7 @@ namespace BlazorDematReports.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll().Include(x => x.IdTaskNavigation)
-                                  .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
+            return await FindAll().Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                                   .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                                   .AsNoTracking().ToListAsync();
         }
@@ -55,11 +54,13 @@ namespace BlazorDematReports.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll().Include(x => x.IdTaskNavigation)
-                                  .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                                  .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                                  .Where(x => x.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione == idProceduraLavorazione)
-                                  .AsNoTracking().ToListAsync();
+            return await FindAll()
+                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!
+                .ThenInclude(f => f.IdFaseLavorazioneNavigation)
+                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!
+                .ThenInclude(f => f.IdProceduraLavorazioneNavigation)
+                .Where(x => x.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione == idProceduraLavorazione)
+                .AsNoTracking().ToListAsync();
         }
 
         /// <summary>
@@ -71,10 +72,10 @@ namespace BlazorDematReports.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             return await FindAll()
-                .Include(t => t.ConfigurazioneDatabase)
+                .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Where(t => t.IdConfigurazioneDatabase.HasValue && 
-                           t.ConfigurazioneDatabase!.TipoFonte == "EmailCSV")
+                           t.IdConfigurazioneDatabaseNavigation!.TipoFonte == "EmailCSV")
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -89,10 +90,10 @@ namespace BlazorDematReports.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             return await FindAll()
-                .Include(t => t.ConfigurazioneDatabase)
+                .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Where(t => t.IdConfigurazioneDatabase.HasValue && 
-                           t.ConfigurazioneDatabase!.TipoFonte == "EmailCSV" &&
+                           t.IdConfigurazioneDatabaseNavigation!.TipoFonte == "EmailCSV" &&
                            t.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione == idProceduraLavorazione)
                 .AsNoTracking()
                 .ToListAsync();
@@ -108,12 +109,11 @@ namespace BlazorDematReports.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             return await FindAll()
-                .Include(t => t.ConfigurazioneDatabase)
-                .Include(x => x.IdTaskNavigation)
+                .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Where(t => t.IdConfigurazioneDatabase.HasValue && 
-                           t.ConfigurazioneDatabase!.TipoFonte == "EmailCSV")
+                           t.IdConfigurazioneDatabaseNavigation!.TipoFonte == "EmailCSV")
                 .AsNoTracking()
                 .ToListAsync();
         }

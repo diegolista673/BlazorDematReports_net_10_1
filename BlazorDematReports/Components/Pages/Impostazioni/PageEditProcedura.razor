@@ -60,36 +60,45 @@
 </MudContainer>
 
 
-
 @* Container per gli Expansion Panels *@
 @if (!_isLoading && Model != null)
 {
     <MudContainer MaxWidth="MaxWidth.Large" Class="pa-0">
-        @* CONTENUTO: Expansion Panels invece dei Tab *@
+
         <MudExpansionPanels Elevation="2" Class="mb-4">
             
             @* Generale Expansion Panel *@
-            <MudExpansionPanel Text="Informazioni Generali" 
-                              Icon="@Icons.Material.Filled.Info" 
-                              IsInitiallyExpanded="true">
+            <MudExpansionPanel Text="Informazioni Generali" IsInitiallyExpanded="true">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" />
+                        <MudText>Informazioni Generali</MudText>
+                    </div>
+                </TitleContent>
                 <ChildContent>
                     <ProcedureGeneralForm Model="@Model" OnModelChanged="@HandleModelChangedAsync" />
                 </ChildContent>
             </MudExpansionPanel>
             
             @* Fasi di Lavorazione Expansion Panel *@
-            <MudExpansionPanel Text="Fasi di Lavorazione" 
-                              Icon="@Icons.Material.Filled.Timeline" 
-                              IsInitiallyExpanded="false">
+            <MudExpansionPanel Text="Fasi di Lavorazione" IsInitiallyExpanded="false">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Timeline" />
+                        <MudText>Fasi di Lavorazione</MudText>
+                        <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                            @Model.LavorazioniFasiDataReadingsDto.Count()
+                        </MudChip>
+                    </div>
+                </TitleContent>
+
                 <ChildContent>
-                    <ProcedurePhasesViewer Model="@Model" OnModelChanged="@HandleModelChangedAsync" />
+                    <ProcedurePhasesViewer Model="@Model" OnModelChanged="@HandleModelChangedAsync" EditMode="true" />
                 </ChildContent>
             </MudExpansionPanel>
             
             @* Configurazioni Fonti Dati *@
-            <MudExpansionPanel Text="?? Configurazioni Fonti Dati" 
-                              Icon="@Icons.Material.Filled.Settings" 
-                              IsInitiallyExpanded="false">
+            <MudExpansionPanel Text="Configurazioni Fonti Dati" IsInitiallyExpanded="false">
                 <TitleContent>
                     <div class="d-flex align-center gap-2">
                         <MudIcon Icon="@Icons.Material.Filled.Settings" />
@@ -115,9 +124,13 @@
             </MudExpansionPanel>
             
             @* Monitoring Expansion Panel *@
-            <MudExpansionPanel Text="Monitoring e Dashboard" 
-                              Icon="@Icons.Material.Filled.Dashboard" 
-                              IsInitiallyExpanded="false">
+            <MudExpansionPanel Text="Monitoring e Dashboard" IsInitiallyExpanded="false">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Dashboard" />
+                        <MudText>Monitoring e Dashboard</MudText>
+                    </div>
+                </TitleContent>
                 <ChildContent>
                     <ProcedureMonitoringDashboard Model="@Model" OnRefresh="@LoadProceduraAsync" />
                 </ChildContent>
@@ -131,47 +144,26 @@
 
 
 @code {
-[Parameter] public int IdProcedura { get; set; }
-[Parameter] public string? ActiveTab { get; set; }
-    
-private bool _isLoading = true;
-private bool _isProcessing = false;
-private List<BreadcrumbItem> _breadcrumbItems = new();
-private int _configurazioniCount = 0;
-    
-/// <summary>
-/// Verifica se la procedura ha un handler implementato (query integrata disponibile).
-/// </summary>
-private bool HasIntegratedQuery
-    {
-        get
-        {
-            if (Model == null || string.IsNullOrWhiteSpace(Model.NomeProcedura))
-                return false;
-            
-            // Verifica se esiste un handler registrato per questa procedura
-            return HandlerRegistry.TryGetHandler(Model.NomeProcedura, out _);
-        }
-    }
-    
-    /// <summary>
-    /// Restituisce la classe CSS per la floating action bar in base allo stato.
-    /// </summary>
-    private string GetFloatingBarClass()
-    {
-        var baseClass = "floating-action-bar pa-3";
-        return StateService.HasUnsavedChanges 
-            ? $"{baseClass} has-changes" 
-            : $"{baseClass} saved";
-    }
-    
+
+    [Parameter] public int IdProcedura { get; set; }
+    [Parameter] public string? ActiveTab { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isProcessing = false;
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+    private int _configurazioniCount = 0;
+    private int _fasiCount = 0;
+
+
+
+
     protected override async Task OnInitializedAsync()
     {
         await LoadDataAsync();
         SetupBreadcrumbs();
         StateService.UnsavedChangesChanged += OnUnsavedChangesChanged;
     }
-    
+
     protected override async Task OnParametersSetAsync()
     {
         if (_isLoading)
@@ -179,42 +171,40 @@ private bool HasIntegratedQuery
             await LoadProceduraAsync();
         }
     }
-    
+
     private async Task LoadDataAsync()
     {
         try
         {
             var loadFasiTask = Task.Run(async () => 
                 ListFasiLavorazione = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync());
-            
-            var loadTaskTypesTask = Task.Run(async () => 
-                ListTask = await ServiceWrapper!.ServiceTabellaTask.GetTabellaTaskAsync());
-            
-            await Task.WhenAll(loadFasiTask, loadTaskTypesTask);
-            
-            Logger?.LogInformation("Reference data loaded successfully");
+
+            await Task.WhenAll(loadFasiTask);
+
+            Logger?.LogInformation("LoadDataAsync data loaded successfully");
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "Error loading reference data");
+            Logger?.LogError(ex, "Error loading LoadDataAsync data");
         }
     }
-    
+
+
     private async Task LoadProceduraAsync()
     {
         try
         {
             Model = await ServiceWrapper!.ServiceProcedureLavorazioni
                 .GetSingleProceduraLavorazioneDtoByIDAsync(IdProcedura);
-            
+
             if (Model != null)
             {
                 StateService.InitializeState(Model);
                 SetEditContext();
-                
+
                 // Carica contatore configurazioni
                 await LoadConfigurazioniCountAsync();
-                
+
                 Logger?.LogInformation("Loaded procedure {ProcedureId}: {ProcedureName}", 
                     IdProcedura, Model.NomeProcedura);
             }
@@ -233,7 +223,32 @@ private bool HasIntegratedQuery
             _isLoading = false;
         }
     }
-    
+
+    /// <summary>
+    /// Verifica se la procedura ha un handler implementato (query integrata disponibile).
+    /// </summary>
+    private bool HasIntegratedQuery
+    {
+        get
+        {
+            if (Model == null || string.IsNullOrWhiteSpace(Model.NomeProcedura))
+                return false;
+
+            // Verifica se esiste un handler registrato per questa procedura
+            return HandlerRegistry.TryGetHandler(Model.NomeProcedura, out _);
+        }
+    }
+
+    /// <summary>
+    /// Restituisce la classe CSS per la floating action bar in base allo stato.
+    /// </summary>
+    private string GetFloatingBarClass()
+    {
+        var baseClass = "floating-action-bar pa-3";
+        return StateService.HasUnsavedChanges
+            ? $"{baseClass} has-changes"
+            : $"{baseClass} saved";
+    }
     private async Task LoadConfigurazioniCountAsync()
     {
         try

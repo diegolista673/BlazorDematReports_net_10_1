@@ -118,7 +118,7 @@ namespace BlazorDematReports.Services.DataService
                 .Include(x => x.IdrepartiNavigation)
                 .Include(x => x.IdformatoDatiProduzioneNavigation)
                 .Include(x => x.QueryProcedureLavorazionis)
-                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires).ThenInclude(x => x.IdTaskNavigation)
+                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires)
                 .Include(x => x.IdproceduraClienteNavigation).ThenInclude(p => p!.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                 .OrderBy(x => x.NomeProcedura)
                 .AsNoTracking()
@@ -146,7 +146,7 @@ namespace BlazorDematReports.Services.DataService
                     .Include(x => x.IdformatoDatiProduzioneNavigation)
                     .Include(x => x.QueryProcedureLavorazionis)
                     .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires).ThenInclude(x => x.IdLavorazioneFaseDateReadingNavigation.IdFaseLavorazioneNavigation)
-                    .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires).ThenInclude(x => x.IdTaskNavigation)
+                    .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires)
                     .Include(x => x.IdproceduraClienteNavigation).ThenInclude(p => p!.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                     .Where(x => x.Idcentro == configUser.IdCentroOrigine)
                     .OrderBy(x => x.NomeProcedura)
@@ -254,7 +254,6 @@ namespace BlazorDematReports.Services.DataService
             var query = context.ProcedureLavorazionis
                             .Include(x => x.LavorazioniFasiDataReadings)
                                 .ThenInclude(x => x.TaskDaEseguires)
-                                .ThenInclude(x => x.IdTaskNavigation)
                             .Include(x => x.LavorazioniFasiDataReadings)
                                 .ThenInclude(x => x.IdFaseLavorazioneNavigation)
                             .Include(x => x.QueryProcedureLavorazionis)
@@ -414,16 +413,6 @@ namespace BlazorDematReports.Services.DataService
                 {
                     foreach (var taskDto in faseDto.TaskDaEseguireDto.Where(t => t.IdTask > 0))
                     {
-                        // Valida esistenza tipo task
-                        var taskExists = await context.TabellaTasks
-                            .AnyAsync(t => t.Idtask == taskDto.IdTask);
-
-
-                        if (!taskExists)
-                        {
-                            throw new InvalidOperationException($"Task con ID {taskDto.IdTask} non esiste");
-                        }
-
                         // **VALIDAZIONE: Controlla che IdConfigurazioneDatabase sia valido**
                         if (taskDto.IdConfigurazioneDatabase.HasValue)
                         {
@@ -658,7 +647,6 @@ namespace BlazorDematReports.Services.DataService
                         }
 
                         // Mapping proprietà
-                        existingTask.IdTask = taskDto.IdTask;
                         existingTask.IdTaskHangFire = taskDto.IdTaskHangFire ?? string.Empty;
                         existingTask.GiorniPrecedenti = taskDto.GiorniPrecedenti;
                         existingTask.Stato = taskDto.Stato ?? "Attivo";
@@ -670,8 +658,6 @@ namespace BlazorDematReports.Services.DataService
                         existingTask.ConsecutiveFailures = taskDto.ConsecutiveFailures;
                         existingTask.IdConfigurazioneDatabase = taskDto.IdConfigurazioneDatabase;
 
-                        // Gestione sicura di TimeTask
-                        existingTask.TimeTask = taskDto.TimeTask.HasValue ? TimeOnly.FromTimeSpan(taskDto.TimeTask.Value) : null;
                     }
                 }
                 else
@@ -710,7 +696,7 @@ namespace BlazorDematReports.Services.DataService
 
             using var context = contextFactory.CreateDbContext();
             return await context.ProcedureLavorazionis
-                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires).ThenInclude(x => x.IdTaskNavigation)
+                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires)
                 .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(x => x.NomeProcedura == nomeProcedura);
         }
@@ -729,7 +715,7 @@ namespace BlazorDematReports.Services.DataService
                 .Include(x => x.IdrepartiNavigation)
                 .Include(x => x.IdformatoDatiProduzioneNavigation)
                 .Include(x => x.QueryProcedureLavorazionis)
-                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires).ThenInclude(x => x.IdTaskNavigation)
+                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires)
                 .Include(x => x.IdproceduraClienteNavigation).ThenInclude(p => p!.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                 .OrderBy(x => x.NomeProcedura)
                 .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
@@ -751,7 +737,7 @@ namespace BlazorDematReports.Services.DataService
                 .Include(x => x.IdrepartiNavigation!)
                 .Include(x => x.IdformatoDatiProduzioneNavigation!)
                 .Include(x => x.QueryProcedureLavorazionis!)
-                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires).ThenInclude(x => x.IdTaskNavigation)
+                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires)
                 .Include(x => x.IdproceduraClienteNavigation!).ThenInclude(p => p.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                 .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(x => x.IdproceduraLavorazione == idProceduraLavorazione);
@@ -773,7 +759,7 @@ namespace BlazorDematReports.Services.DataService
                 .Include(x => x.IdrepartiNavigation)
                 .Include(x => x.IdformatoDatiProduzioneNavigation)
                 .Include(x => x.QueryProcedureLavorazionis)
-                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires).ThenInclude(x => x.IdTaskNavigation)
+                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires)
                 .Include(x => x.IdproceduraClienteNavigation).ThenInclude(p => p!.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                 .AsNoTracking()
                 .Where(x => x.Idcentro == idCentro)

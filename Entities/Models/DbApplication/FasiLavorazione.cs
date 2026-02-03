@@ -11,6 +11,8 @@ public partial class FasiLavorazione
 
     public bool UtilizzataDaSistema { get; set; }
 
+    public virtual ICollection<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; } = new List<ConfigurazioneFaseCentro>();
+
     public virtual ICollection<LavorazioniFasiDataReading> LavorazioniFasiDataReadings { get; set; } = new List<LavorazioniFasiDataReading>();
 
     public virtual ICollection<LavorazioniFasiTipoTotale> LavorazioniFasiTipoTotales { get; set; } = new List<LavorazioniFasiTipoTotale>();

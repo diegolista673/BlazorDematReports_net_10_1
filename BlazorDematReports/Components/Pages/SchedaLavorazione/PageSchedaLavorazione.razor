@@ -3,10 +3,14 @@
 @using DataReading.Dto
 @using BlazorDematReports.Dto
 @using BlazorDematReports.Components.Shared
+@using Entities.Models.DbApplication
+@using Microsoft.EntityFrameworkCore
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inherits BaseComponentPage<PageSchedaLavorazione,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject NavigationManager NavManager
 @inject IJSRuntime JSRuntime
+@inject ProcedureEditStateService StateService
+@inject IDbContextFactory<DematReportsContext> DbFactory
 @implements IDisposable
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Scheda Lavorazione</MudText>
@@ -74,70 +78,37 @@ else
 
             @* CONTENUTO: Expansion Panels *@
             <MudExpansionPanels Elevation="3" Class="mb-4">
-                
-                @* Fasi di Lavorazione Expansion Panel *@
-                <MudExpansionPanel Text="Fasi di Lavorazione" 
-                                  Icon="@Icons.Material.Filled.Timeline" 
-                                  IsInitiallyExpanded="true">
+               
+               
+                @* Fasi di Lavorazione (Dettaglio Completo) *@
+                <MudExpansionPanel Text="Fasi di Lavorazione - Dettaglio Completo"  IsInitiallyExpanded="false">
+                    <TitleContent>
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.ListAlt" />
+                            <MudText>Fasi di Lavorazione - Dettaglio Completo</MudText>
+                            <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                                @(_currentModel?.LavorazioniFasiDataReadingsDto?.Count(f => f.IdFaseLavorazione != 0) ?? 0)
+                            </MudChip>
+                        </div>
+                    </TitleContent>
+
                     <ChildContent>
-                        @if (_currentModel.LavorazioniFasiDataReadingsDto?.Any(f => f.IdFaseLavorazione != 0) == true)
-                        {
-                            <MudGrid Spacing="2" Class="pa-2">
-                                @foreach (var fase in _currentModel.LavorazioniFasiDataReadingsDto.Where(f => f.IdFaseLavorazione != 0).OrderBy(f => f.FaseLavorazione))
-                                {
-                                    <MudItem xs="12" sm="6" md="4" lg="3">
-                                        <MudCard Elevation="1" Style="height:100%;">
-                                            <MudCardContent Class="d-flex flex-column" Style="height:100%;">
-                                                <div class="d-flex align-center gap-2 mb-2">
-                                                    <MudIcon Icon="@GetPhaseIcon(fase)" 
-                                                             Color="@(fase.FlagDataReading ? Color.Success : Color.Default)" 
-                                                             Size="Size.Small" />
-                                                    <MudText Typo="Typo.subtitle1">@fase.FaseLavorazione</MudText>
-                                                </div>
-                                                <MudDivider Class="my-2" />
-                                                <div class="d-flex flex-column gap-1" Style="flex:1;">
-                                                    <div class="d-flex align-center">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Small" Class="mr-1" />
-                                                        <MudText Typo="Typo.caption">@(fase.TaskDaEseguireDto?.Count ?? 0) task</MudText>
-                                                    </div>
-                                                    <div class="d-flex align-center">
-                                                        <MudIcon Icon="@Icons.Material.Filled.BarChart" 
-                                                                 Size="Size.Small" 
-                                                                 Class="mr-1" 
-                                                                 Color="@(fase.FlagGraficoDocumenti ? Color.Success : Color.Default)" />
-                                                        <MudText Typo="Typo.caption" 
-                                                                 Color="@(fase.FlagGraficoDocumenti ? Color.Success : Color.Default)">
-                                                            Grafico: @(fase.FlagGraficoDocumenti ? "Sì" : "No")
-                                                        </MudText>
-                                                    </div>
-                                                    <div class="d-flex align-center">
-                                                        <MudIcon Icon="@Icons.Material.Filled.DataObject" 
-                                                                 Size="Size.Small" 
-                                                                 Class="mr-1" 
-                                                                 Color="@(fase.FlagDataReading ? Color.Success : Color.Default)" />
-                                                        <MudText Typo="Typo.caption" 
-                                                                 Color="@(fase.FlagDataReading ? Color.Success : Color.Default)">
-                                                            Data Reading: @(fase.FlagDataReading ? "Attivo" : "Inattivo")
-                                                        </MudText>
-                                                    </div>
-                                                </div>
-                                            </MudCardContent>
-                                        </MudCard>
-                                    </MudItem>
-                                }
-                            </MudGrid>
-                        }
-                        else
-                        {
-                            <MudAlert Severity="Severity.Info" Class="ma-2">Nessuna fase configurata</MudAlert>
-                        }
+                        <ProcedurePhasesViewer Model="@_currentModel" OnModelChanged="@HandleModelChangedAsync" EditMode="false" />
                     </ChildContent>
                 </MudExpansionPanel>
-                
+
                 @* Task Configurati Expansion Panel *@
-                <MudExpansionPanel Text="Task Configurati" 
-                                  Icon="@Icons.Material.Filled.Task" 
-                                  IsInitiallyExpanded="false">
+                <MudExpansionPanel Text="Task Configurati" IsInitiallyExpanded="false">
+                    <TitleContent>
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Task" />
+                            <MudText>Task Configurati</MudText>
+                            <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                                @(_currentModel.LavorazioniFasiDataReadingsDto?
+                                               .Where(f => f.TaskDaEseguireDto?.Any() == true)?.Count(f => f.IdFaseLavorazione != 0) ?? 0)
+                            </MudChip>
+                        </div>
+                    </TitleContent>
                     <ChildContent>
                         @{
                             var allTasks = _currentModel.LavorazioniFasiDataReadingsDto?
@@ -200,9 +171,16 @@ else
                 </MudExpansionPanel>
                 
                 @* Query Personalizzate Expansion Panel *@
-                <MudExpansionPanel Text="Query Personalizzate" 
-                                  Icon="@Icons.Material.Filled.Search" 
-                                  IsInitiallyExpanded="false">
+                <MudExpansionPanel Text="Query Personalizzate" IsInitiallyExpanded="false">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Search" />
+                            <MudText>Query Personalizzate</MudText>
+                        <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                            @(_currentModel?.QueryProcedureLavorazioniDto?.Count ?? 0)
+                            </MudChip>
+                        </div>
+                    </TitleContent>
                     <ChildContent>
                         @if (_currentModel.QueryProcedureLavorazioniDto?.Any() == true)
                         {
@@ -274,14 +252,24 @@ else
                 </MudExpansionPanel>
                 
                 @* Servizi Mail Unificati Expansion Panel *@
-                <MudExpansionPanel Text="Servizi Mail Unificati" 
-                                  Icon="@Icons.Material.Filled.Email" 
-                                  IsInitiallyExpanded="false">
+                <MudExpansionPanel Text="Servizi Mail" IsInitiallyExpanded="false">
+                    <TitleContent>
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" />
+                            <MudText>Servizi Mail</MudText>
+                            <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                                @(_currentModel?.LavorazioniFasiDataReadingsDto?
+                                    .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
+                                    .Count(t => t.IdConfigurazioneDatabase.HasValue && _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value)) ?? 0)
+                            </MudChip>
+                        </div>
+                    </TitleContent>
                     <ChildContent>
                         @{
+
                             var mailServices = _currentModel.LavorazioniFasiDataReadingsDto?
-                                .FirstOrDefault(f => f.IdFaseLavorazione == 0)?.TaskDaEseguireDto?
-                                .Where(t => t.IdConfigurazioneDatabase.HasValue)
+                                .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
+                                .Where(t => t.IdConfigurazioneDatabase.HasValue && _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value))
                                 .ToList();
                         }
                         @if (mailServices?.Any() == true)
@@ -355,7 +343,10 @@ else
     private bool _isLoading = false;
     private bool _initializing = true;
     private int? _lastLoadedId;
-    
+    private HashSet<int> _emailConfigIds = new();
+
+
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -418,6 +409,10 @@ else
             {
                 _currentModel = loadedModel;
                 _selectedLavorazione = loadedModel.NomeProcedura;
+                
+                // Carica gli ID delle configurazioni EmailCSV per questa procedura
+                await LoadEmailConfigIdsAsync(id);
+                
                 Logger?.LogInformation("Loaded procedure {ProcedureId}: {ProcedureName}", id, loadedModel.NomeProcedura);
             }
             else
@@ -440,6 +435,12 @@ else
             _isLoading = false;
             UiState?.HideOverlay();
         }
+    }
+
+    private async Task HandleModelChangedAsync()
+    {
+        StateService.DetectChanges();
+        await InvokeAsync(StateHasChanged);
     }
     
     private async Task OnValueChangedLavorazioneAsync(string? lavorazione)
@@ -470,7 +471,7 @@ else
                     _currentModel = loadedModel;
                     _lastLoadedId = procedura.IdproceduraLavorazione;
                     NavManager.NavigateTo($"/scheda-lavorazione/{procedura.IdproceduraLavorazione}", replace: true);
-                    UiState?.ShowSnackbar($"Lavorazione '{lavorazione}' caricata", Severity.Success);
+
                 }
             }
             else
@@ -498,6 +499,33 @@ else
         _currentModel = null;
         _selectedLavorazione = null;
         _lastLoadedId = null;
+        _emailConfigIds.Clear();
+    }
+    
+    private async Task LoadEmailConfigIdsAsync(int idProcedura)
+    {
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            
+            // Carica gli ID delle configurazioni EmailCSV per questa procedura
+            _emailConfigIds = await context.ConfigurazioneFontiDatis
+                .Where(c => c.TipoFonte == "EmailCSV" && 
+                           c.FlagAttiva == true &&
+                           c.ConfigurazioneFaseCentros.Any(fc => 
+                               fc.FlagAttiva == true && 
+                               fc.IdProceduraLavorazione == idProcedura))
+                .Select(c => c.IdConfigurazione)
+                .ToHashSetAsync();
+                
+            Logger?.LogInformation("Loaded {Count} email configurations for procedure {IdProcedura}", 
+                _emailConfigIds.Count, idProcedura);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Error loading email configurations for procedure {IdProcedura}", idProcedura);
+            _emailConfigIds.Clear();
+        }
     }
     
     private Color GetStatusColor(string? stato, bool? attivaFlag = null)
@@ -560,29 +588,4 @@ else
         _selectedLavorazione = null;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

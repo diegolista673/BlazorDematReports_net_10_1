@@ -333,11 +333,10 @@
             var repartiTask = ServiceWrapper!.ServiceRepartiProduzione.GetRepartiProduzioneAsync();
             var formatoDatiTask = ServiceWrapper!.ServiceFormatoDati.GetFormatoDatiAsync();
             var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
-            var taskTabellaTask = ServiceWrapper!.ServiceTabellaTask.GetTabellaTaskAsync();
             var procedureLavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
             
             await Task.WhenAll(centriTask, procedureClienteTask, repartiTask, formatoDatiTask, 
-                              fasiTask, taskTabellaTask, procedureLavorazioniTask);
+                              fasiTask,procedureLavorazioniTask);
             
             // Assegnazione risultati
             ListCentri = centriTask.Result;
@@ -354,7 +353,6 @@
             // Popola l'elenco delle fasi per la selezione nella nuova procedura
             SetSelectFasi();
             
-            ListTask = taskTabellaTask.Result;
             ListProcedureLavorazioniDto = procedureLavorazioniTask.Result;
         }, "Caricamento dati...");
     }

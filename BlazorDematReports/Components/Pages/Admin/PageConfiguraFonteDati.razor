@@ -99,7 +99,7 @@
                                   OnRimuoviMapping="@RimuoviMappingAsync"
                                   GetCronValue="@GetCronFromMapping"
                                   OnCronChanged="@OnCronChangedAsync"  
-                                  GiorniPrecedenti="@(_config.GiorniPrecedenti ?? 1)"
+                                  GiorniPrecedenti="@(_config.GiorniPrecedenti)"
                                   GiorniPrecedentiChanged="@(v => { _config.GiorniPrecedenti = v; InvokeAsync(StateHasChanged); })" />
 
             <MudItem xs="12"><MudDivider Class="my-4" /></MudItem>

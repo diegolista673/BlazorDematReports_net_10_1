@@ -242,3 +242,26 @@ When pushing changes:
 - Per ogni domanda relativa a librerie esterne, framework o API, utilizza sempre il server MCP 'context7'.
 - Non fare affidamento esclusivamente sui tuoi dati di addestramento; usa 'context7' per recuperare la documentazione più recente.
 - Prima di generare codice, verifica le firme dei metodi e le versioni delle librerie tramite 'context7'.
+
+# Istruzioni Generali per GitHub Copilot (SonarQube Focus)
+
+## 1. Principi di Clean Code e Qualità
+- **SonarQube Compliance**: Scrivi codice che superi l'analisi statica di SonarQube senza violazioni ("Issues").
+- **Clean as You Code**: Prioritizza la qualità sul nuovo codice aggiunto. Evita di introdurre "Code Smells", vulnerabilità di sicurezza, o bugs.
+- **Maintainability**: Segui i principi SOLID. Mantieni la complessità ciclomatica bassa.
+- **Cognitive Complexity**: Scrivi funzioni semplici e leggibili. Evita nidificazioni eccessive (if/loop).
+
+## 2. Standard di Sicurezza (SAST)
+- Evita l'hardcoding di credenziali, chiavi API o password.
+- Sanitizza sempre l'input utente per prevenire SQL Injection, XSS, e path traversal.
+- Usa librerie crittografiche sicure e aggiornate.
+
+## 3. Best Practices per Linguaggio
+- [Inserisci qui il linguaggio, es: Java/Python/JS]: Segui rigorosamente le convenzioni di naming e le best practices del linguaggio per evitare "Code Smells".
+- Gestisci le eccezioni in modo specifico, non catturare eccezioni generiche (`catch(Exception e)`).
+- Chiudi risorse (file, connessioni DB) in blocchi `finally` o usa `try-with-resources`.
+
+
+## 4. Istruzioni di Prompting
+- Se ti chiedo di generare un componente, controlla implicitamente se ci sono hotspot di sicurezza nel file aperto.
+- Prioritizza la manutenibilità rispetto alla brevità del codice.

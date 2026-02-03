@@ -40,10 +40,10 @@ namespace BlazorDematReports.Services.DataService
         private readonly Lazy<IServiceQueryProcedureLavorazioni> _serviceQueryProcedureLavorazioni;
         private readonly Lazy<IServiceCentriVisibili> _serviceCentriVisibili;
         private readonly Lazy<IServiceTipoTurni> _serviceTipoTurni;
-        private readonly Lazy<IServiceTabellaTask> _serviceTabellaTask;
         private readonly Lazy<IServiceTaskDaEseguire> _serviceTaskDaEseguire;
         private readonly Lazy<IServiceRuoli> _serviceRuoli;
         private readonly Lazy<IServiceConfigurazioneFontiDati> _serviceConfigurazioneFontiDati;
+        private readonly Lazy<IServiceMail> _serviceMail;
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per tutti i servizi di gestione dati.
         /// </summary>
@@ -52,7 +52,13 @@ namespace BlazorDematReports.Services.DataService
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="lettoreDati">Servizio per la lettura dei dati.</param>
         /// <param name="loggerFactory">Factory per la creazione dei logger specifici.</param>
-        public ServiceWrapper(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILoggerFactory loggerFactory)
+        /// <param name="fluentEmail">Servizio FluentEmail per invio email.</param>
+        public ServiceWrapper(
+            IMapper mapper, 
+            ConfigUser configUser, 
+            IDbContextFactory<DematReportsContext> contextFactory, 
+            ILoggerFactory loggerFactory,
+            FluentEmail.Core.IFluentEmail fluentEmail)
         {
             this.mapper = mapper;
             this.configUser = configUser;
@@ -80,9 +86,9 @@ namespace BlazorDematReports.Services.DataService
             _serviceOperatoriNormalizzati = new Lazy<IServiceOperatoriNormalizzati>(() => new ServiceOperatoriNormalizzati(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceOperatoriNormalizzati>()));
             _serviceTaskDataReadingAggiornamento = new Lazy<IServiceTaskDataReadingAggiornamento>(() => new ServiceTaskDataReadingAggiornamento(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTaskDataReadingAggiornamento>()));
             _serviceCentriVisibili = new Lazy<IServiceCentriVisibili>(() => new ServiceCentriVisibili(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceCentriVisibili>()));
-            _serviceTabellaTask = new Lazy<IServiceTabellaTask>(() => new ServiceTabellaTask(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTabellaTask>()));
             _serviceTaskDaEseguire = new Lazy<IServiceTaskDaEseguire>(() => new ServiceTaskDaEseguire(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTaskDaEseguire>()));
             _serviceConfigurazioneFontiDati = new Lazy<IServiceConfigurazioneFontiDati>(() => new ServiceConfigurazioneFontiDati(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceConfigurazioneFontiDati>()));
+            _serviceMail = new Lazy<IServiceMail>(() => new ServiceMail(mapper, configUser, contextFactory, fluentEmail, loggerFactory.CreateLogger<ServiceMail>()));
         }
 
         /// <inheritdoc/>
@@ -142,8 +148,6 @@ namespace BlazorDematReports.Services.DataService
         /// <inheritdoc/>
         public IServiceTipoTurni ServiceTipoTurni => _serviceTipoTurni.Value;
 
-        /// <inheritdoc/>
-        public IServiceTabellaTask ServiceTabellaTask => _serviceTabellaTask.Value;
 
         /// <inheritdoc/>
         public IServiceTaskDaEseguire ServiceTaskDaEseguire => _serviceTaskDaEseguire.Value;
@@ -152,5 +156,7 @@ namespace BlazorDematReports.Services.DataService
         public IServiceRuoli ServiceRuoli => _serviceRuoli.Value;
         /// <inheritdoc/>
         public IServiceConfigurazioneFontiDati ServiceConfigurazioneFontiDati => _serviceConfigurazioneFontiDati.Value;
+        /// <inheritdoc/>
+        public IServiceMail ServiceMail => _serviceMail?.Value ?? throw new InvalidOperationException("ServiceMail non inizializzato. Verificare la registrazione di IFluentEmail nel DI container.");
     }
 }

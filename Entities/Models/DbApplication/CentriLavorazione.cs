@@ -15,6 +15,8 @@ public partial class CentriLavorazione
 
     public virtual ICollection<Clienti> Clientis { get; set; } = new List<Clienti>();
 
+    public virtual ICollection<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; } = new List<ConfigurazioneFaseCentro>();
+
     public virtual ICollection<Operatori> Operatoris { get; set; } = new List<Operatori>();
 
     public virtual ICollection<ProduzioneSistema> ProduzioneSistemas { get; set; } = new List<ProduzioneSistema>();

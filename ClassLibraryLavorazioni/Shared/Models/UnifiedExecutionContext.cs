@@ -37,7 +37,7 @@ namespace LibraryLavorazioni.Shared.Models
             {
                 IDProceduraLavorazione = IDProceduraLavorazione,
                 IDFaseLavorazione = Parameters.GetValueOrDefault("IDFaseLavorazione", 0) as int? ?? 0,
-                IDCentro = Parameters.GetValueOrDefault("IDCentro") as int?,
+                IDCentro = (int)Parameters.GetValueOrDefault("IDCentro")!,
                 NomeProcedura = Parameters.GetValueOrDefault("NomeProcedura") as string,
                 StartDataLavorazione = Parameters.GetValueOrDefault("StartDataLavorazione", DateTime.Now) as DateTime? ?? DateTime.Now,
                 EndDataLavorazione = Parameters.GetValueOrDefault("EndDataLavorazione") as DateTime?,

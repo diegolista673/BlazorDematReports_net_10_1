@@ -31,6 +31,12 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Clienti> Clientis { get; set; }
 
+    public virtual DbSet<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; }
+
+    public virtual DbSet<ConfigurazioneFontiDati> ConfigurazioneFontiDatis { get; set; }
+
+    public virtual DbSet<ConfigurazionePipelineStep> ConfigurazionePipelineSteps { get; set; }
+
     public virtual DbSet<Counter> Counters { get; set; }
 
     public virtual DbSet<FasiLavorazione> FasiLavoraziones { get; set; }
@@ -71,6 +77,8 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<QueryProcedureLavorazioni> QueryProcedureLavorazionis { get; set; }
 
+    public virtual DbSet<QueryProcedureLavorazioniBackup> QueryProcedureLavorazioniBackups { get; set; }
+
     public virtual DbSet<RepartiProduzione> RepartiProduziones { get; set; }
 
     public virtual DbSet<Ruoli> Ruolis { get; set; }
@@ -82,8 +90,6 @@ public partial class DematReportsContext : DbContext
     public virtual DbSet<Set> Sets { get; set; }
 
     public virtual DbSet<State> States { get; set; }
-
-    public virtual DbSet<TabellaTask> TabellaTasks { get; set; }
 
     public virtual DbSet<TaskDaEseguire> TaskDaEseguires { get; set; }
 
@@ -99,14 +105,9 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Turni> Turnis { get; set; }
 
-    public virtual DbSet<Z0072370Rdmkt28autGeUdaDettaglio> Z0072370Rdmkt28autGeUdaDettaglios { get; set; }
+    public virtual DbSet<VwConfigurazioniFontiDatiCompletum> VwConfigurazioniFontiDatiCompleta { get; set; }
 
-    // Sistema Unificato Configurazione Fonti Dati
-    public virtual DbSet<ConfigurazioneFontiDati> ConfigurazioneFontiDatis { get; set; }
-    
-    public virtual DbSet<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; }
-    
-    public virtual DbSet<ConfigurazionePipelineStep> ConfigurazionePipelineSteps { get; set; }
+    public virtual DbSet<Z0072370Rdmkt28autGeUdaDettaglio> Z0072370Rdmkt28autGeUdaDettaglios { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -240,6 +241,98 @@ public partial class DematReportsContext : DbContext
                 .HasForeignKey(d => d.IdCentroLavorazione)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Clienti_CentriLavorazione");
+        });
+
+        modelBuilder.Entity<ConfigurazioneFaseCentro>(entity =>
+        {
+            entity.HasKey(e => e.IdFaseCentro).HasName("PK__Configur__367E17090E01CBD1");
+
+            entity.ToTable("ConfigurazioneFaseCentro");
+
+            entity.HasIndex(e => e.IdConfigurazione, "IX_FaseCentro_Config");
+
+            entity.HasIndex(e => new { e.IdConfigurazione, e.IdProceduraLavorazione, e.IdFaseLavorazione, e.IdCentro }, "UQ_FaseCentro_Unique").IsUnique();
+
+            entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
+
+            entity.HasOne(d => d.IdCentroNavigation).WithMany(p => p.ConfigurazioneFaseCentros)
+                .HasForeignKey(d => d.IdCentro)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FaseCentro_Centro");
+
+            entity.HasOne(d => d.IdConfigurazioneNavigation).WithMany(p => p.ConfigurazioneFaseCentros)
+                .HasForeignKey(d => d.IdConfigurazione)
+                .HasConstraintName("FK_FaseCentro_Configurazione");
+
+            entity.HasOne(d => d.IdFaseLavorazioneNavigation).WithMany(p => p.ConfigurazioneFaseCentros)
+                .HasForeignKey(d => d.IdFaseLavorazione)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FaseCentro_Fase");
+
+            entity.HasOne(d => d.IdProceduraLavorazioneNavigation).WithMany(p => p.ConfigurazioneFaseCentros)
+                .HasForeignKey(d => d.IdProceduraLavorazione)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FaseCentro_Procedura");
+        });
+
+        modelBuilder.Entity<ConfigurazioneFontiDati>(entity =>
+        {
+            entity.HasKey(e => e.IdConfigurazione).HasName("PK__Configur__826F74F04A5D3C25");
+
+            entity.ToTable("ConfigurazioneFontiDati");
+
+            entity.HasIndex(e => e.CodiceConfigurazione, "IX_ConfigFonte_Codice");
+
+            entity.HasIndex(e => e.TipoFonte, "IX_ConfigFonte_TipoFonte");
+
+            entity.HasIndex(e => e.CodiceConfigurazione, "UQ_ConfigFonte_Codice").IsUnique();
+
+            entity.Property(e => e.CodiceConfigurazione)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.ConnectionStringName)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.CreatoDa)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.CreatoIl)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.DescrizioneConfigurazione).HasMaxLength(500);
+            entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
+            entity.Property(e => e.HandlerClassName)
+                .HasMaxLength(200)
+                .IsUnicode(false);
+            entity.Property(e => e.MailServiceCode)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.ModificatoDa)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.ModificatoIl).HasColumnType("datetime");
+            entity.Property(e => e.TipoFonte)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<ConfigurazionePipelineStep>(entity =>
+        {
+            entity.HasKey(e => e.IdPipelineStep).HasName("PK__Configur__A6B2F34757045CBD");
+
+            entity.ToTable("ConfigurazionePipelineStep");
+
+            entity.HasIndex(e => new { e.IdConfigurazione, e.NumeroStep }, "IX_Pipeline_Config");
+
+            entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
+            entity.Property(e => e.NomeStep).HasMaxLength(100);
+            entity.Property(e => e.TipoStep)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.IdConfigurazioneNavigation).WithMany(p => p.ConfigurazionePipelineSteps)
+                .HasForeignKey(d => d.IdConfigurazione)
+                .HasConstraintName("FK_Pipeline_Configurazione");
         });
 
         modelBuilder.Entity<Counter>(entity =>
@@ -651,8 +744,17 @@ public partial class DematReportsContext : DbContext
 
             entity.HasIndex(e => new { e.IdOperatore, e.IdProceduraLavorazione, e.IdFaseLavorazione, e.DataLavorazione, e.IdCentro }, "IX_ProduzioneSistema");
 
+            entity.Property(e => e.CentroElaborazione)
+                .HasMaxLength(50)
+                .IsUnicode(false);
             entity.Property(e => e.DataAggiornamento).HasColumnType("datetime");
             entity.Property(e => e.DataLavorazione).HasColumnType("datetime");
+            entity.Property(e => e.EventoId)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.NomeAllegato)
+                .HasMaxLength(500)
+                .IsUnicode(false);
             entity.Property(e => e.Operatore).IsUnicode(false);
             entity.Property(e => e.OperatoreNonRiconosciuto).IsUnicode(false);
 
@@ -700,6 +802,25 @@ public partial class DematReportsContext : DbContext
                 .HasForeignKey(d => d.IdproceduraLavorazione)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_QueryProcedureLavorazioni_ProcedureLavorazioni");
+        });
+
+        modelBuilder.Entity<QueryProcedureLavorazioniBackup>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToTable("QueryProcedureLavorazioni_BACKUP");
+
+            entity.Property(e => e.Connessione)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.DataCreazioneQuery).HasColumnType("datetime");
+            entity.Property(e => e.Descrizione).IsUnicode(false);
+            entity.Property(e => e.IdQuery).ValueGeneratedOnAdd();
+            entity.Property(e => e.IdproceduraLavorazione).HasColumnName("IDProceduraLavorazione");
+            entity.Property(e => e.Note).IsUnicode(false);
+            entity.Property(e => e.Titolo)
+                .HasMaxLength(50)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<RepartiProduzione>(entity =>
@@ -776,26 +897,13 @@ public partial class DematReportsContext : DbContext
                 .HasConstraintName("FK_HangFire_State_Job");
         });
 
-        modelBuilder.Entity<TabellaTask>(entity =>
-        {
-            entity.HasKey(e => e.Idtask);
-
-            entity.ToTable("TabellaTask");
-
-            entity.Property(e => e.Idtask).HasColumnName("IDTask");
-            entity.Property(e => e.Descrizione)
-                .HasMaxLength(300)
-                .IsUnicode(false);
-            entity.Property(e => e.TaskName)
-                .HasMaxLength(300)
-                .IsUnicode(false);
-        });
-
         modelBuilder.Entity<TaskDaEseguire>(entity =>
         {
             entity.HasKey(e => e.IdTaskDaEseguire).HasName("PK_Table_1_3");
 
             entity.ToTable("TaskDaEseguire");
+
+            entity.HasIndex(e => e.IdConfigurazioneDatabase, "IX_Task_ConfigDB").HasFilter("([IdConfigurazioneDatabase] IS NOT NULL)");
 
             entity.Property(e => e.CronExpression)
                 .HasMaxLength(50)
@@ -811,22 +919,14 @@ public partial class DematReportsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
 
+            entity.HasOne(d => d.IdConfigurazioneDatabaseNavigation).WithMany(p => p.TaskDaEseguires)
+                .HasForeignKey(d => d.IdConfigurazioneDatabase)
+                .HasConstraintName("FK_TaskDaEseguire_ConfigurazioneFontiDati");
+
             entity.HasOne(d => d.IdLavorazioneFaseDateReadingNavigation).WithMany(p => p.TaskDaEseguires)
                 .HasForeignKey(d => d.IdLavorazioneFaseDateReading)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TaskDaEseguire_LavorazioniFasiDataReading");
-
-            entity.HasOne(d => d.IdTaskNavigation).WithMany(p => p.TaskDaEseguires)
-                .HasForeignKey(d => d.IdTask)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_TaskDaEseguire_TabellaTask");
-
-            // Relazione con Sistema Unificato Configurazione Fonti Dati
-            entity.HasOne(d => d.ConfigurazioneDatabase)
-                .WithMany(p => p.Tasks)
-                .HasForeignKey(d => d.IdConfigurazioneDatabase)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_TaskDaEseguire_ConfigurazioneFontiDati");
         });
 
         modelBuilder.Entity<TaskDataReadingAggiornamento>(entity =>
@@ -912,6 +1012,43 @@ public partial class DematReportsContext : DbContext
             entity.ToTable("Turni");
 
             entity.Property(e => e.Turno).IsUnicode(false);
+        });
+
+        modelBuilder.Entity<VwConfigurazioniFontiDatiCompletum>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("vw_ConfigurazioniFontiDatiCompleta");
+
+            entity.Property(e => e.Centro)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.CodiceConfigurazione)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.ConnectionStringName)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.CreatoDa)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.CreatoIl).HasColumnType("datetime");
+            entity.Property(e => e.FaseLavorazione)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.HandlerClassName)
+                .HasMaxLength(200)
+                .IsUnicode(false);
+            entity.Property(e => e.MailServiceCode)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.NomeConfigurazione).HasMaxLength(200);
+            entity.Property(e => e.NomeProcedura)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.TipoFonte)
+                .HasMaxLength(50)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<Z0072370Rdmkt28autGeUdaDettaglio>(entity =>
@@ -1364,109 +1501,6 @@ public partial class DematReportsContext : DbContext
                 .HasMaxLength(500)
                 .IsUnicode(false)
                 .HasColumnName("STATO_DOC");
-        });
-
-        // ============================================
-        // Sistema Unificato Configurazione Fonti Dati
-        // ============================================
-        
-        modelBuilder.Entity<ConfigurazioneFontiDati>(entity =>
-        {
-            entity.HasKey(e => e.IdConfigurazione);
-            entity.ToTable("ConfigurazioneFontiDati");
-            
-            entity.HasIndex(e => e.CodiceConfigurazione).IsUnique();
-            entity.HasIndex(e => e.TipoFonte);
-            
-            entity.Property(e => e.CodiceConfigurazione)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.DescrizioneConfigurazione)
-                .HasMaxLength(500);
-            entity.Property(e => e.TipoFonte)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.ConnectionStringName)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.MailServiceCode)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.HandlerClassName)
-                .HasMaxLength(200)
-                .IsUnicode(false);
-            entity.Property(e => e.CreatoDa)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.ModificatoDa)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.CreatoIl)
-                .HasColumnType("datetime")
-                .HasDefaultValueSql("GETDATE()");
-            entity.Property(e => e.ModificatoIl)
-                .HasColumnType("datetime");
-            entity.Property(e => e.FlagAttiva)
-                .HasDefaultValue(true);
-        });
-
-        modelBuilder.Entity<ConfigurazioneFaseCentro>(entity =>
-        {
-            entity.HasKey(e => e.IdFaseCentro);
-            entity.ToTable("ConfigurazioneFaseCentro");
-            
-            entity.HasIndex(e => new { e.IdConfigurazione, e.IdProceduraLavorazione, e.IdFaseLavorazione, e.IdCentro })
-                .IsUnique();
-            entity.HasIndex(e => e.IdConfigurazione);
-            
-            entity.Property(e => e.FlagAttiva)
-                .HasDefaultValue(true);
-
-            entity.HasOne(d => d.Configurazione)
-                .WithMany(p => p.ConfigurazioneFaseCentros)
-                .HasForeignKey(d => d.IdConfigurazione)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("FK_FaseCentro_Configurazione");
-
-            entity.HasOne(d => d.Procedura)
-                .WithMany()
-                .HasForeignKey(d => d.IdProceduraLavorazione)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_FaseCentro_Procedura");
-
-            entity.HasOne(d => d.Fase)
-                .WithMany()
-                .HasForeignKey(d => d.IdFaseLavorazione)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_FaseCentro_Fase");
-
-            entity.HasOne(d => d.Centro)
-                .WithMany()
-                .HasForeignKey(d => d.IdCentro)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_FaseCentro_Centro");
-        });
-
-        modelBuilder.Entity<ConfigurazionePipelineStep>(entity =>
-        {
-            entity.HasKey(e => e.IdPipelineStep);
-            entity.ToTable("ConfigurazionePipelineStep");
-            
-            entity.HasIndex(e => new { e.IdConfigurazione, e.NumeroStep });
-            
-            entity.Property(e => e.NomeStep)
-                .HasMaxLength(100);
-            entity.Property(e => e.TipoStep)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.FlagAttiva)
-                .HasDefaultValue(true);
-
-            entity.HasOne(d => d.Configurazione)
-                .WithMany(p => p.PipelineSteps)
-                .HasForeignKey(d => d.IdConfigurazione)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("FK_Pipeline_Configurazione");
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -47,6 +47,7 @@ namespace DataReading.Infrastructure
             v = Regex.Replace(v, "[^a-z0-9-_]", "");
             return v;
         }
+
         /// <summary>
         /// Normalizza codice servizio mail sostituendo anche i punti con '-'
         /// </summary>
@@ -63,12 +64,12 @@ namespace DataReading.Infrastructure
             var faseName = NormalizeToken(t.IdLavorazioneFaseDateReadingNavigation?.IdFaseLavorazioneNavigation?.FaseLavorazione);
 
             // NUOVO SISTEMA: usa ConfigurazioneFontiDati per determinare il tipo
-            if (t.IdConfigurazioneDatabase.HasValue && t.ConfigurazioneDatabase != null)
+            if (t.IdConfigurazioneDatabase.HasValue && t.IdConfigurazioneDatabaseNavigation != null)
             {
-                var tipoFonte = t.ConfigurazioneDatabase.TipoFonte?.ToLowerInvariant();
+                var tipoFonte = t.IdConfigurazioneDatabaseNavigation.TipoFonte?.ToLowerInvariant();
                 var detail = tipoFonte switch
                 {
-                    "emailcsv" => NormalizeService(t.ConfigurazioneDatabase.MailServiceCode ?? "email"),
+                    "emailcsv" => NormalizeService(t.IdConfigurazioneDatabaseNavigation.MailServiceCode ?? "email"),
                     _ => faseName
                 };
                 var prefix = tipoFonte == "emailcsv" ? "mail" : "prod";
@@ -80,22 +81,45 @@ namespace DataReading.Infrastructure
         }
 
         /// <summary>
-        /// Determina la cron finale: usa CronExpression se già valorizzata, altrimenti deriva da IdTask
-        /// Determina la cron finale se non impostata. Regole:
-        ///  IdTask=1 -> giornaliero 05:00
-        ///  IdTask=2 -> orario specifico (TimeTask) oppure fallback 02:00
-        ///  IdTask=3 -> mensile giorno 1 alle 00:00
-        ///  default  -> 03:00 giornaliero
+        /// Estrae l'espressione cron da ConfigurazioneFaseCentro.ParametriExtra (JSON).
+        /// Se non presente, restituisce un cron di default (05:00 giornaliero).
         /// </summary>
-        private static string ResolveCron(TaskDaEseguire t) => !string.IsNullOrWhiteSpace(t.CronExpression)
-            ? t.CronExpression!
-            : t.IdTask switch
+        private static string ExtractCronFromMapping(ConfigurazioneFaseCentro mapping)
+        {
+            if (string.IsNullOrWhiteSpace(mapping.ParametriExtra))
+                return "0 5 * * *"; // Default giornaliero alle 05:00
+            
+            try
             {
-                1 => "0 5 * * *",                // giornaliero 05:00
-                2 => t.TimeTask.HasValue ? $"{t.TimeTask.Value.Minute} {t.TimeTask.Value.Hour} * * *" : "0 2 * * *",
-                3 => "0 0 1 * *",                // mensile 1° giorno
-                _ => "0 3 * * *"                  // fallback
-            };
+                var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(mapping.ParametriExtra);
+                if (json != null && json.TryGetValue("cron", out var cronValue))
+                {
+                    var cronStr = cronValue?.ToString();
+                    if (!string.IsNullOrWhiteSpace(cronStr))
+                        return cronStr;
+                }
+            }
+            catch
+            {
+                // JSON malformato, usa default
+            }
+            
+            return "0 5 * * *";
+        }
+
+        /// <summary>
+        /// Risolve l'espressione cron per un task.
+        /// Priorità: CronExpression del task > default
+        /// </summary>
+        private static string ResolveCron(TaskDaEseguire t)
+        {
+            // Se il task ha già una CronExpression valorizzata, usala
+            if (!string.IsNullOrWhiteSpace(t.CronExpression))
+                return t.CronExpression;
+
+            // Fallback di sicurezza
+            return "0 5 * * *";
+        }
         #endregion
 
         /// <summary>
@@ -104,7 +128,7 @@ namespace DataReading.Infrastructure
         /// </summary>
         public async Task<string> AddOrUpdateAsync(int idTaskDaEseguire)
         {
-            // Usa ActivitySource se disponibile per .NET 9
+
             using var activity = new Activity("ProductionJobScheduler.AddOrUpdate")
                 .AddTag("TaskId", idTaskDaEseguire.ToString())
                 .Start();
@@ -156,7 +180,7 @@ namespace DataReading.Infrastructure
                     .ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!
                     .ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                .Include(x => x.ConfigurazioneDatabase)
+                .Include(x => x.IdConfigurazioneDatabaseNavigation)
                 .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
 
             if (task == null)
@@ -252,7 +276,7 @@ namespace DataReading.Infrastructure
             var enabled = await _db.TaskDaEseguires
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                .Include(t => t.ConfigurazioneDatabase)
+                .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Where(t => t.Enabled)
                 .ToListAsync();
 
@@ -297,7 +321,7 @@ namespace DataReading.Infrastructure
                 .AsSplitQuery()
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                .Include(t => t.ConfigurazioneDatabase)
+                .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Where(t => t.Enabled)
                 .ToListAsync();
 
@@ -381,7 +405,7 @@ namespace DataReading.Infrastructure
                 .AsSplitQuery()
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                .Include(x => x.ConfigurazioneDatabase)
+                .Include(x => x.IdConfigurazioneDatabaseNavigation)
                 .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
 
             if (entity == null || !entity.Enabled)
@@ -439,14 +463,14 @@ namespace DataReading.Infrastructure
         /// </summary>
         private static (string jobType, string handlerCode) DetermineJobTypeAndCode(TaskDaEseguire entity)
         {
-            if (!entity.IdConfigurazioneDatabase.HasValue || entity.ConfigurazioneDatabase == null)
+            if (!entity.IdConfigurazioneDatabase.HasValue || entity.IdConfigurazioneDatabaseNavigation == null)
             {
                 throw new InvalidOperationException(
                     $"Task {entity.IdTaskDaEseguire} non ha IdConfigurazioneDatabase. " +
                     "Tutti i task devono essere configurati tramite /admin/fonti-dati");
             }
 
-            var config = entity.ConfigurazioneDatabase;
+            var config = entity.IdConfigurazioneDatabaseNavigation;
             
             return config.TipoFonte?.ToUpperInvariant() switch
             {

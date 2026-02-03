@@ -101,6 +101,52 @@ public static class Program
         builder.Host.UseNLog();
     }
 
+    private static void RegisterFluentEmail(WebApplicationBuilder builder)
+    {
+        // Configurazione FluentEmail per invio email
+        var emailConfig = builder.Configuration.GetSection("Email");
+        var smtpHost = emailConfig["SmtpHost"] ?? "localhost";
+        var smtpPort = int.TryParse(emailConfig["SmtpPort"], out var port) ? port : 587;
+        var enableSsl = bool.TryParse(emailConfig["EnableSsl"], out var ssl) && ssl;
+        var username = emailConfig["Username"];
+        var password = emailConfig["Password"];
+        var defaultFrom = emailConfig["DefaultFrom"] ?? "noreply@blazordemat.local";
+        var defaultFromName = emailConfig["DefaultFromName"] ?? "Sistema BlazorDematReports";
+
+        var emailBuilder = builder.Services
+            .AddFluentEmail(defaultFrom, defaultFromName);
+
+        // Configurazione SMTP con System.Net.Mail.SmtpClient
+        if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+        {
+            // SMTP con autenticazione
+            emailBuilder.AddSmtpSender(new System.Net.Mail.SmtpClient
+            {
+                Host = smtpHost,
+                Port = smtpPort,
+                EnableSsl = enableSsl,
+                UseDefaultCredentials = false,
+                Credentials = new System.Net.NetworkCredential(username, password)
+            });
+        }
+        else
+        {
+            // SMTP senza autenticazione (per sviluppo/test)
+            emailBuilder.AddSmtpSender(new System.Net.Mail.SmtpClient
+            {
+                Host = smtpHost,
+                Port = smtpPort,
+                EnableSsl = enableSsl
+            });
+        }
+
+        var serviceProvider = builder.Services.BuildServiceProvider();
+        var logger = serviceProvider.GetService<ILoggerFactory>()?.CreateLogger("FluentEmail");
+        logger?.LogInformation("FluentEmail configurato: Host={Host}, Port={Port}, EnableSsl={Ssl}, From={From}", 
+            smtpHost, smtpPort, enableSsl, defaultFrom);
+        serviceProvider.Dispose();
+    }
+
     private static void RegisterLoginSettings(WebApplicationBuilder builder)
     {
         builder.Services.Configure<LoginSettings>(
@@ -186,6 +232,10 @@ public static class Program
         builder.Services.AddScoped<INormalizzatoreOperatori, NormalizzatoreOperatori>();
         builder.Services.AddScoped<IGestoreOperatoriDatiLavorazione, GestoreOperatoriDatiLavorazione>();
         builder.Services.AddScoped<IElaboratoreDatiLavorazione, ElaboratoreDatiLavorazione>();
+        
+        // Configurazione FluentEmail per ServiceMail
+        RegisterFluentEmail(builder);
+        
         builder.Services.AddScoped<IServiceWrapper, ServiceWrapper>();
         builder.Services.AddScoped<HangfireHealthService, HangfireHealthService>();
         builder.Services.AddScoped<IClipboardService, ClipboardService>();

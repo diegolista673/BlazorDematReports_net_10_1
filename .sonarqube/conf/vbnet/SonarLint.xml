@@ -20,6 +20,9 @@
   </Settings>
   <Rules>
     <Rule>
+      <Key>S1313</Key>
+    </Rule>
+    <Rule>
       <Key>S3776</Key>
       <Parameters>
         <Parameter>
@@ -71,9 +74,6 @@
           <Value>3</Value>
         </Parameter>
       </Parameters>
-    </Rule>
-    <Rule>
-      <Key>S1313</Key>
     </Rule>
     <Rule>
       <Key>S4790</Key>

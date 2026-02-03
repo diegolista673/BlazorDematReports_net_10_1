@@ -53,7 +53,7 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
         // 1. Carica configurazione dal DB
         var config = await LoadConfigurationAsync(context.IdConfigurazioneDatabase.Value, ct);
 
-        if (config == null || !config.FlagAttiva)
+        if (config == null || config.FlagAttiva == false)
         {
             _logger.LogWarning("[UnifiedHandler] Config {Id} non trovata o non attiva",
                 context.IdConfigurazioneDatabase);
@@ -88,7 +88,7 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
             fc.IdProceduraLavorazione == context.IDProceduraLavorazione &&
             fc.IdFaseLavorazione == context.IDFaseLavorazione &&
             fc.IdCentro == context.IDCentro &&
-            fc.FlagAttiva);
+            fc.FlagAttiva == true);
 
         // Usa query override se presente, altrimenti query base
         var query = mapping?.TestoQueryOverride ?? config.TestoQuery;
@@ -281,8 +281,8 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
         var pipelineData = new List<Dictionary<string, object?>>();
 
         // Ordina step per NumeroStep
-        var steps = config.PipelineSteps
-            .Where(s => s.FlagAttiva)
+        var steps = config.ConfigurazionePipelineSteps
+            .Where(s => s.FlagAttiva == true)
             .OrderBy(s => s.NumeroStep)
             .ToList();
 
@@ -422,11 +422,11 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
 
     private async Task<ConfigurazioneFontiDati?> LoadConfigurationAsync(int idConfigurazione, CancellationToken ct)
     {
-        using var context = await _dbFactory.CreateDbContextAsync(ct);
+        await using var context = await _dbFactory.CreateDbContextAsync(ct);
 
         return await context.ConfigurazioneFontiDatis
             .Include(c => c.ConfigurazioneFaseCentros)
-            .Include(c => c.PipelineSteps)
+            .Include(c => c.ConfigurazionePipelineSteps)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione, ct);
     }

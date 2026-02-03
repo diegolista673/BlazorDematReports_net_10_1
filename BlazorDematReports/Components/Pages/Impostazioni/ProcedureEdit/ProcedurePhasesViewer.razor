@@ -32,55 +32,59 @@
     </MudAlert>
     
     @* Add Phase Section *@
-    <MudExpansionPanels Class="mb-4" Elevation="0">
-        <MudExpansionPanel Text="Aggiungi Nuova Fase"
-                          Icon="@Icons.Material.Filled.Add"
-                          IsInitiallyExpanded="false">
-            
-            <MudGrid Spacing="3" Class="pa-2">
-                <MudItem xs="12" sm="12" md="8" lg="6" xl="6" Class="d-flex align-center flex-row">
-                    <MudSelect T="int?" 
-                               Label="Seleziona Fase" 
-                               @bind-Value="_selectedPhaseId"
-                               Required="true"
-                               Variant="Variant.Text"
-                               HelperText="Seleziona una fase da aggiungere alla procedura"
-                               Clearable=true>
-                        <MudSelectItem T="int?" Value="@((int?)null)">
-                            -- Seleziona Fase --
-                        </MudSelectItem>
-                        @if (_availablePhases != null)
-                        {
-                            @foreach (var fase in _availablePhases.Where(f => !_assignedPhaseIds.Contains(f.IdFaseLavorazione)))
+    @if(EditMode == true)
+    {
+        <MudExpansionPanels Class="mb-4" Elevation="0">
+            <MudExpansionPanel Text="Aggiungi Nuova Fase"
+                               Icon="@Icons.Material.Filled.Add"
+                               IsInitiallyExpanded="false">
+
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="12" md="8" lg="6" xl="6" Class="d-flex align-center flex-row">
+                        <MudSelect T="int?"
+                                   Label="Seleziona Fase"
+                                   @bind-Value="_selectedPhaseId"
+                                   Required="true"
+                                   Variant="Variant.Text"
+                                   HelperText="Seleziona una fase da aggiungere alla procedura"
+                                   Clearable=true>
+                            <MudSelectItem T="int?" Value="@((int?)null)">
+                                -- Seleziona Fase --
+                            </MudSelectItem>
+                            @if (_availablePhases != null)
                             {
-                                <MudSelectItem T="int?" Value="@fase.IdFaseLavorazione">
-                                    <div class="d-flex align-center">
-                                        <MudIcon Icon="@Icons.Material.Filled.Timeline" 
-                                                 Color="Color.Primary" 
-                                                 Class="mr-2" 
-                                                 Size="Size.Small" />
-                                        <MudText>@fase.FaseLavorazione</MudText>
-                                    </div>
-                                </MudSelectItem>
+                                @foreach (var fase in _availablePhases.Where(f => !_assignedPhaseIds.Contains(f.IdFaseLavorazione)))
+                                {
+                                    <MudSelectItem T="int?" Value="@fase.IdFaseLavorazione">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Timeline"
+                                                     Color="Color.Primary"
+                                                     Class="mr-2"
+                                                     Size="Size.Small" />
+                                            <MudText>@fase.FaseLavorazione</MudText>
+                                        </div>
+                                    </MudSelectItem>
+                                }
                             }
-                        }
-                    </MudSelect>
-                </MudItem>
-                
-                <MudItem xs="12" sm="12" md="4" lg="6" xl="6" Class="d-flex align-center justify-content-xs-center justify-content-sm-end justify-content-md-end justify-content-lg-start justify-content-xl-start ">
-                    <MudButton Variant="Variant.Filled" 
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="@AddPhaseAsync"
-                               Disabled="@(_selectedPhaseId == null)"
-                               FullWidth="false">
-                        Aggiungi
-                    </MudButton>
-                </MudItem>
-            </MudGrid>
-            
-        </MudExpansionPanel>
-    </MudExpansionPanels>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="12" md="4" lg="6" xl="6" Class="d-flex align-center justify-content-xs-center justify-content-sm-end justify-content-md-end justify-content-lg-start justify-content-xl-start ">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="@AddPhaseAsync"
+                                   Disabled="@(_selectedPhaseId == null)"
+                                   FullWidth="false">
+                            Aggiungi
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+ 
     
     @* Messages *@
     @if (!string.IsNullOrEmpty(_message))
@@ -110,7 +114,7 @@
                                          Size="Size.Small" />
                                 <MudText Typo="Typo.subtitle1">@fase.FaseLavorazione</MudText>
                             </div>
-                            <MudDivider Class="my-2" />
+                           
                             <div class="d-flex flex-column gap-1" Style="flex:1;">
                                 <div class="d-flex align-center">
                                     <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Small" Class="mr-1" />
@@ -125,25 +129,30 @@
                                     <MudText Typo="Typo.caption">Data Reading: @(fase.FlagDataReading ? "Attivo" : "Inattivo")</MudText>
                                 </div>
                             </div>
+
                         </MudCardContent>
 
-                        <MudCardActions Class="d-flex flex-column gap-1 px-3 pb-3">
-                            <MudButton Variant="Variant.Text" 
-                                       StartIcon="@Icons.Material.Filled.Delete" 
-                                       Size="Size.Small"
-                                       Color="Color.Error" 
-                                       OnClick="@(() => RemovePhaseAsync(fase))" 
-                                       FullWidth="true"
-                                       Disabled="@(fase.TaskDaEseguireDto?.Any() == true)">
-                                Rimuovi Fase
-                            </MudButton>
-                            @if (fase.TaskDaEseguireDto?.Any() == true)
-                            {
-                                <MudText Typo="Typo.caption" Color="Color.Error" Style="text-align:center; font-size:0.7rem;">
-                                    Rimuovi prima tutti i task
-                                </MudText>
-                            }
-                        </MudCardActions>
+                        @if (EditMode == true)
+                        {
+                            <MudCardActions Class="d-flex flex-column gap-1 px-3 pb-3">
+                                <MudButton Variant="Variant.Text"
+                                           StartIcon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => RemovePhaseAsync(fase))"
+                                           FullWidth="true"
+                                           Disabled="@(fase.TaskDaEseguireDto?.Any() == true)">
+                                    Rimuovi Fase
+                                </MudButton>
+                                @if (fase.TaskDaEseguireDto?.Any() == true)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Error" Style="text-align:center; font-size:0.7rem;">
+                                        Rimuovi prima tutti i task
+                                    </MudText>
+                                }
+                            </MudCardActions>
+                        }
+
 
                     </MudCard>
                 </MudItem>
@@ -158,13 +167,17 @@
         </MudAlert>
     }
     
+
 </div>
 
 @code {
+
     [Parameter] public ProcedureLavorazioniDto Model { get; set; } = null!;
     [Parameter] public EventCallback<ProcedureLavorazioniDto> ModelChanged { get; set; }
     [Parameter] public EventCallback OnModelChanged { get; set; }
-    
+
+    [Parameter] public bool EditMode { get; set; } = false;
+
     private List<FasiLavorazione>? _availablePhases;
     private HashSet<int> _assignedPhaseIds = new();
     private int? _selectedPhaseId;

@@ -44,13 +44,13 @@ namespace BlazorDematReports.Services.DataService
             await using var context = await contextFactory.CreateDbContextAsync();
 
             var configs = await context.ConfigurazioneFontiDatis
-                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
-                    .ThenInclude(fc => fc.Procedura)
-                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
-                    .ThenInclude(fc => fc.Fase)
-                .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
-                    .ThenInclude(fc => fc.Centro)
-                .Include(c => c.Tasks)
+                .Include(c => c.ConfigurazioneFaseCentros)
+                    .ThenInclude(fc => fc.IdFaseLavorazioneNavigation)
+                .Include(c => c.ConfigurazioneFaseCentros)
+                    .ThenInclude(fc => fc.IdProceduraLavorazioneNavigation)
+                .Include(c => c.ConfigurazioneFaseCentros)
+                    .ThenInclude(fc => fc.IdCentroNavigation)
+                .Include(c => c.TaskDaEseguires)
                 .OrderBy(c => c.IdConfigurazione)
                 .ToListAsync();
 
@@ -61,28 +61,28 @@ namespace BlazorDematReports.Services.DataService
                 Descrizione = c.DescrizioneConfigurazione!,
                 TipoFonte = c.TipoFonte,
                 FlagAttiva = c.FlagAttiva,
-                CreatoIl = c.CreatoIl,
-                NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva),
-                TaskAttivi = c.Tasks.Count(t => t.Enabled),
-            
+                CreatoIl = (DateTime)c.CreatoIl,
+                NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva == true),
+                TaskAttivi = c.TaskDaEseguires.Count(t => t.Enabled),
+
                 // Nuovi campi dettaglio
                 FasiDettaglio = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva && fc.Fase != null)
-                    .Select(fc => fc.Fase!.FaseLavorazione)
+                    .Where(fc => fc.FlagAttiva == true)
+                    .Select(fc => fc.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A")
                     .ToList(),
-            
+
                 CronExpressions = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva)
+                    .Where(fc => fc.FlagAttiva == true)
                     .Select(fc => ExtractCronFromJson(fc.ParametriExtra))
                     .ToList(),
-            
+
                 MappingDettaglio = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva)
+                    .Where(fc => fc.FlagAttiva == true)
                     .Select(fc => new MappingDettaglioDto
                     {
-                        NomeProcedura = fc.Procedura?.NomeProcedura ?? "N/A",
-                        NomeFase = fc.Fase?.FaseLavorazione ?? "N/A",
-                        NomeCentro = fc.Centro?.Centro ?? "N/A",
+                        NomeProcedura = fc.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
+                        NomeFase = fc.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A",
+                        NomeCentro = fc.IdCentroNavigation?.Centro ?? "N/A",
                         Cron = ExtractCronFromJson(fc.ParametriExtra),
                         ParametriExtra = fc.ParametriExtra
                     })
@@ -165,7 +165,7 @@ namespace BlazorDematReports.Services.DataService
             using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.ConfigurazioneFontiDatis
                 .Include(c => c.ConfigurazioneFaseCentros)
-                .Include(c => c.Tasks)
+                .Include(c => c.TaskDaEseguires)
                 .FirstOrDefaultAsync(c => c.IdConfigurazione == idConf);
             if (entity != null)
             {
@@ -173,8 +173,8 @@ namespace BlazorDematReports.Services.DataService
                 if (entity.ConfigurazioneFaseCentros != null && entity.ConfigurazioneFaseCentros.Count > 0)
                     context.ConfigurazioneFaseCentros.RemoveRange(entity.ConfigurazioneFaseCentros);
 
-                if (entity.Tasks != null && entity.Tasks.Count > 0)
-                    context.TaskDaEseguires.RemoveRange(entity.Tasks);
+                if (entity.TaskDaEseguires != null && entity.TaskDaEseguires.Count > 0)
+                    context.TaskDaEseguires.RemoveRange(entity.TaskDaEseguires);
 
                 context.ConfigurazioneFontiDatis.Remove(entity);
                 await context.SaveChangesAsync();

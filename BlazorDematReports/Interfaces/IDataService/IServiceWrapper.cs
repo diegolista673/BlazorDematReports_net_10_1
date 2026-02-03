@@ -43,13 +43,13 @@
         IServiceCentriVisibili ServiceCentriVisibili { get; }
         /// <summary>Servizio per la gestione dei tipi turno.</summary>
         IServiceTipoTurni ServiceTipoTurni { get; }
-        /// <summary>Servizio per la gestione della tabella task.</summary>
-        IServiceTabellaTask ServiceTabellaTask { get; }
         /// <summary>Servizio per la gestione dei task da eseguire.</summary>
         IServiceTaskDaEseguire ServiceTaskDaEseguire { get; }
         /// <summary>Servizio per la gestione dei ruoli.</summary>
         IServiceRuoli ServiceRuoli { get; }
         /// <summary>Servizio per la gestione della configurazione fonti dati.</summary>
         IServiceConfigurazioneFontiDati ServiceConfigurazioneFontiDati { get; }
+        /// <summary>Servizio per la gestione dell'invio email e configurazioni servizi mail.</summary>
+        IServiceMail ServiceMail { get; }
     }
 }

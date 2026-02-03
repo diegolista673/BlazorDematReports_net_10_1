@@ -1,6 +1,4 @@
-@using Entities.Models.DbApplication
-@using Microsoft.EntityFrameworkCore
-@using DataReading.Infrastructure
+
 @inject IDbContextFactory<DematReportsContext> DbFactory
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -98,24 +96,14 @@
                             
                             <div class="d-flex gap-3">
                                 <MudText Typo="Typo.caption">
-                                    ?? <strong>Mapping:</strong> @config.NumeroMapping fasi
+                                    <strong>Mapping:</strong> @config.NumeroMapping fasi
                                 </MudText>
                                 <MudText Typo="Typo.caption">
-                                    ? <strong>Task:</strong> @config.NumeroTask attivi
+                                    <strong>Task:</strong> @config.NumeroTask attivi
                                 </MudText>
                             </div>
                         </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Variant="Variant.Filled" 
-                                       Color="Color.Success" 
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.PlayCircle"
-                                       Disabled="@(config.NumeroTask > 0 || config.NumeroMapping == 0)"
-                                       OnClick="@(() => CreaTaskAsync(config.IdConfigurazione))">
-                                @(config.NumeroTask > 0 ? $"Task già creati ({config.NumeroTask})" : 
-                                  config.NumeroMapping == 0 ? "Aggiungi mapping" : "Crea Task")
-                            </MudButton>
-                        </MudCardActions>
+
                     </MudCard>
                 </MudItem>
             }
@@ -146,9 +134,9 @@
             await using var context = await DbFactory.CreateDbContextAsync();
             
             _configurazioni = await context.ConfigurazioneFontiDatis
-                .Where(c => c.FlagAttiva && 
+                .Where(c => c.FlagAttiva == true && 
                        c.ConfigurazioneFaseCentros.Any(fc => 
-                           fc.FlagAttiva && 
+                           fc.FlagAttiva == true && 
                            fc.IdProceduraLavorazione == IdProceduraLavorazione))
                 .Select(c => new ConfigDto
                 {
@@ -160,8 +148,8 @@
                     MailServiceCode = c.MailServiceCode,
                     HandlerClassName = c.HandlerClassName,
                     NumeroMapping = c.ConfigurazioneFaseCentros
-                        .Count(fc => fc.FlagAttiva && fc.IdProceduraLavorazione == IdProceduraLavorazione),
-                    NumeroTask = c.Tasks.Count(t => t.Enabled)
+                        .Count(fc => fc.FlagAttiva == true && fc.IdProceduraLavorazione == IdProceduraLavorazione),
+                    NumeroTask = c.TaskDaEseguires.Count(t => t.Enabled)
                 })
                 .ToListAsync();
         }
@@ -196,7 +184,7 @@
             int taskEsistenti = 0;
             var errori = new List<string>();
             
-            foreach (var mapping in config.ConfigurazioneFaseCentros.Where(m => m.FlagAttiva))
+            foreach (var mapping in config.ConfigurazioneFaseCentros.Where(m => m.FlagAttiva == true))
             {
                 try
                 {
@@ -230,7 +218,7 @@
                     // Crea task
                     var task = new TaskDaEseguire
                     {
-                        IdTask = 1,
+
                         IdLavorazioneFaseDateReading = lavorazioneFase.IdlavorazioneFaseDateReading,
                         IdConfigurazioneDatabase = idConfigurazione,
                         CronExpression = cron,
@@ -239,8 +227,7 @@
                         DataStato = DateTime.Now,
                         GiorniPrecedenti = 1,
                         IdTaskHangFire = $"temp-{Guid.NewGuid()}",
-                        // Campi legacy NULL
-                        // Campi legacy rimossi - usa solo IdConfigurazioneDatabase
+
                     };
                     
                     context.TaskDaEseguires.Add(task);

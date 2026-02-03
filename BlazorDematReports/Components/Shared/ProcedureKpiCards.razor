@@ -1,5 +1,4 @@
-@using BlazorDematReports.Dto
-@using DataReading.Dto
+@inject IServiceWrapper ServiceWrapper
 
 @* KPI Cards - Statistiche Procedura *@
 <MudGrid Spacing="2" Class="mb-4">
@@ -90,6 +89,32 @@
     /// </summary>
     [Parameter] public bool ShowQueryPersonalizzate { get; set; } = true;
     
+    private HashSet<int> _emailConfigIds = new();
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Model?.IdproceduraLavorazione != null)
+        {
+            await LoadEmailConfigIdsAsync((int)Model.IdproceduraLavorazione);
+        }
+    }
+    
+    private async Task LoadEmailConfigIdsAsync(int idProcedura)
+    {
+        try
+        {
+            var configs = await ServiceWrapper.ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
+            _emailConfigIds = configs
+                .Where(c => c.FlagAttiva == true)
+                .Select(c => c.IdConfigurazione)
+                .ToHashSet();
+        }
+        catch
+        {
+            _emailConfigIds.Clear();
+        }
+    }
+    
     private int GetFasiCount() => 
         Model?.LavorazioniFasiDataReadingsDto?.Count(f => f.IdFaseLavorazione != 0) ?? 0;
     
@@ -101,7 +126,8 @@
     private int GetMailServicesCount() => 
         Model?.LavorazioniFasiDataReadingsDto?
             .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
-            .Count(t => t.IdConfigurazioneDatabase.HasValue) ?? 0;
+            .Count(t => t.IdConfigurazioneDatabase.HasValue && 
+                        _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value)) ?? 0;
     
     private int GetQueryCount() => 
         Model?.QueryProcedureLavorazioniDto?.Count ?? 0;
