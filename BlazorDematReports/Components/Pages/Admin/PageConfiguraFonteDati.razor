@@ -41,6 +41,26 @@
                                CodiceConfigurazione="@_config.CodiceConfigurazione"
                                SearchFunc="@((string arg) => SearchFromSelect(base.SelectLavorazione, arg))" />
 
+            @* Avviso: Nessuna fase disponibile *@
+            @if (_selectedIdProcedura > 0 && !_fasiPerProcedura.Any())
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                        <MudText><strong>Nessuna fase disponibile per questa procedura.</strong></MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            Per configurare una fonte dati, è necessario aggiungere almeno una fase di lavorazione.
+                        </MudText>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   Class="mt-2"
+                                   OnClick='@(() => Navigation.NavigateTo($"/procedure-lavorazioni/edit/{_selectedIdProcedura}"))'>
+                            Vai a Modifica Procedura Lavorazione
+                        </MudButton>
+                    </MudAlert>
+                </MudItem>
+            }
+
             <MudItem xs="12"><MudDivider /></MudItem>
 
             @* Configurazione Specifica *@
@@ -65,14 +85,16 @@
 
             <MudItem xs="12"><MudDivider /></MudItem>
 
+
+
             @* Mapping Configurazione *@
             <MappingConfigurazione Mappings="@_mappingFasi"
                                   Fasi="@_fasiPerProcedura"
                                   PresetCrons="@_presetCrons"
                                   DescrizioneConfigurazione="@_config.DescrizioneConfigurazione"
                                   DescrizioneConfigurazioneChanged="@((string? v) => { _config.DescrizioneConfigurazione = v; InvokeAsync(StateHasChanged); })"
-                                  DisabledState='@(_config.TipoFonte == "SQL" && !_queryValidated)'
-                                  CanAddMapping='@(_selectedIdProcedura > 0 && _selectedCentroId > 0 && !(_config.TipoFonte == "SQL" && !_queryValidated))'
+                                  DisabledState='@((_config.TipoFonte == "SQL" && (!_queryValidated || !_connectionTestPassed)) || !_fasiPerProcedura.Any())'
+                                  CanAddMapping='@(_selectedIdProcedura > 0 && _selectedCentroId > 0 && _fasiPerProcedura.Any() && !(_config.TipoFonte == "SQL" && (!_queryValidated || !_connectionTestPassed)))'
                                   OnAggiungiMapping="@AggiungiMappingAsync"
                                   OnRimuoviMapping="@RimuoviMappingAsync"
                                   GetCronValue="@GetCronFromMapping"
@@ -88,7 +110,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Success"
                                OnClick="HandleValidSubmitAsync"
-                               Disabled='@(_saving || (_config.TipoFonte == "SQL" && !_queryValidated))'>
+                               Disabled='@(_saving || (_config.TipoFonte == "SQL" && (!_queryValidated || !_connectionTestPassed)) || !_fasiPerProcedura.Any())'>
                         @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
                         Salva Configurazione
                     </MudButton>
@@ -118,6 +140,7 @@
     private bool _validatingQuery = false;
     private string? _validationMessage;
     private bool _queryValidated = false;
+    private bool _connectionTestPassed = false;
 
     // Config
     private ConfigurazioneFontiDati _config = new() { FlagAttiva = true, TipoFonte = "SQL" };
@@ -274,6 +297,8 @@
 
         _validationMessage = null;
         _validationSeverity = Severity.Info;
+        _connectionTestPassed = false;
+        _queryValidated = false;
     }
 
     private async Task OnTipoFonteChangedAsync(string newTipoFonte)
@@ -291,12 +316,26 @@
             return;
         }
 
-        _mappingFasi.Add(new ConfigurazioneFaseCentro
+        if (!_fasiPerProcedura.Any())
+        {
+            Snackbar.Add("Nessuna fase disponibile per questa procedura", Severity.Warning);
+            return;
+        }
+
+        var newMapping = new ConfigurazioneFaseCentro
         {
             IdProceduraLavorazione = _selectedIdProcedura,
             IdCentro = _selectedCentroId,
+            IdFaseLavorazione = _fasiPerProcedura.First().IdFaseLavorazione,
             FlagAttiva = true
-        });
+        };
+
+        _mappingFasi.Add(newMapping);
+
+        // Imposta cron di default (primo della lista o default "0 5 * * *")
+        var defaultCron = _presetCrons.Any() ? _presetCrons.First().Value : "0 5 * * *";
+        var newIndex = _mappingFasi.Count - 1;
+        SetCronForMapping(newIndex, defaultCron);
 
         await InvokeAsync(StateHasChanged);
     }
@@ -347,6 +386,7 @@
 
         _testingConnection = true;
         _validationMessage = null;
+        _connectionTestPassed = false;
 
         try
         {
@@ -360,7 +400,18 @@
                 _ => Severity.Error
             };
 
-            Snackbar.Add(result.Message, _validationSeverity);
+            // Imposta flag solo se test è riuscito
+            _connectionTestPassed = result.IsValid;
+
+            if (!_connectionTestPassed)
+            {
+                Snackbar.Add("Test connessione fallito. Correggi la configurazione prima di procedere.", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add(result.Message, _validationSeverity);
+            }
+            
             await InvokeAsync(StateHasChanged);
         }
         finally
@@ -408,6 +459,12 @@
             return;
         }
 
+        if (!_fasiPerProcedura.Any())
+        {
+            Snackbar.Add("Nessuna fase disponibile. Aggiungi fasi alla procedura tramite Edit Procedura Lavorazione.", Severity.Error);
+            return;
+        }
+
         if (_config.TipoFonte == "SQL")
         {
             if (string.IsNullOrWhiteSpace(_config.TestoQuery))
@@ -419,6 +476,12 @@
             if (!_queryValidated)
             {
                 Snackbar.Add("Valida la query SQL prima di salvare.", Severity.Error);
+                return;
+            }
+
+            if (!_connectionTestPassed)
+            {
+                Snackbar.Add("Esegui e supera il test di connessione prima di salvare.", Severity.Error);
                 return;
             }
         }

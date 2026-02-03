@@ -116,6 +116,47 @@ namespace BlazorDematReports.Services.DataService
             return "0 5 * * *";
         }
 
+        /// <summary>
+        /// Aggiorna FlagDataReading = true nella tabella LavorazioniFasiDataReading per le fasi con cron validi.
+        /// </summary>
+        private async Task UpdateFlagDataReadingForMappingsAsync(DematReportsContext context, List<ConfigurazioneFaseCentro> mappings)
+        {
+            foreach (var mapping in mappings.Where(m => m.FlagAttiva))
+            {
+                // Estrai il cron dal mapping
+                var cron = ExtractCronFromJson(mapping.ParametriExtra);
+                
+                // Se il cron è valido (non è solo il default), aggiorna FlagDataReading
+                if (!string.IsNullOrWhiteSpace(cron) && cron != "0 5 * * *")
+                {
+                    // Cerca la fase corrispondente in LavorazioniFasiDataReading
+                    var faseDataReading = await context.LavorazioniFasiDataReadings
+                        .FirstOrDefaultAsync(l => 
+                            l.IdProceduraLavorazione == mapping.IdProceduraLavorazione && 
+                            l.IdFaseLavorazione == mapping.IdFaseLavorazione);
+
+                    if (faseDataReading != null)
+                    {
+                        // Aggiorna FlagDataReading = true
+                        faseDataReading.FlagDataReading = true;
+                        logger.LogInformation(
+                            "Impostato FlagDataReading = true per Procedura {IdProc} Fase {IdFase}",
+                            mapping.IdProceduraLavorazione, 
+                            mapping.IdFaseLavorazione);
+                    }
+                    else
+                    {
+                        logger.LogWarning(
+                            "Fase non trovata in LavorazioniFasiDataReading: Procedura {IdProc} Fase {IdFase}",
+                            mapping.IdProceduraLavorazione, 
+                            mapping.IdFaseLavorazione);
+                    }
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
         /// <inheritdoc/>
         public async Task DeleteConfigurazioneFontiDatiAsync(int idConf)
         {
@@ -211,6 +252,10 @@ namespace BlazorDematReports.Services.DataService
                 dbConfig.ModificatoIl = DateTime.Now;
                 dbConfig.ModificatoDa = user ?? string.Empty;
                 await context.SaveChangesAsync();
+
+                // **NUOVA LOGICA: Aggiorna FlagDataReading = true per le fasi con cron validi**
+                await UpdateFlagDataReadingForMappingsAsync(context, incoming);
+
                 await tx.CommitAsync();
             }
             catch (Exception ex)
@@ -253,6 +298,9 @@ namespace BlazorDematReports.Services.DataService
                 }
 
                 await context.SaveChangesAsync();
+
+                // **NUOVA LOGICA: Aggiorna FlagDataReading = true per le fasi con cron validi**
+                await UpdateFlagDataReadingForMappingsAsync(context, mappingFasi);
             }
 
             await transaction.CommitAsync();

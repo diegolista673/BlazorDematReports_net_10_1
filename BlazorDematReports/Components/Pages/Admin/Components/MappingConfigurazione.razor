@@ -66,7 +66,7 @@
                             }
                         </MudSelect>
                     </MudItem>
-                    <MudItem xs="12" md="6">
+                    <MudItem xs="12" md="3">
                         <MudNumericField T="int"
                                          Label="Giorni Precedenti"
                                          Min="1"
@@ -75,9 +75,9 @@
                                          ValueChanged="OnGiorniPrecedentiChanged"
                                          Variant="Variant.Outlined"
                                          Required="true"
-                                         HelperText="Numero di giorni da considerare (default 1)" />
+                                         HelperText="Numero di giorni da considerare (default 10)" />
                     </MudItem>
-                    <MudItem xs="12" md="1" Class="d-flex align-center">
+                    <MudItem xs="12" md="3" Class="d-flex align-center">
                         <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                        Size="Size.Large"
                                        Color="Color.Error"
@@ -87,7 +87,7 @@
                 </MudGrid>
                 <MudGrid Class="mt-2">
                     <MudItem xs="12">
-                        <MudTextField @bind-Value="mapping.ParametriExtra"
+                        <MudTextField Value="@mapping.ParametriExtra"
                                       Label="Parametri JSON"
                                       Variant="Variant.Outlined"
                                       ReadOnly="true"

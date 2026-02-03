@@ -57,7 +57,7 @@ public partial class ConfigurazioneFontiDati
     public bool FlagAttiva { get; set; } = true;
 
     [Required]
-    public int? GiorniPrecedenti { get; set; } = 1;
+    public int? GiorniPrecedenti { get; set; } = 10;
 
     // Navigation Properties
     public virtual ICollection<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; }

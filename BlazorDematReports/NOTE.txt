@@ -10,8 +10,8 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-controllare se in configurazione vengono riportate solo le lavorazioni che sono datareading true
-sistemre l'aggiunta dei giorni da considerare, controllare lo stato della casella anche in edit procedura
+
+ controllare lo stato della casella anche in edit procedura
 controllare perchè esistono 2 servizi mail per 28 aut
 
 implementare la configurazione per il servizio mail
