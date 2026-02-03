@@ -11,7 +11,8 @@ with (firstrow = 170,
       maxerrors=10);
 
 
- controllare lo stato della casella anche in edit procedura
+se previsto lettura diretta per fasi di lavorazione anche da parte dei csv che arrivano dalle email serve ancora la fase procedura completa?
+
 controllare perchè esistono 2 servizi mail per 28 aut
 
 implementare la configurazione per il servizio mail
@@ -47,12 +48,7 @@ Per quando programma è pronto per la produzione
     (tutte a false di default tranne procedura completa e no_fase_lavorazione)
 
 
-
-
-
-
-
-
+ 
 
 spiegazione di come funziona la logica dei task e serice mail
 

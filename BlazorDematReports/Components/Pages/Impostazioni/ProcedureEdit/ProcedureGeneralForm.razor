@@ -91,7 +91,7 @@
                           Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Assignment"
-                          @onblur="@(() => OnFieldChanged())" />
+                          @onblur="async _ => await OnFieldChanged()" />
         </MudItem>
         
         @* Centro (Read-only se in edit) *@
@@ -113,7 +113,7 @@
             <MudSelect T="string" 
                        Label="Formato Dati Produzione" 
                        Value="@Model.FormatoDatiProduzione" 
-                       ValueChanged="OnFormatoChanged" 
+                       ValueChanged="async val => await OnFormatoChanged(val)" 
                        Required="true"
                        Variant="Variant.Outlined"
                        Adornment="Adornment.Start"
@@ -136,7 +136,7 @@
             <MudSelect T="string" 
                        Label="Reparto" 
                        Value="@Model.Reparto" 
-                       ValueChanged="OnRepartoChanged" 
+                       ValueChanged="async val => await OnRepartoChanged(val)" 
                        Required="true"
                        Variant="Variant.Outlined"
                        Adornment="Adornment.Start"
@@ -159,7 +159,7 @@
             <MudTextField T="string" 
                           Label="Note" 
                           @bind-Value="Model.Note"
-                          OnBlur="@OnFieldChanged"
+                          @onblur="async _ => await OnFieldChanged()"
                           Variant="Variant.Outlined"
                           Lines="4"
                           Adornment="Adornment.Start"

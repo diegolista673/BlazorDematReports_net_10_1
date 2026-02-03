@@ -1,15 +1,6 @@
 @page "/procedure-lavorazioni/edit/{IdProcedura:int}"
 @page "/procedure-lavorazioni/edit/{IdProcedura:int}/{ActiveTab}"
-@using DataReading.Dto
-@using BlazorDematReports.Dto
-@using BlazorDematReports.Services.ProcedureEdit
-@using BlazorDematReports.Components.ProcedureEdit
-@using BlazorDematReports.Components.Shared
-@using BlazorDematReports.Components.Pages.Impostazioni.Components
-@using LibraryLavorazioni.Shared.Interfaces
-@using Microsoft.AspNetCore.Components
-@using Microsoft.EntityFrameworkCore
-@using Entities.Models.DbApplication
+
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageEditProcedura,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject ProcedureEditStateService StateService
