@@ -113,7 +113,7 @@ public class SqlValidationService
 
         if (!hasDateParams)
         {
-            return ValidationResult.Warning(
+            return ValidationResult.Error(
                 "Parametri di data mancanti. " +
                 "Utilizzare @startDate e @endDate (o @startData e @endData) per il filtraggio delle date.");
         }
@@ -123,7 +123,7 @@ public class SqlValidationService
 
     /// <summary>
     /// Valida la sintassi SQL usando il parser T-SQL di Microsoft.
-    /// Migrato da QueryService.
+    /// Include anche controlli manuali per clausole obbligatorie (FROM).
     /// </summary>
     /// <param name="query">Query SQL da validare sintatticamente.</param>
     /// <returns>Risultato validazione con eventuali errori di sintassi.</returns>
@@ -134,7 +134,12 @@ public class SqlValidationService
 
         try
         {
-            // Crea un parser per T-SQL (SQL Server 2022)
+            // 1. Controlli manuali pre-parsing per clausole obbligatorie
+            var preCheckResult = ValidateQueryStructure(query);
+            if (!preCheckResult.IsValid)
+                return preCheckResult;
+            
+            // 2. Parser T-SQL Microsoft
             var parser = new TSql160Parser(false);
 
             // Analizza la query
@@ -159,6 +164,71 @@ public class SqlValidationService
             _logger?.LogError(ex, "Errore durante validazione sintassi SQL");
             return ValidationResult.Error($"Errore durante validazione sintassi: {ex.Message}");
         }
+    }
+    
+    /// <summary>
+    /// Controlli manuali sulla struttura della query SQL.
+    /// Verifica presenza clausole obbligatorie come FROM.
+    /// </summary>
+    private ValidationResult ValidateQueryStructure(string query)
+    {
+        var normalizedQuery = query.Trim();
+        
+        // Rimuovi commenti SQL per analisi pulita
+        normalizedQuery = Regex.Replace(normalizedQuery, @"--.*$", "", RegexOptions.Multiline);
+        normalizedQuery = Regex.Replace(normalizedQuery, @"/\*.*?\*/", "", RegexOptions.Singleline);
+        
+        // Controlla se inizia con SELECT
+        if (normalizedQuery.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+        {
+            // SELECT deve avere FROM (a meno che non sia una query di sistema come SELECT @@VERSION)
+            bool hasFrom = Regex.IsMatch(normalizedQuery, @"\bFROM\b", RegexOptions.IgnoreCase);
+            bool isSystemQuery = Regex.IsMatch(normalizedQuery, @"SELECT\s+@@", RegexOptions.IgnoreCase);
+            
+            if (!hasFrom && !isSystemQuery)
+            {
+                _logger?.LogWarning("Query SELECT senza clausola FROM rilevata");
+                return ValidationResult.Error(
+                    "Sintassi errata: SELECT richiede la clausola FROM.\n" +
+                    "Esempio: SELECT col1, col2 FROM tabella WHERE ...");
+            }
+            
+            // Verifica ordine clausole: SELECT ... FROM ... WHERE ... GROUP BY ... ORDER BY
+            if (hasFrom)
+            {
+                var selectPos = normalizedQuery.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
+                var fromPos = normalizedQuery.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
+                var wherePos = normalizedQuery.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+                
+                if (fromPos < selectPos)
+                {
+                    return ValidationResult.Error("Sintassi errata: FROM non può precedere SELECT");
+                }
+                
+                if (wherePos > 0 && wherePos < fromPos)
+                {
+                    return ValidationResult.Error("Sintassi errata: WHERE non può precedere FROM");
+                }
+            }
+        }
+        else if (normalizedQuery.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
+        {
+            // CTE deve contenere SELECT e FROM
+            bool hasSelect = Regex.IsMatch(normalizedQuery, @"\bSELECT\b", RegexOptions.IgnoreCase);
+            bool hasFrom = Regex.IsMatch(normalizedQuery, @"\bFROM\b", RegexOptions.IgnoreCase);
+            
+            if (!hasSelect)
+            {
+                return ValidationResult.Error("CTE (WITH) richiede una clausola SELECT");
+            }
+            
+            if (!hasFrom)
+            {
+                return ValidationResult.Error("CTE (WITH) richiede una clausola FROM");
+            }
+        }
+        
+        return ValidationResult.Success("Struttura query valida");
     }
 
     /// <summary>

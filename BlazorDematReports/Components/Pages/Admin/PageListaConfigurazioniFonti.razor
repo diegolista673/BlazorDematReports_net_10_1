@@ -271,23 +271,8 @@
                             continue;
                         }
                     
-                        // Estrai cron dai ParametriExtra del mapping (default: 0 5 * * *)
-                        string cronExpression = "0 5 * * *"; // Default
-                        if (!string.IsNullOrWhiteSpace(mapping.ParametriExtra))
-                        {
-                            try
-                            {
-                                var extraParams = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(mapping.ParametriExtra);
-                                if (extraParams != null && extraParams.TryGetValue("cron", out var cronValue))
-                                {
-                                    cronExpression = cronValue?.ToString() ?? "0 5 * * *";
-                                }
-                            }
-                            catch
-                            {
-                                // Usa default se JSON malformato
-                            }
-                        }
+                        // Usa CronExpression dal mapping (default: 0 5 * * *)
+                        string cronExpression = mapping.CronExpression ?? "0 5 * * *";
                     
                     
                         // Crea nuovo task

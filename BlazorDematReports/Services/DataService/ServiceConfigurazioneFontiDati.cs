@@ -73,7 +73,7 @@ namespace BlazorDematReports.Services.DataService
 
                 CronExpressions = c.ConfigurazioneFaseCentros
                     .Where(fc => fc.FlagAttiva == true)
-                    .Select(fc => ExtractCronFromJson(fc.ParametriExtra))
+                    .Select(fc => fc.CronExpression ?? "0 5 * * *")
                     .ToList(),
 
                 MappingDettaglio = c.ConfigurazioneFaseCentros
@@ -83,8 +83,8 @@ namespace BlazorDematReports.Services.DataService
                         NomeProcedura = fc.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
                         NomeFase = fc.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A",
                         NomeCentro = fc.IdCentroNavigation?.Centro ?? "N/A",
-                        Cron = ExtractCronFromJson(fc.ParametriExtra),
-                        ParametriExtra = fc.ParametriExtra
+                        Cron = fc.CronExpression ?? "0 5 * * *",
+                        ParametriExtra = null
                     })
                     .ToList()
             }).ToList();
@@ -92,29 +92,6 @@ namespace BlazorDematReports.Services.DataService
             return _configurazioni;
         }
 
-        /// <summary>
-        /// Estrae il cron dal JSON ParametriExtra, se presente.
-        /// </summary>
-        private static string ExtractCronFromJson(string? parametriExtra)
-        {
-            if (string.IsNullOrWhiteSpace(parametriExtra))
-                return "0 5 * * *"; // Default
-    
-            try
-            {
-                var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(parametriExtra);
-                if (json != null && json.TryGetValue("cron", out var cronValue))
-                {
-                    return cronValue?.ToString() ?? "0 5 * * *";
-                }
-            }
-            catch
-            {
-                // JSON malformato
-            }
-    
-            return "0 5 * * *";
-        }
 
         /// <summary>
         /// Aggiorna FlagDataReading = true nella tabella LavorazioniFasiDataReading per le fasi con cron validi.
@@ -123,8 +100,8 @@ namespace BlazorDematReports.Services.DataService
         {
             foreach (var mapping in mappings.Where(m => m.FlagAttiva))
             {
-                // Estrai il cron dal mapping
-                var cron = ExtractCronFromJson(mapping.ParametriExtra);
+                // Usa il CRON dal campo dedicato
+                var cron = mapping.CronExpression;
                 
                 // Se il cron è valido (non è solo il default), aggiorna FlagDataReading
                 if (!string.IsNullOrWhiteSpace(cron) && cron != "0 5 * * *")
@@ -213,16 +190,29 @@ namespace BlazorDematReports.Services.DataService
                         {
                             exist.IdFaseLavorazione = m.IdFaseLavorazione;
                             exist.IdCentro = m.IdCentro;
-                            exist.TestoQueryOverride = m.TestoQueryOverride;
-                            exist.ParametriExtra = m.ParametriExtra;
+                            exist.TestoQueryTask = m.TestoQueryTask;
+                            exist.CronExpression = m.CronExpression;
+                            exist.TipoTask = m.TipoTask;
+                            exist.MailServiceCode = m.MailServiceCode;
+                            exist.HandlerClassName = m.HandlerClassName;
                             exist.MappingColonne = m.MappingColonne;
                             exist.FlagAttiva = m.FlagAttiva;
+                            exist.EnabledTask = m.EnabledTask;
+                            exist.GiorniPrecedenti = m.GiorniPrecedenti; // Aggiorna GiorniPrecedenti
+                            exist.UltimaModificaTask = DateTime.Now;
                         }
                         else
                         {
                             m.IdFaseCentro = 0;
                             m.IdConfigurazione = config.IdConfigurazione;
                             m.FlagAttiva = true;
+                            m.EnabledTask = true;
+                            m.UltimaModificaTask = DateTime.Now;
+                            // Assicura che i campi obbligatori siano valorizzati
+                            m.TipoTask ??= config.TipoFonte;
+                            m.CronExpression ??= "0 5 * * *";
+                            if (m.GiorniPrecedenti is null or <= 0)
+                                m.GiorniPrecedenti = 10;
                             context.ConfigurazioneFaseCentros.Add(m);
                         }
                     }
@@ -234,10 +224,16 @@ namespace BlazorDematReports.Services.DataService
                             var existingDup = await context.ConfigurazioneFaseCentros.FirstOrDefaultAsync(x => x.IdConfigurazione == config.IdConfigurazione && x.IdFaseLavorazione == m.IdFaseLavorazione && x.IdCentro == m.IdCentro);
                             if (existingDup != null)
                             {
-                                existingDup.TestoQueryOverride = m.TestoQueryOverride;
-                                existingDup.ParametriExtra = m.ParametriExtra;
+                                existingDup.TestoQueryTask = m.TestoQueryTask;
+                                existingDup.CronExpression = m.CronExpression;
+                                existingDup.TipoTask = m.TipoTask;
+                                existingDup.MailServiceCode = m.MailServiceCode;
+                                existingDup.HandlerClassName = m.HandlerClassName;
                                 existingDup.MappingColonne = m.MappingColonne;
                                 existingDup.FlagAttiva = true;
+                                existingDup.EnabledTask = true;
+                                existingDup.GiorniPrecedenti = m.GiorniPrecedenti; // Aggiorna GiorniPrecedenti
+                                existingDup.UltimaModificaTask = DateTime.Now;
                             }
                         }
                         else
@@ -245,6 +241,13 @@ namespace BlazorDematReports.Services.DataService
                             m.IdFaseCentro = 0;
                             m.IdConfigurazione = config.IdConfigurazione;
                             m.FlagAttiva = true;
+                            m.EnabledTask = true;
+                            m.UltimaModificaTask = DateTime.Now;
+                            // Assicura che i campi obbligatori siano valorizzati
+                            m.TipoTask ??= config.TipoFonte;
+                            m.CronExpression ??= "0 5 * * *";
+                            if (m.GiorniPrecedenti is null or <= 0)
+                                m.GiorniPrecedenti = 10;
                             context.ConfigurazioneFaseCentros.Add(m);
                         }
                     }
@@ -293,7 +296,13 @@ namespace BlazorDematReports.Services.DataService
                         mapping.IdFaseCentro = 0;
                         mapping.IdConfigurazione = configurazioneFontiDati.IdConfigurazione;
                         mapping.FlagAttiva = true;
-                        mapping.ParametriExtra ??= string.Empty;
+                        mapping.EnabledTask = true;
+                        mapping.UltimaModificaTask = DateTime.Now;
+                        
+                        // Assicura che GiorniPrecedenti sia valorizzato (default 10 se 0)
+                        if (mapping.GiorniPrecedenti is null or <= 0)
+                            mapping.GiorniPrecedenti = 10;
+                        
                         context.ConfigurazioneFaseCentros.Add(mapping);
                 }
 

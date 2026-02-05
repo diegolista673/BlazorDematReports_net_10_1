@@ -11,6 +11,13 @@ with (firstrow = 170,
       maxerrors=10);
 
 
+gestione della configurazione 
+    - se ci sono piu di un task come gestire quelli attivi?
+    - se ci sono diversi tipi di task ( sql,handler o mail) come vengono gestiti?
+    - come riportare la query se ci sono piu task? 
+    - come disattivare i task?
+
+se elimino task non viene eliminato da db e hangfire continua a tenerlo in considerazione
 
 come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
 

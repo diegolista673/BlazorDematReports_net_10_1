@@ -13,8 +13,6 @@ public partial class ConfigurazioneFontiDati
 
     public string TipoFonte { get; set; } = null!;
 
-    public string? TestoQuery { get; set; }
-
     public string? ConnectionStringName { get; set; }
 
     public string? MailServiceCode { get; set; }
@@ -30,8 +28,6 @@ public partial class ConfigurazioneFontiDati
     public DateTime? ModificatoIl { get; set; }
 
     public bool FlagAttiva { get; set; }
-
-    public int GiorniPrecedenti { get; set; }
 
     public virtual ICollection<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; } = new List<ConfigurazioneFaseCentro>();
 

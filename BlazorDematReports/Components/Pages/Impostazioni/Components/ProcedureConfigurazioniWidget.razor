@@ -212,8 +212,8 @@
                         continue;
                     }
                     
-                    // Estrai cron
-                    var cron = ExtractCronFromJson(mapping.ParametriExtra);
+                    // Usa CRON dal mapping
+                    var cron = mapping.CronExpression ?? "0 5 * * *";
                     
                     // Crea task
                     var task = new TaskDaEseguire

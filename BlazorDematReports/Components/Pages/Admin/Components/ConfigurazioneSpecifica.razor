@@ -22,64 +22,8 @@
         </MudSelect>
     </MudItem>
 
-    <MudItem xs="12">
-        <MudPaper Elevation="3" Class="pa-4 mb-3">
-            <MudText Typo="Typo.body2" Class="mb-2"><b>Linee guida per le query SQL:</b></MudText>
-            
-            <MudText Typo="Typo.body2" Class="mb-1">1. <b>Formato dei risultati:</b></MudText>
-            <ul style="margin-left: 20px;">
-                <li><MudText Typo="Typo.body2">Il risultato deve indicare il numero di documenti, fogli, pagine raggruppati per data di lavorazione e operatore.</MudText></li>
-                <li><MudText Typo="Typo.body2">L'intestazione deve corrispondere esattamente a: <b>Operatore, DataLavorazione, Documenti, Fogli, Pagine</b></MudText></li>
-            </ul>
 
-            <MudText Typo="Typo.body2" Class="mb-1 mt-2">2. <b>Identificazione univoca degli operatori:</b></MudText>
-            <ul style="margin-left: 20px;">
-                <li><MudText Typo="Typo.body2">Utilizzare una clausola WHERE con criteri specifici (es: department = 'genova')</MudText></li>
-                <li><MudText Typo="Typo.body2"><b>Attenzione:</b> Se non è possibile identificare operatori e centro, il sistema proverà a riconoscerli automaticamente. Se non riconosciuti verranno eliminati.</MudText></li>
-            </ul>
-
-            <MudText Typo="Typo.body2" Class="mb-1 mt-2">3. <b>Parametrizzazione delle date:</b></MudText>
-            <ul style="margin-left: 20px;">
-                <li><MudText Typo="Typo.body2">Sostituire le date con i parametri <code>@@StartDate</code> e <code>@@EndDate</code></MudText></li>
-            </ul>
-
-            <MudDivider Class="my-2" />
-            <MudText Typo="Typo.caption"><b>Esempio:</b></MudText>
-            <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap;" Class="mt-1">
-                SELECT op_scan AS <b>Operatore</b>,
-                       CONVERT(DATE, data_scan) AS <b>DataLavorazione</b>,
-                       COUNT(*) AS <b>Documenti</b>,
-                       SUM(CONVERT(INT, num_pag))/2 AS <b>Fogli</b>,
-                       SUM(CONVERT(INT, num_pag)) AS <b>Pagine</b>
-                FROM z0072370_rdmkt_28aut_ge_uda_dettaglio
-                WHERE <b>department = 'genova'</b>
-                  AND data_scan >= <b>@@StartDate</b>
-                  AND data_scan &lt;= <b>@@EndDate</b>
-                GROUP BY op_scan, CONVERT(DATE, data_scan)
-            </MudText>
-        </MudPaper>
-    </MudItem>
-
-    <MudItem xs="12">
-        <MudTextField 
-                      Value="@TestoQuery"
-                      TextChanged="OnTestoQueryChanged"
-                      Label="Query SQL"
-                      Variant="Variant.Outlined"
-                      Lines="15"
-                      Required="true"
-                      Style="font-family: monospace;" spellcheck="false" />
-        <MudStack Direction="Column" >
-            <MudText Typo="Typo.caption">
-                Parametri obbligatori: @@StartDate, @@EndDate | Colonne obbligatorie: Operatore, DataLavorazione, Documenti, Fogli, Pagine
-            </MudText>
-            <MudText Typo="Typo.caption">
-                NB* - Se in edit aggiorno la query il task schedulato si aggiorna automaticamente
-            </MudText>
-        </MudStack>
-    </MudItem>
-
-    <MudItem xs="12" Class="d-flex gap-2 mt-2">
+    <MudItem xs="12" Class="d-flex gap-2 mt-1">
         <MudButton Variant="Variant.Outlined" 
                    Color="Color.Info"
                    Size="Size.Small"
@@ -88,15 +32,6 @@
                    Disabled='@(TestingConnection || string.IsNullOrWhiteSpace(ConnectionStringName))'>
             @if (TestingConnection) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
             Test Connessione
-        </MudButton>
-        <MudButton Variant="Variant.Outlined" 
-                   Color="Color.Primary"
-                   Size="Size.Small"
-                   StartIcon="@Icons.Material.Filled.VerifiedUser"
-                   OnClick="OnValidateQuery"
-                   Disabled='@(ValidatingQuery || string.IsNullOrWhiteSpace(TestoQuery))'>
-            @if (ValidatingQuery) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
-            Valida Query
         </MudButton>
     </MudItem>
 
@@ -157,6 +92,8 @@ else if (TipoFonte == "Pipeline")
     </MudItem>
 }
 
+
+
 @code {
     [Parameter]
     public string? TipoFonte { get; set; }
@@ -166,12 +103,6 @@ else if (TipoFonte == "Pipeline")
 
     [Parameter]
     public EventCallback<string?> ConnectionStringNameChanged { get; set; }
-
-    [Parameter]
-    public string? TestoQuery { get; set; }
-
-    [Parameter]
-    public EventCallback<string?> TestoQueryChanged { get; set; }
 
     [Parameter]
     public string? MailServiceCode { get; set; }
@@ -198,9 +129,6 @@ else if (TipoFonte == "Pipeline")
     public bool TestingConnection { get; set; }
 
     [Parameter]
-    public bool ValidatingQuery { get; set; }
-
-    [Parameter]
     public string? ValidationMessage { get; set; }
 
     [Parameter]
@@ -209,18 +137,10 @@ else if (TipoFonte == "Pipeline")
     [Parameter]
     public EventCallback OnTestConnection { get; set; }
 
-    [Parameter]
-    public EventCallback OnValidateQuery { get; set; }
-
-
     private async Task OnConnectionStringNameChanged(string? value)
     {
         await ConnectionStringNameChanged.InvokeAsync(value);
     }
-
-    private async Task OnTestoQueryChanged(string? value)
-    {
-        await TestoQueryChanged.InvokeAsync(value);
-    }
 }
+
 

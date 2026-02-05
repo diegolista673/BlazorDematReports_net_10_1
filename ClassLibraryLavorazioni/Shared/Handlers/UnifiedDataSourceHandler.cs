@@ -90,35 +90,14 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
             fc.IdCentro == context.IDCentro &&
             fc.FlagAttiva == true);
 
-        // Usa query override se presente, altrimenti query base
-        var query = mapping?.TestoQueryOverride ?? config.TestoQuery;
+        // Usa query specifica del task se presente, altrimenti query base
+        var query = mapping?.TestoQueryTask ;
 
         if (string.IsNullOrWhiteSpace(query))
         {
             _logger.LogWarning("[UnifiedHandler:SQL] Nessuna query configurata per {Codice}",
                 config.CodiceConfigurazione);
             return result;
-        }
-
-        // Sostituisci parametri extra da mapping
-        if (!string.IsNullOrWhiteSpace(mapping?.ParametriExtra))
-        {
-            try
-            {
-                var extraParams = JsonSerializer.Deserialize<Dictionary<string, string>>(mapping.ParametriExtra);
-                if (extraParams != null)
-                {
-                    foreach (var param in extraParams)
-                    {
-                        // Sostituzione sicura per parametri stringa
-                        query = query.Replace($"@{param.Key}", $"'{param.Value.Replace("'", "''")}'");
-                    }
-                }
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning(ex, "[UnifiedHandler:SQL] Errore parsing ParametriExtra JSON");
-            }
         }
 
         // Ottieni connection string

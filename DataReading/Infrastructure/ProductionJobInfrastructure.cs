@@ -86,25 +86,7 @@ namespace DataReading.Infrastructure
         /// </summary>
         private static string ExtractCronFromMapping(ConfigurazioneFaseCentro mapping)
         {
-            if (string.IsNullOrWhiteSpace(mapping.ParametriExtra))
-                return "0 5 * * *"; // Default giornaliero alle 05:00
-            
-            try
-            {
-                var json = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(mapping.ParametriExtra);
-                if (json != null && json.TryGetValue("cron", out var cronValue))
-                {
-                    var cronStr = cronValue?.ToString();
-                    if (!string.IsNullOrWhiteSpace(cronStr))
-                        return cronStr;
-                }
-            }
-            catch
-            {
-                // JSON malformato, usa default
-            }
-            
-            return "0 5 * * *";
+            return mapping.CronExpression ?? "0 5 * * *"; // Default giornaliero alle 05:00
         }
 
         /// <summary>
@@ -526,8 +508,9 @@ namespace DataReading.Infrastructure
             var queryService = scope.ServiceProvider.GetRequiredService<IQueryService>();
             var lavorazioniConfig = scope.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
             
-            // Carica configurazione
+            // Carica configurazione con mappings
             var config = await db.ConfigurazioneFontiDatis
+                .Include(c => c.ConfigurazioneFaseCentros)
                 .FirstOrDefaultAsync(c => c.IdConfigurazione == entity.IdConfigurazioneDatabase.Value);
             
             if (config == null)
@@ -540,6 +523,24 @@ namespace DataReading.Infrastructure
             {
                 throw new InvalidOperationException(
                     $"Configurazione {config.IdConfigurazione} ha TipoFonte='{config.TipoFonte}' invece di 'SQL'");
+            }
+
+            // Trova il mapping corretto per questa fase
+            // Nota: ConfigurazioneFaseCentro contiene IdCentro, LavorazioniFasiDataReading no
+            var idFaseLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdFaseLavorazione;
+            
+            var mapping = config.ConfigurazioneFaseCentros.FirstOrDefault(fc =>
+                fc.IdFaseLavorazione == idFaseLavorazione &&
+                fc.FlagAttiva == true);
+
+            // Usa query specifica del mapping se presente
+            var query = mapping?.TestoQueryTask;
+            
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                throw new InvalidOperationException(
+                    $"Nessuna query configurata per task {entity.IdTaskDaEseguire}. " +
+                    "Configurare TestoQueryTask nel mapping Fase/Centro.");
             }
 
             // Esegui query SQL
@@ -556,7 +557,7 @@ namespace DataReading.Infrastructure
             // Esegui query - i risultati vengono salvati automaticamente da ExecuteQueryAsync
             await queryService.ExecuteQueryAsync(
                 connectionString,
-                config.TestoQuery!,
+                query,
                 startDate,
                 endDate);
         }

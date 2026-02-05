@@ -51,5 +51,12 @@
         IServiceConfigurazioneFontiDati ServiceConfigurazioneFontiDati { get; }
         /// <summary>Servizio per la gestione dell'invio email e configurazioni servizi mail.</summary>
         IServiceMail ServiceMail { get; }
+        /// <summary>
+        /// Gets the service that provides task management operations for the current context.
+        /// </summary>
+        /// <remarks>Use this property to access functionality related to creating, updating, or querying
+        /// service tasks. The returned service is typically used to manage background or scheduled operations within
+        /// the application.</remarks>
+        IServiceTaskManagement ServiceTaskManagement { get; }
     }
 }

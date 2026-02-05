@@ -48,27 +48,7 @@ namespace BlazorDematReports.Services.DataService
 
         public string GetCronFromMapping(ConfigurazioneFaseCentro mapping)
         {
-            if (mapping == null || string.IsNullOrWhiteSpace(mapping.ParametriExtra))
-                return "0 5 * * *";
-
-            try
-            {
-                var json = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(mapping.ParametriExtra);
-                if (json != null && json.TryGetValue("cron", out var cronValue))
-                {
-                    var cronString = cronValue.ValueKind == JsonValueKind.String
-                        ? cronValue.GetString()
-                        : cronValue.ToString();
-
-                    return !string.IsNullOrWhiteSpace(cronString) ? cronString : "0 5 * * *";
-                }
-            }
-            catch
-            {
-                // JSON malformato, ritorna default
-            }
-
-            return "0 5 * * *";
+            return mapping?.CronExpression ?? "0 5 * * *";
         }
 
         public void SetCronForMapping(ConfigurazioneFaseCentro mapping, string cronValue)
@@ -76,34 +56,8 @@ namespace BlazorDematReports.Services.DataService
             if (mapping == null || string.IsNullOrWhiteSpace(cronValue))
                 return;
 
-            try
-            {
-                Dictionary<string, object> json;
-
-                if (!string.IsNullOrWhiteSpace(mapping.ParametriExtra))
-                {
-                    try
-                    {
-                        json = JsonSerializer.Deserialize<Dictionary<string, object>>(mapping.ParametriExtra)
-                            ?? new Dictionary<string, object>();
-                    }
-                    catch
-                    {
-                        json = new Dictionary<string, object>();
-                    }
-                }
-                else
-                {
-                    json = new Dictionary<string, object>();
-                }
-
-                json["cron"] = cronValue;
-                mapping.ParametriExtra = JsonSerializer.Serialize(json);
-            }
-            catch
-            {
-                // Errore nella serializzazione, ignora
-            }
+            mapping.CronExpression = cronValue;
+            mapping.UltimaModificaTask = DateTime.Now;
         }
 
         public List<string> SyncCronsFromMappings(List<ConfigurazioneFaseCentro> mappings)

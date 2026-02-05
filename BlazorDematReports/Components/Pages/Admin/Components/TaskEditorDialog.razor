@@ -1,0 +1,279 @@
+@using BlazorDematReports.Dto
+@using BlazorDematReports.Services.Validation
+@inherits BaseComponentPage<TaskEditorDialog>
+@inject ISnackbar Snackbar
+@inject SqlValidationService SqlValidator
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate Color="Color.Primary" />
+        }
+        else
+        {
+            <MudGrid>
+                @* Info Read-Only *@
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense Class="mb-2">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                            <div>
+                                <strong>Fase:</strong> @_taskEdit.NomeFase | 
+                                <strong>Procedura:</strong> @_taskEdit.NomeProcedura | 
+                                <strong>Centro:</strong> @_taskEdit.NomeCentro
+                            </div>
+                        </div>
+                    </MudAlert>
+                </MudItem>
+
+                @* Tipo Task *@
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" 
+                               @bind-Value="_taskEdit.TipoTask" 
+                               Label="Tipologia Task" 
+                               Variant="Variant.Outlined"
+                               AdornmentIcon="@GetTipoTaskIcon(_taskEdit.TipoTask)"
+                               Adornment="Adornment.Start"
+                               Required>
+                        @foreach (var tipo in TipoTaskEnum.GetAll())
+                        {
+                            <MudSelectItem Value="@tipo">
+                                <div class="d-flex align-center">
+                                    <MudIcon Icon="@GetTipoTaskIcon(tipo)" Class="mr-2" Size="Size.Small" />
+                                    @TipoTaskEnum.GetDisplayName(tipo)
+                                </div>
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                @* CRON Expression *@
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_taskEdit.CronExpression" 
+                                  Label="CRON Expression" 
+                                  Variant="Variant.Outlined"
+                                  HelperText="Es: 0 5 * * * (ogni giorno alle 05:00)"
+                                  AdornmentIcon="@Icons.Material.Filled.Schedule"
+                                  Adornment="Adornment.Start"
+                                  Required 
+                                  OnBlur="ValidateCron"/>
+                    @if (!string.IsNullOrEmpty(_cronError))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">@_cronError</MudText>
+                    }
+                </MudItem>
+
+                @* Configurazione Specifica per Tipo *@
+                @if (_taskEdit.TipoTask == TipoTaskEnum.SQL)
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_taskEdit.TestoQueryTask" 
+                                      Label="Query SQL" 
+                                      Variant="Variant.Outlined"
+                                      Lines="8"
+                                      HelperText="Query SQL da eseguire"
+                                      Required 
+                                      OnBlur="ValidateQuery"/>
+                        @if (!string.IsNullOrEmpty(_queryError))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Error">@_queryError</MudText>
+                        }
+                    </MudItem>
+                }
+                else if (_taskEdit.TipoTask == TipoTaskEnum.EmailCSV)
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_taskEdit.MailServiceCode" 
+                                      Label="Codice Servizio Mail" 
+                                      Variant="Variant.Outlined"
+                                      HelperText="Es: ADER4_MAIL, HERA16_MAIL"
+                                      AdornmentIcon="@Icons.Material.Filled.Email"
+                                      Adornment="Adornment.Start"
+                                      Required />
+                    </MudItem>
+                }
+                else if (_taskEdit.TipoTask == TipoTaskEnum.HandlerIntegrato)
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_taskEdit.HandlerClassName" 
+                                      Label="Nome Classe Handler" 
+                                      Variant="Variant.Outlined"
+                                      HelperText="Es: Z0072370_28AUTHandler, PRATICHE_SUCCESSIONEHandler"
+                                      AdornmentIcon="@Icons.Material.Filled.Code"
+                                      Adornment="Adornment.Start"
+                                      Required />
+                    </MudItem>
+                }
+                else if (_taskEdit.TipoTask == TipoTaskEnum.Pipeline)
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Dense>
+                            <strong>Pipeline Multi-Step:</strong> La configurazione degli step pipeline 
+                            viene gestita separatamente nella sezione ConfigurazionePipelineSteps.
+                        </MudAlert>
+                    </MudItem>
+                }
+
+                @* Enable/Disable Task *@
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="_taskEdit.EnabledTask" 
+                               Label="Task Attivo" 
+                               Color="Color.Success"
+                               ThumbIcon="@(_taskEdit.EnabledTask ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @(_taskEdit.EnabledTask ? "Il task verrà eseguito secondo lo schedule CRON" : "Il task è disabilitato e non verrà eseguito")
+                    </MudText>
+                </MudItem>
+
+                @* Preview Descrizione *@
+                @if (_taskEdit.IsValid())
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Success" Dense>
+                            <strong>Configurazione:</strong> @_taskEdit.GetDescription()
+                        </MudAlert>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Annulla</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   OnClick="SaveAsync"
+                   Disabled="@(!_taskEdit.IsValid() || _saving)"
+                   StartIcon="@Icons.Material.Filled.Save">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" />
+                <span>Salvataggio...</span>
+            }
+            else
+            {
+                <span>Salva</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+[CascadingParameter] public IDialogReference MudDialog { get; set; } = null!;
+[Parameter] public int IdFaseCentro { get; set; }
+
+    private ConfigurazioneTaskEditDto _taskEdit = new();
+    private bool _loading = false;
+    private bool _saving = false;
+    private string? _cronError;
+    private string? _queryError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            var task = await ServiceWrapper!.ServiceTaskManagement.GetTaskForEditAsync(IdFaseCentro);
+            if (task != null)
+            {
+                _taskEdit = task;
+            }
+            else
+            {
+                Snackbar.Add("Task non trovato", Severity.Error);
+                MudDialog.Close(DialogResult.Cancel());
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Errore caricamento task: {ex.Message}", Severity.Error);
+            MudDialog.Close(DialogResult.Cancel());
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Close(DialogResult.Cancel());
+
+    private async Task SaveAsync()
+    {
+        // Validazione finale
+        if (!_taskEdit.IsValid())
+        {
+            Snackbar.Add("Configurazione non valida. Controlla i campi obbligatori.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var success = await ServiceWrapper!.ServiceTaskManagement.UpdateTaskConfigurationAsync(_taskEdit);
+            if (success)
+            {
+                Snackbar.Add("Task aggiornato con successo", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Errore nell'aggiornamento del task. Verifica che non ci siano duplicati (stessa Fase + CRON).", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void ValidateCron()
+    {
+        _cronError = null;
+        if (string.IsNullOrWhiteSpace(_taskEdit.CronExpression))
+        {
+            _cronError = "CRON expression obbligatorio";
+            return;
+        }
+
+        // Validazione base CRON (5 o 6 campi separati da spazi)
+        var parts = _taskEdit.CronExpression.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 5 || parts.Length > 6)
+        {
+            _cronError = "Formato CRON non valido. Deve avere 5 o 6 campi (es: 0 5 * * *)";
+        }
+    }
+
+    private void ValidateQuery()
+    {
+        _queryError = null;
+        if (_taskEdit.TipoTask == TipoTaskEnum.SQL && string.IsNullOrWhiteSpace(_taskEdit.TestoQueryTask))
+        {
+            _queryError = "Query SQL obbligatoria per task di tipo SQL";
+            return;
+        }
+
+        // Validazione SQL injection
+        if (!string.IsNullOrWhiteSpace(_taskEdit.TestoQueryTask))
+        {
+            var validation = SqlValidator.ValidateQuery(_taskEdit.TestoQueryTask);
+            if (!validation.IsValid)
+            {
+                _queryError = validation.Message;
+            }
+        }
+    }
+
+    private string GetTipoTaskIcon(string tipoTask) => tipoTask switch
+    {
+        TipoTaskEnum.SQL => Icons.Material.Filled.Storage,
+        TipoTaskEnum.EmailCSV => Icons.Material.Filled.Email,
+        TipoTaskEnum.HandlerIntegrato => Icons.Material.Filled.Code,
+        TipoTaskEnum.Pipeline => Icons.Material.Filled.AccountTree,
+        _ => Icons.Material.Filled.HelpOutline
+    };
+}

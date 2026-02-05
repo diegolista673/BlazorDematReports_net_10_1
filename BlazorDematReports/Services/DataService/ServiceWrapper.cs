@@ -44,6 +44,8 @@ namespace BlazorDematReports.Services.DataService
         private readonly Lazy<IServiceRuoli> _serviceRuoli;
         private readonly Lazy<IServiceConfigurazioneFontiDati> _serviceConfigurazioneFontiDati;
         private readonly Lazy<IServiceMail> _serviceMail;
+        private readonly Lazy<IServiceTaskManagement> _serviceTaskManagement;
+
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per tutti i servizi di gestione dati.
         /// </summary>
@@ -89,6 +91,7 @@ namespace BlazorDematReports.Services.DataService
             _serviceTaskDaEseguire = new Lazy<IServiceTaskDaEseguire>(() => new ServiceTaskDaEseguire(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTaskDaEseguire>()));
             _serviceConfigurazioneFontiDati = new Lazy<IServiceConfigurazioneFontiDati>(() => new ServiceConfigurazioneFontiDati(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceConfigurazioneFontiDati>()));
             _serviceMail = new Lazy<IServiceMail>(() => new ServiceMail(mapper, configUser, contextFactory, fluentEmail, loggerFactory.CreateLogger<ServiceMail>()));
+            _serviceTaskManagement = new Lazy<IServiceTaskManagement>(() => new ServiceTaskManagement(contextFactory, loggerFactory.CreateLogger<ServiceTaskManagement>()));
         }
 
         /// <inheritdoc/>
@@ -158,5 +161,8 @@ namespace BlazorDematReports.Services.DataService
         public IServiceConfigurazioneFontiDati ServiceConfigurazioneFontiDati => _serviceConfigurazioneFontiDati.Value;
         /// <inheritdoc/>
         public IServiceMail ServiceMail => _serviceMail?.Value ?? throw new InvalidOperationException("ServiceMail non inizializzato. Verificare la registrazione di IFluentEmail nel DI container.");
+
+        /// <inheritdoc/>
+        public IServiceTaskManagement ServiceTaskManagement => _serviceTaskManagement.Value;
     }
 }

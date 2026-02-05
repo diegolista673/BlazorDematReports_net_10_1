@@ -8,7 +8,6 @@ using BlazorDematReports.Services.DataService;
 using BlazorDematReports.Services.ProcedureEdit;
 using BlazorDematReports.Services.UIServices;
 using BlazorDematReports.Services.Validation;
-using DataReading;
 using DataReading.Infrastructure;
 using DataReading.Interfaces;
 using DataReading.Services;
@@ -259,6 +258,7 @@ public static class Program
         // Servizi per Configurazione Fonti Dati
         builder.Services.AddScoped<ICronSchedulingService, CronSchedulingService>();
         builder.Services.AddScoped<IConfigurazioneDataReaderService, ConfigurazioneDataReaderService>();
+        builder.Services.AddScoped<ITaskGenerationService, TaskGenerationService>();
 
         // Registrazione handler lavorazioni SQL
         builder.Services.AddScoped<ILavorazioneHandler, DefaultLavorazioneHandler>();

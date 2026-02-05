@@ -15,13 +15,29 @@ public partial class ConfigurazioneFaseCentro
 
     public int IdCentro { get; set; }
 
-    public string? TestoQueryOverride { get; set; }
-
-    public string? ParametriExtra { get; set; }
-
     public string? MappingColonne { get; set; }
 
     public bool FlagAttiva { get; set; }
+
+    public bool IsTaskEnabled { get; set; }
+
+    public string? TaskDescription { get; set; }
+
+    public string? TipoTask { get; set; }
+
+    public string? CronExpression { get; set; }
+
+    public string? TestoQueryTask { get; set; }
+
+    public string? MailServiceCode { get; set; }
+
+    public string? HandlerClassName { get; set; }
+
+    public bool EnabledTask { get; set; }
+
+    public DateTime? UltimaModificaTask { get; set; }
+
+    public int? GiorniPrecedenti { get; set; }
 
     public virtual CentriLavorazione IdCentroNavigation { get; set; } = null!;
 

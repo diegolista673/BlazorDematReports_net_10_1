@@ -14,9 +14,12 @@
 @inject SqlValidationService SqlValidator
 @inject ICronSchedulingService CronService
 @inject IConfigurazioneDataReaderService DataReaderService
+@inject ITaskGenerationService TaskGenerationService
+@inject IProductionJobScheduler JobScheduler
 @attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
 
 <PageTitle>Configurazione Fonte Dati</PageTitle>
+
 
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
@@ -67,8 +70,6 @@
             <ConfigurazioneSpecifica TipoFonte="@_config.TipoFonte"
                                     ConnectionStringName="@_config.ConnectionStringName"
                                     ConnectionStringNameChanged="@((string? v) => { _config.ConnectionStringName = v; InvokeAsync(StateHasChanged); })"
-                                    TestoQuery="@_config.TestoQuery"
-                                    TestoQueryChanged="@((string? v) => { _config.TestoQuery = v; InvokeAsync(StateHasChanged); })"
                                     MailServiceCode="@_config.MailServiceCode"
                                     MailServiceCodeChanged="@((string? v) => { _config.MailServiceCode = v; InvokeAsync(StateHasChanged); })"
                                     HandlerClassName="@_config.HandlerClassName"
@@ -77,30 +78,34 @@
                                     MailServices="@_mailServices"
                                     AvailableHandlers="@_availableHandlers"
                                     TestingConnection="@_testingConnection"
-                                    ValidatingQuery="@_validatingQuery"
                                     ValidationMessage="@_validationMessage"
                                     ValidationSeverity="@_validationSeverity"
-                                    OnTestConnection="@(async () => await TestConnectionAsync())"
-                                    OnValidateQuery="@(async () => await ValidateQueryAsync())" />
+                                    OnTestConnection="@(async () => await TestConnectionAsync())" />
 
             <MudItem xs="12"><MudDivider /></MudItem>
 
 
 
+
+
+
+
             @* Mapping Configurazione *@
-            <MappingConfigurazione Mappings="@_mappingFasi"
+            <MappingConfigurazione @ref="_mappingConfigRef"
+                                  Mappings="@_mappingFasi"
                                   Fasi="@_fasiPerProcedura"
                                   PresetCrons="@_presetCrons"
                                   DescrizioneConfigurazione="@_config.DescrizioneConfigurazione"
                                   DescrizioneConfigurazioneChanged="@((string? v) => { _config.DescrizioneConfigurazione = v; InvokeAsync(StateHasChanged); })"
-                                  DisabledState='@((_config.TipoFonte == "SQL" && (!_queryValidated || !_connectionTestPassed)) || !_fasiPerProcedura.Any())'
-                                  CanAddMapping='@(_selectedIdProcedura > 0 && _selectedCentroId > 0 && _fasiPerProcedura.Any() && !(_config.TipoFonte == "SQL" && (!_queryValidated || !_connectionTestPassed)))'
+                                  DisabledState='@((_config.TipoFonte == "SQL" && !_connectionTestPassed) || !_fasiPerProcedura.Any())'
+                                  CanAddMapping='@(_selectedIdProcedura > 0 && _selectedCentroId > 0 && _fasiPerProcedura.Any() && !(_config.TipoFonte == "SQL" && !_connectionTestPassed))'
                                   OnAggiungiMapping="@AggiungiMappingAsync"
                                   OnRimuoviMapping="@RimuoviMappingAsync"
                                   GetCronValue="@GetCronFromMapping"
                                   OnCronChanged="@OnCronChangedAsync"  
-                                  GiorniPrecedenti="@(_config.GiorniPrecedenti)"
-                                  GiorniPrecedentiChanged="@(v => { _config.GiorniPrecedenti = v; InvokeAsync(StateHasChanged); })" />
+                                  GiorniPrecedenti="@_defaultGiorniPrecedenti"
+                                  GiorniPrecedentiChanged="@(v => { _defaultGiorniPrecedenti = v; InvokeAsync(StateHasChanged); })"
+                                  SqlValidator="@SqlValidator" />
 
             <MudItem xs="12"><MudDivider Class="my-4" /></MudItem>
 
@@ -110,7 +115,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Success"
                                OnClick="HandleValidSubmitAsync"
-                               Disabled='@(_saving || (_config.TipoFonte == "SQL" && (!_queryValidated || !_connectionTestPassed)) || !_fasiPerProcedura.Any())'>
+                               Disabled='@(_saving || (_config.TipoFonte == "SQL" && !_connectionTestPassed) || !_fasiPerProcedura.Any())'>
                         @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
                         Salva Configurazione
                     </MudButton>
@@ -125,28 +130,30 @@
 </MudContainer>
 
 @code {
-    [Parameter] public int? IdConfigurazione { get; set; }
-    [SupplyParameterFromQuery(Name = "idProcedura")]
-    public int? IdProceduraPrecompilata { get; set; }
+[Parameter] public int? IdConfigurazione { get; set; }
+[SupplyParameterFromQuery(Name = "idProcedura")]
+public int? IdProceduraPrecompilata { get; set; }
 
-    // State
-    private string? _selectedLavorazione;
-    private int _selectedIdProcedura = 0;
-    private int _selectedCentroId = 0;
-    private bool _initializing = true;
-    private bool _isEdit => IdConfigurazione.HasValue;
-    private bool _saving = false;
-    private bool _testingConnection = false;
-    private bool _validatingQuery = false;
-    private string? _validationMessage;
-    private bool _queryValidated = false;
-    private bool _connectionTestPassed = false;
+// State
+private string? _selectedLavorazione;
+private int _selectedIdProcedura = 0;
+private int _selectedCentroId = 0;
+private bool _initializing = true;
+private bool _isEdit => IdConfigurazione.HasValue;
+private bool _saving = false;
+private bool _testingConnection = false;
+private string? _validationMessage;
+private bool _connectionTestPassed = false;
 
-    // Config
-    private ConfigurazioneFontiDati _config = new() { FlagAttiva = true, TipoFonte = "SQL" };
+// Config
+private ConfigurazioneFontiDati _config = new() { FlagAttiva = true, TipoFonte = "SQL" };
+private int _defaultGiorniPrecedenti = 10; // Default globale per nuovi mapping
+    
+// Component Reference
+private MappingConfigurazione? _mappingConfigRef;
 
-    // Lists
-    private List<ConfigurazioneFaseCentro> _mappingFasi = new();
+// Lists
+private List<ConfigurazioneFaseCentro> _mappingFasi = new();
     private List<string> _connectionStrings = new();
     private List<string> _mailServices = new() { "HERA16", "ADER4" };
     private IReadOnlyList<HandlerInfo> _availableHandlers = new List<HandlerInfo>();
@@ -155,6 +162,13 @@
 
     // UI
     private Severity _validationSeverity = Severity.Info;
+
+    // Computed Properties
+    private bool CanAddMapping => 
+        _selectedIdProcedura > 0 && 
+        _selectedCentroId > 0 && 
+        _fasiPerProcedura.Any() && 
+        !(_config.TipoFonte == "SQL" && !_connectionTestPassed);
 
     protected override async Task OnInitializedAsync()
     {
@@ -283,6 +297,7 @@
     private void ClearCurrentConfig()
     {
         _config = new ConfigurazioneFontiDati { FlagAttiva = true, TipoFonte = "SQL" };
+        _defaultGiorniPrecedenti = 10;
         _selectedLavorazione = null;
         _selectedIdProcedura = 0;
         _fasiPerProcedura.Clear();
@@ -291,14 +306,15 @@
         _config.DescrizioneConfigurazione = null;
 
         _config.ConnectionStringName = null;
-        _config.TestoQuery = null;
         _config.MailServiceCode = null;
         _config.HandlerClassName = null;
 
         _validationMessage = null;
         _validationSeverity = Severity.Info;
         _connectionTestPassed = false;
-        _queryValidated = false;
+        
+        // Reset validazioni query
+        _mappingConfigRef?.ClearValidations();
     }
 
     private async Task OnTipoFonteChangedAsync(string newTipoFonte)
@@ -322,20 +338,30 @@
             return;
         }
 
+        // Cron di default (primo della lista o default "0 5 * * *")
+        var defaultCron = _presetCrons.Any() ? _presetCrons.First().Value : "0 5 * * *";
+
         var newMapping = new ConfigurazioneFaseCentro
         {
             IdProceduraLavorazione = _selectedIdProcedura,
             IdCentro = _selectedCentroId,
             IdFaseLavorazione = _fasiPerProcedura.First().IdFaseLavorazione,
-            FlagAttiva = true
+            FlagAttiva = true,
+            
+            // NUOVI CAMPI OBBLIGATORI per sistema granulare
+            TipoTask = _config.TipoFonte,  // Eredita il tipo dalla configurazione
+            CronExpression = defaultCron,
+            EnabledTask = true,
+            UltimaModificaTask = DateTime.Now,
+            GiorniPrecedenti = _defaultGiorniPrecedenti, // Default 10 giorni
+            
+            // Inizializza campi specifici in base al tipo
+            TestoQueryTask = _config.TipoFonte == "SQL" ? "-- Inserisci query SQL\n-- Parametri: @@StartDate, @@EndDate\n-- Colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine" : null,
+            MailServiceCode = _config.TipoFonte == "EmailCSV" ? _config.MailServiceCode : null,
+            HandlerClassName = _config.TipoFonte == "HandlerIntegrato" ? _config.HandlerClassName : null
         };
 
         _mappingFasi.Add(newMapping);
-
-        // Imposta cron di default (primo della lista o default "0 5 * * *")
-        var defaultCron = _presetCrons.Any() ? _presetCrons.First().Value : "0 5 * * *";
-        var newIndex = _mappingFasi.Count - 1;
-        SetCronForMapping(newIndex, defaultCron);
 
         await InvokeAsync(StateHasChanged);
     }
@@ -349,14 +375,6 @@
         }
     }
 
-    private void RimuoviMapping(ConfigurazioneFaseCentro mapping)
-    {
-        var idx = _mappingFasi.IndexOf(mapping);
-        if (idx >= 0)
-        {
-            _mappingFasi.RemoveAt(idx);
-        }
-    }
 
     private string GetCronFromMapping(int index)
     {
@@ -407,47 +425,12 @@
             {
                 Snackbar.Add("Test connessione fallito. Correggi la configurazione prima di procedere.", Severity.Error);
             }
-            else
-            {
-                Snackbar.Add(result.Message, _validationSeverity);
-            }
             
             await InvokeAsync(StateHasChanged);
         }
         finally
         {
             _testingConnection = false;
-        }
-    }
-
-    private async Task ValidateQueryAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_config.TestoQuery))
-        {
-            Snackbar.Add("Inserisci prima una query SQL", Severity.Warning);
-            return;
-        }
-
-        _validatingQuery = true;
-        _validationMessage = null;
-
-        try
-        {
-            var result = SqlValidator.ValidateQuery(_config.TestoQuery);
-            _validationMessage = result.Message;
-            _validationSeverity = result.Severity switch
-            {
-                ValidationSeverity.Success => Severity.Success,
-                ValidationSeverity.Warning => Severity.Warning,
-                _ => Severity.Error
-            };
-            _queryValidated = result.IsValid;
-            Snackbar.Add(result.Message, _validationSeverity);
-            await InvokeAsync(StateHasChanged);
-        }
-        finally
-        {
-            _validatingQuery = false;
         }
     }
 
@@ -467,21 +450,16 @@
 
         if (_config.TipoFonte == "SQL")
         {
-            if (string.IsNullOrWhiteSpace(_config.TestoQuery))
-            {
-                Snackbar.Add("Inserisci la query SQL", Severity.Warning);
-                return;
-            }
-
-            if (!_queryValidated)
-            {
-                Snackbar.Add("Valida la query SQL prima di salvare.", Severity.Error);
-                return;
-            }
-
             if (!_connectionTestPassed)
             {
                 Snackbar.Add("Esegui e supera il test di connessione prima di salvare.", Severity.Error);
+                return;
+            }
+            
+            // Verifica che tutte le query SQL siano validate
+            if (_mappingConfigRef != null && !_mappingConfigRef.AreAllQueriesValid())
+            {
+                Snackbar.Add("Valida tutte le query SQL prima di salvare. Usa il pulsante 'Valida Query' per ogni mapping.", Severity.Warning);
                 return;
             }
         }
@@ -516,20 +494,74 @@
             UiState?.SetMenuDisabled(true);
             UiState?.ShowOverlay("Inserimento in corso...");
 
+            TaskGenerationResult? taskResult = null;
+
             if (_isEdit)
             {
                 _config.ModificatoIl = DateTime.Now;
                 _config.ModificatoDa = ConfigUser?.Utente ?? string.Empty;
+                
+                // 1. Salva modifiche (marca mapping rimossi come FlagAttiva=false)
                 await ServiceWrapper!.ServiceConfigurazioneFontiDati.UpdateConfigurazioneFontiDatiAsync(_config, _mappingFasi, ConfigUser!.Utente);
+                
+                // 2. Genera/aggiorna task per i nuovi mapping
+                taskResult = await TaskGenerationService!.GenerateTasksForConfigurationAsync(_config.IdConfigurazione);
+                
+                // 3. Cleanup immediato task orfani da Hangfire
+                // (Confronta job Hangfire con task abilitati nel DB e rimuove gli orfani)
+                var cleanupCount = await JobScheduler.CleanupOrphansAsync();
+                
+                // 4. Feedback utente
+                var messages = new List<string>();
+                
+                if (taskResult.CreatedTasks > 0 || taskResult.ExistingTasks > 0)
+                {
+                    messages.Add(taskResult.GetSummary());
+                }
+                
+                if (cleanupCount > 0)
+                {
+                    messages.Add($"{cleanupCount} job Hangfire aggiornati/rimossi");
+                    Logger?.LogInformation("Cleanup manuale: {Count} job processati per Config {ConfigId}", 
+                        cleanupCount, _config.IdConfigurazione);
+                }
+                
+                if (messages.Any())
+                {
+                    Snackbar.Add(string.Join(" | ", messages), 
+                        taskResult.HasErrors ? Severity.Warning : Severity.Success);
+                }
             }
             else
             {
                 await ServiceWrapper!.ServiceConfigurazioneFontiDati.AddConfigurazioneFontiDatiAsync(_config, _mappingFasi, ConfigUser!.Utente);
+                
+                // Genera task per la nuova configurazione
+                taskResult = await TaskGenerationService!.GenerateTasksForConfigurationAsync(_config.IdConfigurazione);
+                if (taskResult.CreatedTasks > 0)
+                {
+                    Logger?.LogInformation("Configurazione {ConfigId} creata con {TaskCount} task", _config.IdConfigurazione, taskResult.CreatedTasks);
+                }
+                else if (taskResult.HasErrors)
+                {
+                    Snackbar.Add($"Configurazione salvata ma errori nella creazione task: {taskResult.GetSummary()}", Severity.Warning);
+                }
             }
 
             UiState?.SetMenuDisabled(false);
             UiState?.HideOverlay();
-            UiState?.ShowSnackbar("Configurazione salvata!", Severity.Success);
+            
+            // Torna sempre alla lista dopo il salvataggio
+            if (_isEdit)
+            {
+                Snackbar.Add("✅ Configurazione aggiornata con successo!", Severity.Success);
+            }
+            else
+            {
+                var taskCount = taskResult?.CreatedTasks ?? 0;
+                Snackbar.Add($"✅ Configurazione creata con successo! {taskCount} task schedulati.", Severity.Success);
+            }
+            
             Navigation.NavigateTo("/admin/fonti-dati");
         }
         catch (Exception ex)

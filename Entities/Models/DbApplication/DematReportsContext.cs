@@ -105,6 +105,8 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Turni> Turnis { get; set; }
 
+    public virtual DbSet<VwConfigurazioneTaskSummary> VwConfigurazioneTaskSummaries { get; set; }
+
     public virtual DbSet<VwConfigurazioniFontiDatiCompletum> VwConfigurazioniFontiDatiCompleta { get; set; }
 
     public virtual DbSet<Z0072370Rdmkt28autGeUdaDettaglio> Z0072370Rdmkt28autGeUdaDettaglios { get; set; }
@@ -251,9 +253,19 @@ public partial class DematReportsContext : DbContext
 
             entity.HasIndex(e => e.IdConfigurazione, "IX_FaseCentro_Config");
 
+            entity.HasIndex(e => new { e.IdConfigurazione, e.IdFaseLavorazione, e.CronExpression }, "UQ_FaseCentro_Fase_Cron").IsUnique();
+
             entity.HasIndex(e => new { e.IdConfigurazione, e.IdProceduraLavorazione, e.IdFaseLavorazione, e.IdCentro }, "UQ_FaseCentro_Unique").IsUnique();
 
+            entity.Property(e => e.CronExpression).HasMaxLength(100);
+            entity.Property(e => e.EnabledTask).HasDefaultValue(true);
             entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
+            entity.Property(e => e.HandlerClassName).HasMaxLength(255);
+            entity.Property(e => e.IsTaskEnabled).HasDefaultValue(true);
+            entity.Property(e => e.MailServiceCode).HasMaxLength(100);
+            entity.Property(e => e.TaskDescription).HasMaxLength(255);
+            entity.Property(e => e.TipoTask).HasMaxLength(50);
+            entity.Property(e => e.UltimaModificaTask).HasColumnType("datetime");
 
             entity.HasOne(d => d.IdCentroNavigation).WithMany(p => p.ConfigurazioneFaseCentros)
                 .HasForeignKey(d => d.IdCentro)
@@ -1012,6 +1024,20 @@ public partial class DematReportsContext : DbContext
             entity.ToTable("Turni");
 
             entity.Property(e => e.Turno).IsUnicode(false);
+        });
+
+        modelBuilder.Entity<VwConfigurazioneTaskSummary>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("vw_ConfigurazioneTaskSummary");
+
+            entity.Property(e => e.CodiceConfigurazione)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.TipoFonte)
+                .HasMaxLength(50)
+                .IsUnicode(false);
         });
 
         modelBuilder.Entity<VwConfigurazioniFontiDatiCompletum>(entity =>
