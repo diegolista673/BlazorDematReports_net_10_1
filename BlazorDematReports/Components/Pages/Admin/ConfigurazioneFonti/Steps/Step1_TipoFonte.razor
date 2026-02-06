@@ -1,0 +1,68 @@
+@using BlazorDematReports.Services.Wizard
+
+<MudText Typo="Typo.h6" Class="mb-4">Seleziona il tipo di fonte dati</MudText>
+
+<MudRadioGroup T="string" ValueChanged="OnRadioValueChanged" Value="@_selectedValue">
+    <MudRadio Value="@("SQL")" Color="Color.Primary" Dense>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Primary" />
+            <div>
+                <MudText Typo="Typo.body1"><strong>SQL Database</strong></MudText>
+                <MudText Typo="Typo.body2" Class="text-muted">
+                    Esegui query SQL su database SQL Server o Oracle
+                </MudText>
+            </div>
+        </MudStack>
+    </MudRadio>
+    <MudRadio Value="@("EmailCSV")" Color="Color.Secondary" Dense Class="mt-3">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Secondary" />
+            <div>
+                <MudText Typo="Typo.body1"><strong>Email CSV</strong></MudText>
+                <MudText Typo="Typo.body2" Class="text-muted">
+                    Importa dati da allegati CSV ricevuti via email
+                </MudText>
+            </div>
+        </MudStack>
+    </MudRadio>
+    <MudRadio Value="@("HandlerIntegrato")" Color="Color.Tertiary" Dense Class="mt-3">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Tertiary" />
+            <div>
+                <MudText Typo="Typo.body1"><strong>Handler C# Integrato</strong></MudText>
+                <MudText Typo="Typo.body2" Class="text-muted">
+                    Usa un handler personalizzato per logica complessa
+                </MudText>
+            </div>
+        </MudStack>
+    </MudRadio>
+</MudRadioGroup>
+
+
+@if (!string.IsNullOrWhiteSpace(_selectedValue))
+{
+    <MudAlert Severity="Severity.Success" Class="mt-4" Variant="Variant.Outlined">
+        <MudText>Tipo fonte selezionato: <strong>@_selectedValue</strong></MudText>
+    </MudAlert>
+}
+
+@code {
+    [Parameter] public ConfigurationWizardState State { get; set; } = default!;
+    [Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
+
+    private string _selectedValue = "SQL";
+
+    private void OnRadioValueChanged(string newValue)
+    {
+        // Qui puoi inserire la tua logica personalizzata
+        _selectedValue = newValue;
+        if (_selectedValue != State.TipoFonte)
+        {
+            StateService.UpdateState(s => s.WithTipoFonte(_selectedValue));
+            InvokeAsync(StateHasChanged);
+        }
+        
+    }
+
+}
+

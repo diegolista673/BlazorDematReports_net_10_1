@@ -10,6 +10,12 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
+      nelle query dati migliorare le query eliminando nel where la convert date 
+      per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
+      esempio :
+
+nuova configurazione tramite step da controllare
+
 
 gestione della configurazione 
     - se ci sono piu di un task come gestire quelli attivi?
@@ -17,7 +23,57 @@ gestione della configurazione
     - come riportare la query se ci sono piu task? 
     - come disattivare i task?
 
-se elimino task non viene eliminato da db e hangfire continua a tenerlo in considerazione
+✅ RISOLTO: Eliminazione task ora funziona correttamente
+    - I job vengono rimossi da Hangfire tramite ProductionScheduler.RemoveByKeyAsync()
+    - I task vengono eliminati dal database
+    - La configurazione e i mapping vengono rimossi
+    - Implementato in ServiceConfigurazioneFontiDati.DeleteConfigurazioneFontiDatiAsync()
+    
+✅ RISOLTO v2: Update configurazione elimina correttamente task orfani (CORREZIONE CRITICA)
+    
+PROBLEMA ORIGINALE:
+- La query LINQ con subquery context.LavorazioniFasiDataReadings.Any() non veniva eseguita correttamente
+- I task rimanevano nel DB anche dopo la rimozione dei mapping
+- I job Hangfire continuavano ad essere eseguiti
+    
+SOLUZIONE IMPLEMENTATA (4 STEP):
+    
+STEP 1: Trova LavorazioniFasiDataReading per il mapping da rimuovere
+	var lavorazioneFase = await context.LavorazioniFasiDataReadings
+		.FirstOrDefaultAsync(lf => 
+			lf.IdProceduraLavorazione == mappingToRemove.IdProceduraLavorazione &&
+			lf.IdFaseLavorazione == mappingToRemove.IdFaseLavorazione);
+    
+STEP 2: Trova i task usando l'ID della lavorazione fase E l'ID configurazione
+	var tasksToRemove = await context.TaskDaEseguires
+		.Where(t => t.IdConfigurazioneDatabase == config.IdConfigurazione &&
+				t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading)
+		.ToListAsync();
+    
+STEP 3: Rimuovi job da Hangfire (PRIMA del DB)
+	await productionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
+    
+STEP 4: Elimina task dal database
+	context.TaskDaEseguires.RemoveRange(tasksToRemove);
+    
+CLEANUP FINALE (post-commit):
+	await productionScheduler.CleanupOrphansAsync();
+	- Confronta job Hangfire con task nel DB
+	- Rimuove job orfani rimasti (doppia sicurezza)
+    
+LOGGING:
+- ✅ = Job Hangfire rimosso con successo
+- 🗑️ = Task eliminati dal database
+- 🧹 = Cleanup finale eseguito
+- ❌ = Errore (logged ma non blocca l'operazione)
+    
+RISULTATO:
+✅ Task vengono eliminati correttamente dal DB
+✅ Job Hangfire vengono rimossi correttamente
+✅ Nessun job "fantasma" continua ad eseguirsi
+✅ Logging completo per debugging
+
+
 
 come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
 
@@ -34,7 +90,6 @@ come conteggiare i servizi mail associati alla lavorazione?
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
 
-da iis si possono leggere email?
 
 TODO
 Per le tabelle di appoggio stabilire come eseguire query di controllo per vedere se tutti i dati sono stati caricati esempio ader mensile totali per fatturazione coop
@@ -67,65 +122,6 @@ scrivere documetazione per aggiungere servizi via mail per programmatore eventau
 
 creareservizio mail per ader 4 verona e genova
 
-
-
-
-
-## STATI HANGFIRE SEMPLIFICATI - COMPLETATO ##
-Gli stati dei task Hangfire sono stati semplificati e documentati nel tab Monitoring.
-
-STATI RIMOSSI: SUCCESS, STARTED, RUNNING, STOPPED, PAUSED, IMPORTED
-
-STATI MANTENUTI (3 stati essenziali):
-  1. CONFIGURED (Blu/Info): Task configurato, pronto ma non ancora eseguito
-     - Impostato quando: il task viene creato per la prima volta
-  
-  2. COMPLETED (Verde/Success): Ultima esecuzione completata con successo
-     - Impostato quando: il job Hangfire termina senza eccezioni
-     - Il task continua ad essere schedulato se Enabled = true
-  
-  3. ERROR (Rosso/Error): Ultima esecuzione fallita con errore
-     - Impostato quando: il job Hangfire genera un'eccezione
-     - Il task continua ad essere schedulato se Enabled = true
-     - Dettagli errore salvati nel campo LastError
-
-CICLO DI VITA DEI TASK:
-  Creazione → CONFIGURED (Enabled=true)
-       ↓
-  Hangfire esegue secondo CRON
-       ↓
-  ├─ Esecuzione OK → COMPLETED (rimane schedulato)
-  │     ↓
-  │  Prossima esecuzione → mantiene COMPLETED o va in ERROR se fallisce
-  │
-  └─ Esecuzione KO → ERROR (rimane schedulato)
-        ↓
-     Prossima esecuzione → mantiene ERROR o va in COMPLETED se ha successo
-
-DASHBOARD MONITORING SEMPLIFICATO:
-  
-  KPI Cards (3 card):
-    - Fasi Totali: numero di fasi configurate
-    - Task Totali: numero totale di task nel sistema
-    - Servizi Mail: task con MailServiceCode configurato
-  
-  Distribuzione Stati:
-    - Grafico con CONFIGURED, COMPLETED, ERROR
-  
-  Distribuzione Tipi:
-    - Grafico con Giornaliero, Temporizzato, Mensile
-  
-  DataGrid Fasi (5 colonne):
-    | Fase | Task Totali | Configured | Completed | Error | Data Reading |
-    
-
-    - Ogni colonna mostra conteggio task per stato
-    - Tooltip su ogni header per spiegare cosa rappresenta
-
-NOTA IMPORTANTE:
-  - Tutti i task con Enabled = true vengono eseguiti automaticamente
-  - Gli stati CONFIGURED, COMPLETED, ERROR indicano solo lo stato corrente
-  - Il flag Enabled controlla se il task viene eseguito o meno
 
 
 

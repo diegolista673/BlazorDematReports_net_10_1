@@ -1,0 +1,166 @@
+@using BlazorDematReports.Services.Wizard
+@using Entities.Models.DbApplication
+
+<MudText Typo="Typo.h6" Class="mb-4">Configura i mapping Fase/Centro</MudText>
+
+<MudTextField @bind-Value="@_descrizione"
+              Label="Descrizione Configurazione"
+              Variant="Variant.Outlined"
+              Margin="Margin.Dense"
+              Class="mb-4" />
+
+<MudText Typo="Typo.body1" Class="mb-2"><strong>Mapping Configurati:</strong> @State.Mappings.Count</MudText>
+
+@if (!State.Mappings.Any())
+{
+    <MudAlert Severity="Severity.Info">
+        <MudText>Nessun mapping configurato. Aggiungi almeno un mapping per continuare.</MudText>
+    </MudAlert>
+}
+else
+{
+    <MudSimpleTable Dense Bordered Striped>
+        <thead>
+            <tr>
+                <th>Fase</th>
+                <th>Cron</th>
+                <th>Giorni Precedenti</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < State.Mappings.Count; i++)
+            {
+                var mapping = State.Mappings[i];
+                var fase = State.FasiDisponibili.FirstOrDefault(f => f.IdFaseLavorazione == mapping.IdFaseLavorazione);
+                int index = i;
+                
+                <tr>
+                    <td>@fase?.FaseLavorazione</td>
+                    <td>@mapping.CronExpression</td>
+                    <td>@mapping.GiorniPrecedenti</td>
+                    <td>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => RimuoviMapping(index))" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+<MudDivider Class="my-4" />
+
+<MudText Typo="Typo.subtitle1" Class="mb-3"><strong>Aggiungi Nuovo Mapping</strong></MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="4">
+        <MudSelect @bind-Value="@_selectedFaseId"
+                   Label="Fase"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense">
+            @foreach (var fase in State.FasiDisponibili)
+            {
+                <MudSelectItem Value="@fase.IdFaseLavorazione">@fase.FaseLavorazione</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="12" md="4">
+        <MudSelect @bind-Value="@_selectedCron"
+                   Label="Schedulazione"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense">
+            @foreach (var cron in _presetCrons)
+            {
+                <MudSelectItem Value="@cron.Value">@cron.Label</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    
+    <MudItem xs="12" md="2">
+        <MudNumericField @bind-Value="@_giorniPrecedenti"
+                         Label="Giorni Prec."
+                         Variant="Variant.Outlined"
+                         Margin="Margin.Dense"
+                         Min="1"
+                         Max="365" />
+    </MudItem>
+    
+    <MudItem xs="12" md="2">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth
+                   Disabled="@(_selectedFaseId == 0)"
+                   OnClick="@AggiungiMapping">
+            Aggiungi
+        </MudButton>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public ConfigurationWizardState State { get; set; } = default!;
+    [Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
+    
+    private int _selectedFaseId = 0;
+    private string _selectedCron = "0 5 * * *";
+    private int _giorniPrecedenti = 10;
+    
+    private List<(string Value, string Label)> _presetCrons = new()
+    {
+        ("0 5 * * *", "Giornaliero 05:00"),
+        ("0 2 * * *", "Giornaliero 02:00"),
+        ("0 */4 * * *", "Ogni 4 ore"),
+        ("0 * * * *", "Ogni ora"),
+        ("0 0 1 * *", "Mensile (1° giorno)"),
+        ("0 0 * * 0", "Settimanale (Domenica)"),
+        ("0 0 * * 1", "Settimanale (Lunedì)")
+    };
+    
+    private string? _descrizione
+    {
+        get => State.DescrizioneConfigurazione;
+        set => StateService.UpdateState(s => s.WithDescrizione(value));
+    }
+    
+    protected override void OnParametersSet()
+    {
+        if (State.FasiDisponibili.Any() && _selectedFaseId == 0)
+        {
+            _selectedFaseId = State.FasiDisponibili.First().IdFaseLavorazione;
+        }
+    }
+    
+    private void AggiungiMapping()
+    {
+        if (_selectedFaseId == 0 || !State.IdProcedura.HasValue || !State.IdCentro.HasValue)
+            return;
+        
+        var newMapping = new ConfigurazioneFaseCentro
+        {
+            IdProceduraLavorazione = State.IdProcedura.Value,
+            IdCentro = State.IdCentro.Value,
+            IdFaseLavorazione = _selectedFaseId,
+            FlagAttiva = true,
+            TipoTask = State.TipoFonte,
+            CronExpression = _selectedCron,
+            EnabledTask = true,
+            UltimaModificaTask = DateTime.Now,
+            GiorniPrecedenti = _giorniPrecedenti,
+            TestoQueryTask = State.TipoFonte == "SQL" 
+                ? "-- Inserisci query SQL\n-- Parametri: @StartDate, @EndDate\n-- Colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine" 
+                : null,
+            MailServiceCode = State.TipoFonte == "EmailCSV" ? State.MailServiceCode : null,
+            HandlerClassName = State.TipoFonte == "HandlerIntegrato" ? State.HandlerClassName : null
+        };
+        
+        StateService.UpdateState(s => s.WithMapping(newMapping));
+    }
+    
+    private void RimuoviMapping(int index)
+    {
+        StateService.UpdateState(s => s.WithoutMapping(index));
+    }
+}

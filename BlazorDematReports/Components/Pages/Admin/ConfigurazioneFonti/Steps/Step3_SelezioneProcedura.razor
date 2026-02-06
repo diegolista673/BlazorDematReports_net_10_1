@@ -1,0 +1,108 @@
+@using BlazorDematReports.Services.Wizard
+@using Entities.Models.DbApplication
+@using System.Collections.Immutable
+@using BlazorDematReports.Services.DataService
+@inject IConfigurazioneDataReaderService DataReaderService
+
+<MudText Typo="Typo.h6" Class="mb-4">Seleziona la procedura di lavorazione</MudText>
+
+<MudAutocomplete T="string"
+                 Value="@State.NomeProcedura"
+                 ValueChanged="@OnProceduraSelectedAsync"
+                 Label="Procedura Lavorazione"
+                 SearchFunc="@SearchProcedure"
+                 Variant="Variant.Outlined"
+                 Adornment="Adornment.Start"
+                 AdornmentIcon="@Icons.Material.Filled.Assignment"
+                 Required
+                 ResetValueOnEmptyText
+                 CoerceText
+                 DebounceInterval="300">
+    <ItemTemplate Context="item">
+        <MudText>@item</MudText>
+    </ItemTemplate>
+</MudAutocomplete>
+
+@if (State.IdProcedura.HasValue)
+{
+    <MudAlert Severity="Severity.Success" Class="mt-4">
+        <MudText><strong>Procedura selezionata:</strong> @State.NomeProcedura</MudText>
+        <MudText Typo="Typo.body2">ID: @State.IdProcedura | Centro: @State.IdCentro</MudText>
+        <MudText Typo="Typo.body2"><strong>Fasi disponibili:</strong> @State.FasiDisponibili.Count</MudText>
+    </MudAlert>
+    
+    @if (State.FasiDisponibili.Any())
+    {
+        <MudSimpleTable Class="mt-4" Dense Bordered Striped>
+            <thead>
+                <tr>
+                    <th>Fase</th>
+                    <th>ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var fase in State.FasiDisponibili)
+                {
+                    <tr>
+                        <td>@fase.FaseLavorazione</td>
+                        <td class="text-muted">@fase.IdFaseLavorazione</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Warning" Class="mt-4">
+            <MudText>Nessuna fase disponibile per questa procedura.</MudText>
+            <MudText Typo="Typo.body2">Aggiungi fasi dalla pagina di modifica procedura.</MudText>
+        </MudAlert>
+    }
+}
+
+@code {
+    [Parameter] public ConfigurationWizardState State { get; set; } = default!;
+    [Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
+    [Parameter] public IServiceWrapper ServiceWrapper { get; set; } = default!;
+    
+    private List<ProcedureLavorazioni> _procedure = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // ? Fix: Usa il metodo corretto con User
+        _procedure = (await ServiceWrapper.ServiceProcedureLavorazioni
+            .GetTableProcedureLavorazioniByUserAsync()).ToList();
+    }
+    
+    private async Task<IEnumerable<string>> SearchProcedure(string? searchText, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return _procedure.Select(p => p.NomeProcedura);
+        
+        return _procedure
+            .Where(p => p.NomeProcedura.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            .Select(p => p.NomeProcedura);
+    }
+    
+    private async Task OnProceduraSelectedAsync(string? nomeProcedura)
+    {
+        if (string.IsNullOrWhiteSpace(nomeProcedura))
+        {
+            StateService.UpdateState(s => s.WithProcedura(null, null, null, ImmutableList<FasiLavorazione>.Empty));
+            return;
+        }
+        
+        var procedura = _procedure.FirstOrDefault(p => p.NomeProcedura == nomeProcedura);
+        if (procedura != null)
+        {
+            // ? Fix: Usa DataReaderService invece di ServiceWrapper per le fasi
+            var fasi = await DataReaderService.GetFasiByProceduraAsync(procedura.IdproceduraLavorazione);
+            
+            StateService.UpdateState(s => s.WithProcedura(
+                procedura.IdproceduraLavorazione,
+                procedura.Idcentro,
+                procedura.NomeProcedura,
+                fasi.ToImmutableList()));
+        }
+    }
+}

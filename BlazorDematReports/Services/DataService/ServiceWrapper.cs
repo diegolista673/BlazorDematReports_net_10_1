@@ -2,6 +2,7 @@ using AutoMapper;
 using BlazorDematReports.Application;
 using BlazorDematReports.Interfaces.IDataService;
 using DataReading;
+using DataReading.Infrastructure;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,7 @@ namespace BlazorDematReports.Services.DataService
         private readonly ConfigUser configUser;
         private readonly IDbContextFactory<DematReportsContext> contextFactory;
         private readonly ILoggerFactory loggerFactory;
+        private readonly IProductionJobScheduler productionScheduler;
 
         // Campi privati per implementazione del Lazy Loading
         private readonly Lazy<IServiceCentri> _serviceCentri;
@@ -55,17 +57,20 @@ namespace BlazorDematReports.Services.DataService
         /// <param name="lettoreDati">Servizio per la lettura dei dati.</param>
         /// <param name="loggerFactory">Factory per la creazione dei logger specifici.</param>
         /// <param name="fluentEmail">Servizio FluentEmail per invio email.</param>
+        /// <param name="productionScheduler">Scheduler per la gestione dei job Hangfire di produzione.</param>
         public ServiceWrapper(
             IMapper mapper, 
             ConfigUser configUser, 
             IDbContextFactory<DematReportsContext> contextFactory, 
             ILoggerFactory loggerFactory,
-            FluentEmail.Core.IFluentEmail fluentEmail)
+            FluentEmail.Core.IFluentEmail fluentEmail,
+            IProductionJobScheduler productionScheduler)
         {
             this.mapper = mapper;
             this.configUser = configUser;
             this.contextFactory = contextFactory;
             this.loggerFactory = loggerFactory;
+            this.productionScheduler = productionScheduler;
 
             // Servizi con logging implementato (QueryLoggingHelper già configurato)
             _serviceOperatori = new Lazy<IServiceOperatori>(() => new ServiceOperatori(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceOperatori>()));
@@ -89,7 +94,7 @@ namespace BlazorDematReports.Services.DataService
             _serviceTaskDataReadingAggiornamento = new Lazy<IServiceTaskDataReadingAggiornamento>(() => new ServiceTaskDataReadingAggiornamento(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTaskDataReadingAggiornamento>()));
             _serviceCentriVisibili = new Lazy<IServiceCentriVisibili>(() => new ServiceCentriVisibili(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceCentriVisibili>()));
             _serviceTaskDaEseguire = new Lazy<IServiceTaskDaEseguire>(() => new ServiceTaskDaEseguire(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceTaskDaEseguire>()));
-            _serviceConfigurazioneFontiDati = new Lazy<IServiceConfigurazioneFontiDati>(() => new ServiceConfigurazioneFontiDati(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceConfigurazioneFontiDati>()));
+            _serviceConfigurazioneFontiDati = new Lazy<IServiceConfigurazioneFontiDati>(() => new ServiceConfigurazioneFontiDati(mapper, configUser, contextFactory, loggerFactory.CreateLogger<ServiceConfigurazioneFontiDati>(), productionScheduler));
             _serviceMail = new Lazy<IServiceMail>(() => new ServiceMail(mapper, configUser, contextFactory, fluentEmail, loggerFactory.CreateLogger<ServiceMail>()));
             _serviceTaskManagement = new Lazy<IServiceTaskManagement>(() => new ServiceTaskManagement(contextFactory, loggerFactory.CreateLogger<ServiceTaskManagement>()));
         }

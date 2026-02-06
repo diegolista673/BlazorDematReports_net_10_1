@@ -43,8 +43,13 @@ namespace DataReading.Services
                 await connection.OpenAsync();
                 using var command = new SqlCommand(queryString, connection);
                 command.CommandTimeout = 30;
-                command.Parameters.AddWithValue("@startDate", startDate);
-                command.Parameters.AddWithValue("@endDate", endDate);
+                
+                var startDateParam = command.Parameters.Add("@startDate", SqlDbType.DateTime2);
+                startDateParam.Value = startDate;
+                
+                var endDateParam = command.Parameters.Add("@endDate", SqlDbType.DateTime2);
+                endDateParam.Value = endDate;
+                
                 using var reader = await command.ExecuteReaderAsync();
                 table.Load(reader);
             }

@@ -252,8 +252,14 @@ public class SqlValidationService
 
         string columnsSection = selectMatch.Groups[1].Value;
 
-        // Verifica che non contenga SELECT *
-        if (Regex.IsMatch(columnsSection, @"\*"))
+        // Verifica che non contenga SELECT * (ma consenti funzioni aggregate come COUNT(*), SUM(*))
+        // Pattern più preciso: asterisco NON preceduto da una funzione aggregata
+        var selectStarPattern = @"(?<!COUNT\s*\()\*(?!\s*\))";  // * non in COUNT(*)
+        
+        // Controllo più semplice: verifica se c'è una virgola prima del primo asterisco
+        // Se SELECT *, l'asterisco sarà il primo elemento dopo SELECT
+        var trimmedColumns = columnsSection.Trim();
+        if (trimmedColumns.StartsWith("*") || Regex.IsMatch(trimmedColumns, @"^\s*\*\s*$"))
         {
             _logger?.LogWarning("SELECT * rilevato nella query");
             return ValidationResult.Error(

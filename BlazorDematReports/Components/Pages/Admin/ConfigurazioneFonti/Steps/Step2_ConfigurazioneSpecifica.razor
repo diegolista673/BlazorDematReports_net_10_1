@@ -1,0 +1,156 @@
+@using BlazorDematReports.Services.Wizard
+@using BlazorDematReports.Services.Validation
+@using LibraryLavorazioni.Shared.Discovery
+@inject SqlValidationService SqlValidator
+
+<MudText Typo="Typo.h6" Class="mb-4">Configurazione specifica per @State.TipoFonte</MudText>
+
+@if (State.TipoFonte == "SQL")
+{
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            <MudSelect @bind-Value="@_connectionString" 
+                       Label="Connection String" 
+                       Variant="Variant.Outlined"
+                       Required
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.Storage">
+                @foreach (var connString in _connectionStrings)
+                {
+                    <MudSelectItem Value="@connString">@connString</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        
+        <MudItem xs="12" md="4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth
+                       Disabled="@(string.IsNullOrWhiteSpace(_connectionString) || _testingConnection)"
+                       OnClick="@TestConnectionAsync">
+                @if (_testingConnection)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" />
+                }
+                Testa Connessione
+            </MudButton>
+        </MudItem>
+        
+        @if (!string.IsNullOrWhiteSpace(State.ValidationMessage))
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="@(State.ConnectionTestPassed ? Severity.Success : Severity.Warning)">
+                    @State.ValidationMessage
+                </MudAlert>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (State.TipoFonte == "EmailCSV")
+{
+    <MudSelect @bind-Value="@_mailService" 
+               Label="Servizio Mail" 
+               Variant="Variant.Outlined"
+               Required
+               Adornment="Adornment.Start"
+               AdornmentIcon="@Icons.Material.Filled.Email">
+        @foreach (var service in _mailServices)
+        {
+            <MudSelectItem Value="@service">@service</MudSelectItem>
+        }
+    </MudSelect>
+    
+    <MudAlert Severity="Severity.Info" Class="mt-4">
+        <MudText>Il servizio mail selezionato verrà utilizzato per importare CSV da allegati email.</MudText>
+    </MudAlert>
+}
+else if (State.TipoFonte == "HandlerIntegrato")
+{
+    <MudSelect @bind-Value="@_handler" 
+               Label="Handler C#" 
+               Variant="Variant.Outlined"
+               Required
+               Adornment="Adornment.Start"
+               AdornmentIcon="@Icons.Material.Filled.Code">
+        @foreach (var handler in _availableHandlers)
+        {
+            <MudSelectItem Value="@handler.ClassName">
+                <div>
+                    <MudText Typo="Typo.body1">@handler.Code</MudText>
+                    <MudText Typo="Typo.body2" Class="text-muted">@handler.Description</MudText>
+                </div>
+            </MudSelectItem>
+        }
+    </MudSelect>
+    
+    @if (!string.IsNullOrWhiteSpace(_handler))
+    {
+        var handlerInfo = _availableHandlers.FirstOrDefault(h => h.ClassName == _handler);
+        if (handlerInfo != null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                <MudText><strong>@handlerInfo.Code</strong></MudText>
+                <MudText Typo="Typo.body2">@handlerInfo.Description</MudText>
+            </MudAlert>
+        }
+    }
+}
+
+@code {
+    [Parameter] public ConfigurationWizardState State { get; set; } = default!;
+    [Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
+    [Parameter] public IConfiguration Configuration { get; set; } = default!;
+    
+    private List<string> _connectionStrings = new();
+    private List<string> _mailServices = new() { "HERA16", "ADER4" };
+    private IReadOnlyList<HandlerInfo> _availableHandlers = new List<HandlerInfo>();
+    private bool _testingConnection = false;
+    
+    private string? _connectionString
+    {
+        get => State.ConnectionStringName;
+        set => StateService.UpdateState(s => s.WithConnectionString(value));
+    }
+    
+    private string? _mailService
+    {
+        get => State.MailServiceCode;
+        set => StateService.UpdateState(s => s.WithMailService(value));
+    }
+    
+    private string? _handler
+    {
+        get => State.HandlerClassName;
+        set => StateService.UpdateState(s => s.WithHandler(value));
+    }
+    
+    protected override void OnInitialized()
+    {
+        // Carica connection strings
+        var section = Configuration.GetSection("ConnectionStrings");
+        _connectionStrings = section.GetChildren().Select(c => c.Key).ToList();
+        
+        // Carica handlers disponibili
+        _availableHandlers = LibraryLavorazioni.Shared.Discovery.HandlerDiscoveryService.AvailableHandlers;
+    }
+    
+    private async Task TestConnectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_connectionString)) return;
+        
+        _testingConnection = true;
+        
+        try
+        {
+            var result = await SqlValidator.TestConnectionAsync(_connectionString);
+            
+            StateService.UpdateState(s => s
+                .WithConnectionString(_connectionString, result.IsValid)
+                .WithValidationMessage(result.Message));
+        }
+        finally
+        {
+            _testingConnection = false;
+        }
+    }
+}

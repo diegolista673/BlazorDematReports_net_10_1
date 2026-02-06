@@ -2,6 +2,7 @@
 using BlazorDematReports.Application;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
+using DataReading.Infrastructure;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ namespace BlazorDematReports.Services.DataService
         private readonly ConfigUser configUser;
         private readonly IDbContextFactory<DematReportsContext> contextFactory;
         private readonly ILogger<ServiceConfigurazioneFontiDati> logger;
+        private readonly IProductionJobScheduler productionScheduler;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione delle procedure di lavorazione.
@@ -27,13 +29,15 @@ namespace BlazorDematReports.Services.DataService
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceConfigurazioneFontiDati(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigurazioneFontiDati> logger)
+        /// <param name="productionScheduler">Scheduler per la gestione dei job Hangfire.</param>
+        public ServiceConfigurazioneFontiDati(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigurazioneFontiDati> logger, IProductionJobScheduler productionScheduler)
             : base(contextFactory)
         {
             this.mapper = mapper;
             this.configUser = configUser;
             this.contextFactory = contextFactory;
             this.logger = logger;
+            this.productionScheduler = productionScheduler;
         }
 
         /// <inheritdoc/>
@@ -146,7 +150,28 @@ namespace BlazorDematReports.Services.DataService
                 .FirstOrDefaultAsync(c => c.IdConfigurazione == idConf);
             if (entity != null)
             {
-                // Rimuovi mapping e task associati solo se presenti
+                // FASE 1: Rimuovi i job da Hangfire PRIMA di eliminarli dal database
+                if (entity.TaskDaEseguires != null && entity.TaskDaEseguires.Count > 0)
+                {
+                    foreach (var task in entity.TaskDaEseguires)
+                    {
+                        if (!string.IsNullOrWhiteSpace(task.IdTaskHangFire))
+                        {
+                            try
+                            {
+                                await productionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
+                                logger.LogInformation("Rimosso job Hangfire: {HangfireKey} per task {TaskId}", 
+                                    task.IdTaskHangFire, task.IdTaskDaEseguire);
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogWarning(ex, "Errore rimozione job Hangfire {HangfireKey}", task.IdTaskHangFire);
+                            }
+                        }
+                    }
+                }
+
+                // FASE 2: Rimuovi le entità dal database
                 if (entity.ConfigurazioneFaseCentros != null && entity.ConfigurazioneFaseCentros.Count > 0)
                     context.ConfigurazioneFaseCentros.RemoveRange(entity.ConfigurazioneFaseCentros);
 
@@ -156,6 +181,8 @@ namespace BlazorDematReports.Services.DataService
                 context.ConfigurazioneFontiDatis.Remove(entity);
                 await context.SaveChangesAsync();
 
+                logger.LogInformation("Configurazione {IdConfigurazione} eliminata definitivamente con {NumTask} task e {NumMapping} mapping", 
+                    idConf, entity.TaskDaEseguires?.Count ?? 0, entity.ConfigurazioneFaseCentros?.Count ?? 0);
             }
 
         }
@@ -180,7 +207,67 @@ namespace BlazorDematReports.Services.DataService
                 var existing = dbConfig.ConfigurazioneFaseCentros ?? new List<ConfigurazioneFaseCentro>();
 
                 var incomingIds = incoming.Where(m => m.IdFaseCentro > 0).Select(m => m.IdFaseCentro).ToHashSet();
-                context.ConfigurazioneFaseCentros.RemoveRange(existing.Where(e => !incomingIds.Contains(e.IdFaseCentro)));
+                var mappingsToRemove = existing.Where(e => !incomingIds.Contains(e.IdFaseCentro)).ToList();
+                
+                // FASE 1: Trova e rimuovi i task associati ai mapping che verranno eliminati
+                if (mappingsToRemove.Any())
+                {
+                    foreach (var mappingToRemove in mappingsToRemove)
+                    {
+                        // STEP 1: Trova prima il LavorazioniFasiDataReading corrispondente al mapping
+                        var lavorazioneFase = await context.LavorazioniFasiDataReadings
+                            .FirstOrDefaultAsync(lf => 
+                                lf.IdProceduraLavorazione == mappingToRemove.IdProceduraLavorazione &&
+                                lf.IdFaseLavorazione == mappingToRemove.IdFaseLavorazione);
+                        
+                        if (lavorazioneFase == null)
+                        {
+                            logger.LogWarning("LavorazioneFase non trovata per mapping Proc={IdProc} Fase={IdFase}", 
+                                mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
+                            continue;
+                        }
+                        
+                        // STEP 2: Trova tutti i task associati a questo LavorazioneFase E a questa configurazione
+                        var tasksToRemove = await context.TaskDaEseguires
+                            .Where(t => t.IdConfigurazioneDatabase == config.IdConfigurazione &&
+                                       t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading)
+                            .ToListAsync();
+                        
+                        if (!tasksToRemove.Any())
+                        {
+                            logger.LogDebug("Nessun task trovato per mapping Proc={IdProc} Fase={IdFase}", 
+                                mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
+                            continue;
+                        }
+                        
+                        // STEP 3: Rimuovi prima i job da Hangfire
+                        foreach (var task in tasksToRemove)
+                        {
+                            if (!string.IsNullOrWhiteSpace(task.IdTaskHangFire))
+                            {
+                                try
+                                {
+                                    await productionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
+                                    logger.LogInformation("✅ Rimosso job Hangfire {HangfireKey} per task {TaskId} (Proc={IdProc}, Fase={IdFase})",
+                                        task.IdTaskHangFire, task.IdTaskDaEseguire, 
+                                        mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.LogWarning(ex, "❌ Errore rimozione job Hangfire {HangfireKey}", task.IdTaskHangFire);
+                                }
+                            }
+                        }
+                        
+                        // STEP 4: Rimuovi i task dal database
+                        context.TaskDaEseguires.RemoveRange(tasksToRemove);
+                        logger.LogInformation("🗑️ Rimossi {Count} task dal DB per mapping Proc={IdProc} Fase={IdFase}",
+                            tasksToRemove.Count, mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
+                    }
+                }
+                
+                // FASE 2: Rimuovi i mapping
+                context.ConfigurazioneFaseCentros.RemoveRange(mappingsToRemove);
                 foreach (var m in incoming)
                 {
                     if (m.IdFaseCentro > 0)
@@ -260,6 +347,21 @@ namespace BlazorDematReports.Services.DataService
                 await UpdateFlagDataReadingForMappingsAsync(context, incoming);
 
                 await tx.CommitAsync();
+                
+                // ✅ CLEANUP FINALE: Rimuove job Hangfire orfani dopo il commit
+                // Questo è un ulteriore livello di sicurezza che confronta Hangfire con il DB
+                try
+                {
+                    var cleanupCount = await productionScheduler.CleanupOrphansAsync();
+                    if (cleanupCount > 0)
+                    {
+                        logger.LogInformation("🧹 Cleanup post-update: {Count} job Hangfire processati", cleanupCount);
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    logger.LogWarning(cleanupEx, "⚠️ Errore durante cleanup Hangfire post-update");
+                }
             }
             catch (Exception ex)
             {

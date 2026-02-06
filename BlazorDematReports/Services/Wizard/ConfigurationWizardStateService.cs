@@ -1,0 +1,181 @@
+using System.Collections.Immutable;
+using Entities.Models.DbApplication;
+
+namespace BlazorDematReports.Services.Wizard;
+
+/// <summary>
+/// State immutabile per il wizard di configurazione fonti dati.
+/// Gestisce lo stato attraverso tutti gli step del wizard.
+/// </summary>
+public record ConfigurationWizardState
+{
+    public int CurrentStep { get; init; } = 1;
+    public int TotalSteps { get; init; } = 4;
+    
+    // Step 1: Tipo Fonte
+    public string TipoFonte { get; init; } = "SQL";
+    
+    // Step 2: Configurazione Specifica
+    public string? ConnectionStringName { get; init; }
+    public string? MailServiceCode { get; init; }
+    public string? HandlerClassName { get; init; }
+    public bool ConnectionTestPassed { get; init; }
+    public string? ValidationMessage { get; init; }
+    
+    // Step 3: Procedura
+    public int? IdProcedura { get; init; }
+    public int? IdCentro { get; init; }
+    public string? NomeProcedura { get; init; }
+    public ImmutableList<FasiLavorazione> FasiDisponibili { get; init; } = ImmutableList<FasiLavorazione>.Empty;
+    
+    // Step 4: Mappings
+    public ImmutableList<ConfigurazioneFaseCentro> Mappings { get; init; } = ImmutableList<ConfigurazioneFaseCentro>.Empty;
+    public string? DescrizioneConfigurazione { get; init; }
+    public int GiorniPrecedentiDefault { get; init; } = 10;
+    
+    // Edit mode
+    public int? IdConfigurazioneEdit { get; init; }
+    public bool IsEditMode => IdConfigurazioneEdit.HasValue;
+    
+    // Progress
+    public bool IsStepValid(int step) => step switch
+    {
+        1 => !string.IsNullOrWhiteSpace(TipoFonte),
+        2 => IsStep2Valid(),
+        3 => IdProcedura.HasValue && FasiDisponibili.Any(),
+        4 => Mappings.Any(),
+        _ => false
+    };
+    
+    private bool IsStep2Valid() => TipoFonte switch
+    {
+        "SQL" => !string.IsNullOrWhiteSpace(ConnectionStringName) && (ConnectionTestPassed || IsEditMode),
+        "EmailCSV" => !string.IsNullOrWhiteSpace(MailServiceCode),
+        "HandlerIntegrato" => !string.IsNullOrWhiteSpace(HandlerClassName),
+        _ => false
+    };
+    
+    public bool CanMoveNext => IsStepValid(CurrentStep);
+    public bool CanMovePrevious => CurrentStep > 1;
+    public bool CanFinish => CurrentStep == TotalSteps && IsStepValid(4);
+    
+    // Helper methods per creare nuovi stati
+    public ConfigurationWizardState NextStep() 
+        => this with { CurrentStep = Math.Min(CurrentStep + 1, TotalSteps) };
+    
+    public ConfigurationWizardState PreviousStep() 
+        => this with { CurrentStep = Math.Max(CurrentStep - 1, 1) };
+    
+    public ConfigurationWizardState WithTipoFonte(string tipoFonte) 
+        => this with 
+        { 
+            TipoFonte = tipoFonte,
+            // Reset step 2 fields when changing tipo
+            ConnectionStringName = null,
+            MailServiceCode = null,
+            HandlerClassName = null,
+            ConnectionTestPassed = false
+        };
+    
+    public ConfigurationWizardState WithConnectionString(string? connectionString, bool testPassed = false) 
+        => this with 
+        { 
+            ConnectionStringName = connectionString,
+            ConnectionTestPassed = testPassed
+        };
+    
+    public ConfigurationWizardState WithMailService(string? mailService) 
+        => this with { MailServiceCode = mailService };
+    
+    public ConfigurationWizardState WithHandler(string? handler) 
+        => this with { HandlerClassName = handler };
+    
+    public ConfigurationWizardState WithProcedura(int? idProcedura, int? idCentro, string? nome, ImmutableList<FasiLavorazione>? fasi = null) 
+        => this with 
+        { 
+            IdProcedura = idProcedura,
+            IdCentro = idCentro,
+            NomeProcedura = nome,
+            FasiDisponibili = fasi ?? FasiDisponibili,
+            // Reset mappings when changing procedure
+            Mappings = ImmutableList<ConfigurazioneFaseCentro>.Empty
+        };
+    
+    public ConfigurationWizardState WithMapping(ConfigurazioneFaseCentro mapping) 
+        => this with { Mappings = Mappings.Add(mapping) };
+    
+    public ConfigurationWizardState WithoutMapping(int index) 
+        => this with { Mappings = Mappings.RemoveAt(index) };
+    
+    public ConfigurationWizardState WithMappingUpdate(int index, ConfigurazioneFaseCentro mapping)
+        => this with { Mappings = Mappings.SetItem(index, mapping) };
+    
+    public ConfigurationWizardState WithDescrizione(string? descrizione) 
+        => this with { DescrizioneConfigurazione = descrizione };
+    
+    public ConfigurationWizardState WithValidationMessage(string? message) 
+        => this with { ValidationMessage = message };
+    
+    /// <summary>
+    /// Crea una ConfigurazioneFontiDati dal state corrente per il salvataggio.
+    /// </summary>
+    public ConfigurazioneFontiDati ToConfigurationEntity()
+    {
+        return new ConfigurazioneFontiDati
+        {
+            IdConfigurazione = IdConfigurazioneEdit ?? 0,
+            CodiceConfigurazione = $"Config{IdProcedura:D4}",
+            DescrizioneConfigurazione = DescrizioneConfigurazione ?? $"Config_{NomeProcedura}",
+            TipoFonte = TipoFonte,
+            ConnectionStringName = ConnectionStringName,
+            MailServiceCode = MailServiceCode,
+            HandlerClassName = HandlerClassName,
+            FlagAttiva = true,
+            CreatoIl = DateTime.Now,
+            ModificatoIl = IsEditMode ? DateTime.Now : null
+        };
+    }
+}
+
+/// <summary>
+/// Servizio per gestire lo stato del wizard.
+/// Mantiene lo stato corrente e notifica i componenti dei cambiamenti.
+/// </summary>
+public class ConfigurationWizardStateService
+{
+    private ConfigurationWizardState _state = new();
+    
+    public event Action? OnStateChanged;
+    
+    public ConfigurationWizardState State => _state;
+    
+    public void UpdateState(Func<ConfigurationWizardState, ConfigurationWizardState> updateFunc)
+    {
+        _state = updateFunc(_state);
+        NotifyStateChanged();
+    }
+    
+    public void Reset()
+    {
+        _state = new ConfigurationWizardState();
+        NotifyStateChanged();
+    }
+    
+    public void LoadEditState(ConfigurazioneFontiDati config, List<ConfigurazioneFaseCentro> mappings)
+    {
+        _state = new ConfigurationWizardState
+        {
+            IdConfigurazioneEdit = config.IdConfigurazione,
+            TipoFonte = config.TipoFonte,
+            ConnectionStringName = config.ConnectionStringName,
+            MailServiceCode = config.MailServiceCode,
+            HandlerClassName = config.HandlerClassName,
+            ConnectionTestPassed = config.TipoFonte == "SQL" && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
+            DescrizioneConfigurazione = config.DescrizioneConfigurazione,
+            Mappings = mappings.ToImmutableList()
+        };
+        NotifyStateChanged();
+    }
+    
+    private void NotifyStateChanged() => OnStateChanged?.Invoke();
+}

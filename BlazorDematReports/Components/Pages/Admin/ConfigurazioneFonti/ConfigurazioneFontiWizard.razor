@@ -1,0 +1,299 @@
+@page "/admin/configura-fonte-dati-wizard"
+@page "/admin/configura-fonte-dati-wizard/{IdConfigurazione:int}"
+@inherits BaseComponentPage<ConfigurazioneFontiWizard>
+@using BlazorDematReports.Services.Wizard
+@using BlazorDematReports.Services.Validation
+@using BlazorDematReports.Services.DataService
+@using BlazorDematReports.Components.Pages.Admin.ConfigurazioneFonti.Steps
+@inject ConfigurationWizardStateService WizardState
+@inject ConfigurationStepValidator StepValidator
+@inject IServiceWrapper ServiceWrapper
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IConfiguration Configuration
+@inject ITaskGenerationService TaskGenerationService
+@inject IProductionJobScheduler JobScheduler
+@attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
+
+<PageTitle>@(_wizardState.IsEditMode ? "Modifica" : "Nuova") Configurazione Fonte Dati</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    
+    @* Header *@
+    <MudText Typo="Typo.h4" Class="mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />
+        @(_wizardState.IsEditMode ? "Modifica" : "Nuova") Configurazione Fonte Dati
+    </MudText>
+    
+    @* Progress Stepper *@
+    <MudPaper Class="pa-4 mb-4">
+        <MudStepper @ref="_stepper" 
+                    Color="Color.Primary" 
+                    Variant="Variant.Filled"
+                    HeaderSize="Size.Large"
+                    HeaderTextView="HeaderTextView.All">
+            
+            <ChildContent>
+                <MudStep Title="Tipo Fonte" 
+                         Icon="@Icons.Material.Filled.Source"
+                         StatusChanged="@(() => OnStepStatusChanged(1))">
+                    <ChildContent>
+                        <Step1_TipoFonte State="@_wizardState" StateService="@WizardState" />
+                    </ChildContent>
+                </MudStep>
+                
+                <MudStep Title="Configurazione" 
+                         Icon="@Icons.Material.Filled.Settings"
+                         StatusChanged="@(() => OnStepStatusChanged(2))">
+                    <ChildContent>
+                        <Step2_ConfigurazioneSpecifica State="@_wizardState" 
+                                                       StateService="@WizardState"
+                                                       Configuration="@Configuration" />
+                    </ChildContent>
+                </MudStep>
+                
+                <MudStep Title="Procedura" 
+                         Icon="@Icons.Material.Filled.Assignment"
+                         StatusChanged="@(() => OnStepStatusChanged(3))">
+                    <ChildContent>
+                        <Step3_SelezioneProcedura State="@_wizardState" 
+                                                  StateService="@WizardState"
+                                                  ServiceWrapper="@ServiceWrapper" />
+                    </ChildContent>
+                </MudStep>
+                
+                <MudStep Title="Mapping" 
+                         Icon="@Icons.Material.Filled.Map"
+                         StatusChanged="@(() => OnStepStatusChanged(4))">
+                    <ChildContent>
+                        <Step4_Mapping State="@_wizardState" 
+                                       StateService="@WizardState" />
+                    </ChildContent>
+                </MudStep>
+            </ChildContent>
+            
+            <ActionContent>
+                <MudStack Row Justify="Justify.SpaceBetween" Class="mt-4">
+                    <MudButton OnClick="@(() => Navigation.NavigateTo("/admin/fonti-dati"))"
+                               Variant="Variant.Text">
+                        Annulla
+                    </MudButton>
+                    
+                    <MudStack Row Spacing="2">
+                        <MudButton OnClick="@ResetWizard"
+                                   Variant="Variant.Text"
+                                   Disabled="@(_wizardState.CurrentStep == 1)">
+                            <MudIcon Icon="@Icons.Material.Filled.Replay" Class="mr-1" />
+                            Reset
+                        </MudButton>
+                        
+                        <MudButton Color="Color.Primary"
+                                   Variant="Variant.Outlined"
+                                   Disabled="@(!_wizardState.CanMovePrevious)"
+                                   OnClick="@GoToPreviousStep">
+                            <MudIcon Icon="@Icons.Material.Filled.NavigateBefore" />
+                            Indietro
+                        </MudButton>
+                        
+                        @if (_wizardState.CurrentStep < _wizardState.TotalSteps)
+                        {
+                            <MudButton Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Disabled="@(!_wizardState.CanMoveNext)"
+                                       OnClick="@GoToNextStep">
+                                Avanti
+                                <MudIcon Icon="@Icons.Material.Filled.NavigateNext" />
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Color="Color.Success"
+                                       Variant="Variant.Filled"
+                                       Disabled="@(!_wizardState.CanFinish || _saving)"
+                                       OnClick="@HandleFinishAsync">
+                                @if (_saving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" />
+                                }
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Class="mr-1" />
+                                @(_wizardState.IsEditMode ? "Aggiorna" : "Crea") Configurazione
+                            </MudButton>
+                        }
+                    </MudStack>
+                </MudStack>
+            </ActionContent>
+        </MudStepper>
+    </MudPaper>
+    
+    @* Validation Summary (se ci sono errori) *@
+    @if (!string.IsNullOrWhiteSpace(_wizardState.ValidationMessage))
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            @_wizardState.ValidationMessage
+        </MudAlert>
+    }
+    
+</MudContainer>
+
+@code {
+[Parameter] public int? IdConfigurazione { get; set; }
+[Inject] private IConfigurazioneDataReaderService DataReaderService { get; set; } = default!;
+    
+private MudStepper? _stepper;
+private ConfigurationWizardState _wizardState = new();
+private bool _saving = false;
+    
+protected override async Task OnInitializedAsync()
+{
+    try
+    {
+        UiState?.ShowOverlay("Caricamento...");
+            
+        // Sottoscrivi a cambiamenti di stato
+        WizardState.OnStateChanged += StateHasChanged;
+            
+        // Inizializza ConfigUser
+        await ConfigUser!.InitializeAsync();
+            
+        // Se è edit mode, carica la configurazione
+        if (IdConfigurazione.HasValue)
+        {
+            var config = await DataReaderService.GetConfigurazioneFontiDatiAsync(IdConfigurazione.Value);
+                
+            if (config != null)
+            {
+                var mappings = config.ConfigurazioneFaseCentros
+                    .Where(m => m.FlagAttiva)
+                    .ToList();
+                    
+                WizardState.LoadEditState(config, mappings);
+                    
+                Snackbar.Add($"Configurazione '{config.CodiceConfigurazione}' caricata in modalità modifica", Severity.Info);
+            }
+        }
+            
+        _wizardState = WizardState.State;
+    }
+    catch (Exception ex)
+    {
+        Logger?.LogError(ex, "Errore inizializzazione wizard");
+        Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+        UiState?.HideOverlay();
+    }
+}
+    
+private void ResetWizard()
+{
+    WizardState.Reset();
+    _wizardState = WizardState.State;
+}
+    
+private void GoToPreviousStep()
+{
+    WizardState.UpdateState(s => s.PreviousStep());
+    _wizardState = WizardState.State;
+}
+    
+private void GoToNextStep()
+{
+    // Validazione prima di procedere
+    var validation = StepValidator.ValidateStep(_wizardState.CurrentStep, _wizardState);
+        
+    if (!validation.IsValid)
+    {
+        Snackbar.Add(validation.Message, validation.Severity switch
+        {
+            ValidationSeverity.Error => Severity.Error,
+            ValidationSeverity.Warning => Severity.Warning,
+            _ => Severity.Info
+        });
+        return;
+    }
+        
+        WizardState.UpdateState(s => s.NextStep());
+        _wizardState = WizardState.State;
+    }
+    
+    private void OnStepStatusChanged(int step)
+    {
+        Logger?.LogDebug("Step {Step} status changed", step);
+    }
+    
+    private async Task HandleFinishAsync()
+    {
+        _saving = true;
+        
+        try
+        {
+            // Validazione finale
+            var validation = StepValidator.ValidateAll(_wizardState);
+            if (!validation.IsValid)
+            {
+                Snackbar.Add(validation.Message, Severity.Error);
+                return;
+            }
+            
+            UiState?.ShowOverlay("Salvataggio in corso...");
+            
+            // Crea l'entità configurazione dal state
+            var config = _wizardState.ToConfigurationEntity();
+            var mappings = _wizardState.Mappings.ToList();
+            
+            if (_wizardState.IsEditMode)
+            {
+                // UPDATE
+                await ServiceWrapper!.ServiceConfigurazioneFontiDati.UpdateConfigurazioneFontiDatiAsync(
+                    config, mappings, ConfigUser!.Utente);
+                
+                // Genera task per nuovi mapping
+                var taskResult = await TaskGenerationService!.GenerateTasksForConfigurationAsync(config.IdConfigurazione);
+                
+                // Cleanup orphans
+                var cleanupCount = await JobScheduler.CleanupOrphansAsync();
+                
+                Logger?.LogInformation(
+                    "? Configurazione {ConfigId} aggiornata: {CreatedTasks} task creati, {ExistingTasks} esistenti, {Cleanup} cleanup",
+                    config.IdConfigurazione, taskResult.CreatedTasks, taskResult.ExistingTasks, cleanupCount);
+                
+                Snackbar.Add("? Configurazione aggiornata con successo!", Severity.Success);
+            }
+            else
+            {
+                // CREATE
+                await ServiceWrapper!.ServiceConfigurazioneFontiDati.AddConfigurazioneFontiDatiAsync(
+                    config, mappings, ConfigUser!.Utente);
+                
+                // Genera task
+                var taskResult = await TaskGenerationService!.GenerateTasksForConfigurationAsync(config.IdConfigurazione);
+                
+                Logger?.LogInformation(
+                    "? Configurazione {ConfigId} creata con {TaskCount} task",
+                    config.IdConfigurazione, taskResult.CreatedTasks);
+                
+                Snackbar.Add($"? Configurazione creata con successo! {taskResult.CreatedTasks} task schedulati.", Severity.Success);
+            }
+            
+            // Reset wizard e naviga alla lista
+            WizardState.Reset();
+            Navigation.NavigateTo("/admin/fonti-dati");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "Errore salvataggio configurazione");
+            Snackbar.Add($"? Errore: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+            UiState?.HideOverlay();
+        }
+    }
+    
+    public void Dispose()
+    {
+        WizardState.OnStateChanged -= StateHasChanged;
+    }
+}

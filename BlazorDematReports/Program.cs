@@ -259,6 +259,10 @@ public static class Program
         builder.Services.AddScoped<ICronSchedulingService, CronSchedulingService>();
         builder.Services.AddScoped<IConfigurazioneDataReaderService, ConfigurazioneDataReaderService>();
         builder.Services.AddScoped<ITaskGenerationService, TaskGenerationService>();
+        
+        // ? Wizard Multi-Step Configuration Services
+        builder.Services.AddScoped<BlazorDematReports.Services.Wizard.ConfigurationWizardStateService>();
+        builder.Services.AddScoped<BlazorDematReports.Services.Validation.ConfigurationStepValidator>();
 
         // Registrazione handler lavorazioni SQL
         builder.Services.AddScoped<ILavorazioneHandler, DefaultLavorazioneHandler>();

@@ -86,10 +86,6 @@
 
 
 
-
-
-
-
             @* Mapping Configurazione *@
             <MappingConfigurazione @ref="_mappingConfigRef"
                                   Mappings="@_mappingFasi"
@@ -98,9 +94,9 @@
                                   DescrizioneConfigurazione="@_config.DescrizioneConfigurazione"
                                   DescrizioneConfigurazioneChanged="@((string? v) => { _config.DescrizioneConfigurazione = v; InvokeAsync(StateHasChanged); })"
                                   DisabledState='@((_config.TipoFonte == "SQL" && !_connectionTestPassed) || !_fasiPerProcedura.Any())'
-                                  CanAddMapping='@(_selectedIdProcedura > 0 && _selectedCentroId > 0 && _fasiPerProcedura.Any() && !(_config.TipoFonte == "SQL" && !_connectionTestPassed))'
-                                  OnAggiungiMapping="@AggiungiMappingAsync"
-                                  OnRimuoviMapping="@RimuoviMappingAsync"
+                                  CanAddMapping="@(_selectedIdProcedura > 0 && _selectedCentroId > 0 && _fasiPerProcedura.Any() && !(_config.TipoFonte == "SQL" && !_connectionTestPassed))"
+                                  OnAggiungiMapping="AggiungiMappingAsync"
+                                  OnRimuoviMapping="RimuoviMappingAsync"
                                   GetCronValue="@GetCronFromMapping"
                                   OnCronChanged="@OnCronChangedAsync"  
                                   GiorniPrecedenti="@_defaultGiorniPrecedenti"
@@ -109,13 +105,29 @@
 
             <MudItem xs="12"><MudDivider Class="my-4" /></MudItem>
 
+            @* Avviso: Nessun mapping configurato *@
+            @if (_selectedIdProcedura > 0 && _fasiPerProcedura.Any() && !_mappingFasi.Any())
+            {
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                        <MudText><strong>Nessun mapping configurato.</strong></MudText>
+                        <MudText Typo="Typo.body2" Class="mt-2">
+                            Aggiungi almeno un mapping Fase/Centro per poter salvare la configurazione.
+                        </MudText>
+                    </MudAlert>
+                </MudItem>
+            }
+
             @* AZIONI *@
             <MudItem xs="12">
                 <div class="d-flex gap-2">
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Success"
                                OnClick="HandleValidSubmitAsync"
-                               Disabled='@(_saving || (_config.TipoFonte == "SQL" && !_connectionTestPassed) || !_fasiPerProcedura.Any())'>
+                               Disabled='@(_saving || 
+                                          (_config.TipoFonte == "SQL" && !_connectionTestPassed) || 
+                                          !_fasiPerProcedura.Any() || 
+                                          !_mappingFasi.Any())'>
                         @if (_saving) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
                         Salva Configurazione
                     </MudButton>
@@ -206,6 +218,14 @@ private List<ConfigurazioneFaseCentro> _mappingFasi = new();
                 {
                     _config = config;
                     _mappingFasi = config.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva).ToList();
+                    
+                    // ✅ In EDIT, assumi che la connessione sia valida (già testata in fase di creazione)
+                    if (_config.TipoFonte == "SQL" && !string.IsNullOrWhiteSpace(_config.ConnectionStringName))
+                    {
+                        _connectionTestPassed = true;
+                        _validationMessage = "✓ Connessione già configurata (non richiede nuovo test)";
+                        _validationSeverity = Severity.Success;
+                    }
                 }
             }
             else if (IdProceduraPrecompilata.HasValue)
@@ -370,8 +390,26 @@ private List<ConfigurazioneFaseCentro> _mappingFasi = new();
     {
         if (index >= 0 && index < _mappingFasi.Count)
         {
+            var mappingToRemove = _mappingFasi[index];
+            var isExisting = mappingToRemove.IdFaseCentro > 0;
+            
             _mappingFasi.RemoveAt(index);
+            
+            // Forza aggiornamento UI
+            StateHasChanged();
             await InvokeAsync(StateHasChanged);
+            
+            // Log per debugging
+            if (isExisting)
+            {
+                Snackbar.Add(
+                    $"Mapping rimosso dalla lista. I task associati verranno eliminati quando salvi la configurazione.",
+                    Severity.Info);
+            }
+            else
+            {
+                Logger?.LogDebug("Rimozione mapping NUOVO (non ancora salvato) dalla lista locale");
+            }
         }
     }
 
@@ -501,14 +539,19 @@ private List<ConfigurazioneFaseCentro> _mappingFasi = new();
                 _config.ModificatoIl = DateTime.Now;
                 _config.ModificatoDa = ConfigUser?.Utente ?? string.Empty;
                 
-                // 1. Salva modifiche (marca mapping rimossi come FlagAttiva=false)
+                Logger?.LogInformation(
+                    "📝 Update configurazione {ConfigId}: {MappingCount} mapping in input",
+                    _config.IdConfigurazione, _mappingFasi.Count);
+                
+                // 1. Salva modifiche (elimina task dei mapping rimossi + elimina job Hangfire)
                 await ServiceWrapper!.ServiceConfigurazioneFontiDati.UpdateConfigurazioneFontiDatiAsync(_config, _mappingFasi, ConfigUser!.Utente);
                 
-                // 2. Genera/aggiorna task per i nuovi mapping
+                Logger?.LogInformation("✅ Update completato. Generazione task per mapping nuovi...");
+                
+                // 2. Genera/aggiorna task per i mapping nuovi (NON ricrea task eliminati)
                 taskResult = await TaskGenerationService!.GenerateTasksForConfigurationAsync(_config.IdConfigurazione);
                 
-                // 3. Cleanup immediato task orfani da Hangfire
-                // (Confronta job Hangfire con task abilitati nel DB e rimuove gli orfani)
+                // 3. Cleanup finale job Hangfire orfani (ridondante ma sicuro)
                 var cleanupCount = await JobScheduler.CleanupOrphansAsync();
                 
                 // 4. Feedback utente
@@ -522,7 +565,7 @@ private List<ConfigurazioneFaseCentro> _mappingFasi = new();
                 if (cleanupCount > 0)
                 {
                     messages.Add($"{cleanupCount} job Hangfire aggiornati/rimossi");
-                    Logger?.LogInformation("Cleanup manuale: {Count} job processati per Config {ConfigId}", 
+                    Logger?.LogInformation("🧹 Cleanup manuale finale: {Count} job processati per Config {ConfigId}", 
                         cleanupCount, _config.IdConfigurazione);
                 }
                 
