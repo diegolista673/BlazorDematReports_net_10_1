@@ -111,8 +111,71 @@
                 <ChildContent>
                     @if (Model.IdproceduraLavorazione.HasValue)
                     {
-                        <ProcedureConfigurazioniWidget IdProceduraLavorazione="@Model.IdproceduraLavorazione.Value"
-                                                       OnTasksCreated="@HandleTasksCreatedAsync" />
+                        @if (_configurazioni.Any())
+                        {
+                            <MudTable Items="@_configurazioni" Hover="true" Dense="true" Bordered="true" Class="mb-2">
+                                <HeaderContent>
+                                    <MudTh>Codice</MudTh>
+                                    <MudTh>Descrizione</MudTh>
+                                    <MudTh>Tipo</MudTh>
+                                    <MudTh>Mappings</MudTh>
+                                    <MudTh>Stato</MudTh>
+                                    <MudTh>Azioni</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Codice">@context.CodiceConfigurazione</MudTd>
+                                    <MudTd DataLabel="Descrizione">@context.DescrizioneConfigurazione</MudTd>
+                                    <MudTd DataLabel="Tipo">
+                                        <MudChip T="string" Size="Size.Small" Color="@GetTipoColor(context.TipoFonte)">
+                                            @context.TipoFonte
+                                        </MudChip>
+                                    </MudTd>
+                                    <MudTd DataLabel="Mappings">
+                                        <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                                            @context.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva)
+                                        </MudChip>
+                                    </MudTd>
+                                    <MudTd DataLabel="Stato">
+                                        @if (context.FlagAttiva)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Attiva</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Disattivata</MudChip>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Azioni">
+                                        <MudTooltip Text="Modifica configurazione">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           Color="Color.Primary"
+                                                           Href="@($"/configura-fonte-dati-wizard/{context.IdConfigurazione}")" />
+                                        </MudTooltip>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                            
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Href="/configura-fonte-dati-wizard"
+                                       Class="mt-2">
+                                Nuova Configurazione
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Info" Class="mb-2">
+                                Nessuna configurazione presente per questa procedura.
+                            </MudAlert>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Href="/configura-fonte-dati-wizard">
+                                Crea Prima Configurazione
+                            </MudButton>
+                        }
                     }
                     else
                     {
@@ -153,6 +216,7 @@
     private List<BreadcrumbItem> _breadcrumbItems = new();
     private int _configurazioniCount = 0;
     private int _fasiCount = 0;
+    private List<ConfigurazioneFontiDati> _configurazioni = new();
 
 
 
@@ -249,23 +313,45 @@
             ? $"{baseClass} has-changes"
             : $"{baseClass} saved";
     }
-    private async Task LoadConfigurazioniCountAsync()
+
+
+    private async Task LoadConfigurazioniAsync()
     {
         try
         {
             await using var context = await DbFactory!.CreateDbContextAsync();
-            _configurazioniCount = await context.ConfigurazioneFontiDatis
-                .CountAsync(c => c.FlagAttiva && 
+            _configurazioni = await context.ConfigurazioneFontiDatis
+                .Include(c => c.ConfigurazioneFaseCentros)
+                .Where(c => c.FlagAttiva && 
                        c.ConfigurazioneFaseCentros.Any(fc => 
                            fc.FlagAttiva && 
-                           fc.IdProceduraLavorazione == IdProcedura));
+                           fc.IdProceduraLavorazione == IdProcedura))
+                .OrderBy(c => c.CodiceConfigurazione)
+                .ToListAsync();
+            
+            _configurazioniCount = _configurazioni.Count;
         }
         catch (Exception ex)
         {
-            Logger?.LogWarning(ex, "Error loading configurations count");
+            Logger?.LogWarning(ex, "Error loading configurations");
+            _configurazioni = new();
             _configurazioniCount = 0;
         }
     }
+
+    private async Task LoadConfigurazioniCountAsync()
+    {
+        await LoadConfigurazioniAsync();
+    }
+    
+    private Color GetTipoColor(string tipo) => tipo switch
+    {
+        "SQL" => Color.Primary,
+        "EmailCSV" => Color.Secondary,
+        "HandlerIntegrato" => Color.Tertiary,
+        "Pipeline" => Color.Info,
+        _ => Color.Default
+    };
     
     private async Task HandleTasksCreatedAsync()
     {

@@ -1,4 +1,4 @@
-using Entities.Models.DbApplication;
+Ôªøusing Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DataReading.Infrastructure;
@@ -93,7 +93,7 @@ namespace BlazorDematReports.Services.DataService
                             lavorazioneFase.IdlavorazioneFaseDateReading);
                     }
 
-                    // Verifica se esiste gi‡ un task per questo mapping
+                    // Verifica se esiste gi√† un task per questo mapping
                     var taskEsistente = await context.TaskDaEseguires
                         .AnyAsync(t =>
                             t.IdConfigurazioneDatabase == idConfigurazione &&
@@ -103,7 +103,7 @@ namespace BlazorDematReports.Services.DataService
                     {
                         result.ExistingTasks++;
                         _logger.LogDebug(
-                            "Task gi‡ esistente per Config {ConfigId}, Mapping {MappingId}",
+                            "Task gi√† esistente per Config {ConfigId}, Mapping {MappingId}",
                             idConfigurazione, mapping.IdFaseCentro);
                         continue;
                     }
@@ -115,10 +115,10 @@ namespace BlazorDematReports.Services.DataService
                         IdConfigurazioneDatabase = idConfigurazione,
                         Stato = "CONFIGURED",
                         DataStato = DateTime.Now,
-                        GiorniPrecedenti = mapping.GiorniPrecedenti > 0 ? mapping.GiorniPrecedenti : 10, // Usa valore del mapping, default 10
+                        GiorniPrecedenti = mapping.GiorniPrecedenti > 0 ? mapping.GiorniPrecedenti : 10,
                         CronExpression = mapping.CronExpression ?? "0 5 * * *",
-                        Enabled = mapping.EnabledTask,
-                        IdTaskHangFire = $"temp-{Guid.NewGuid()}" // Temporaneo
+                        Enabled = true, // ‚úÖ SEMPRE TRUE per nuovi task generati
+                        IdTaskHangFire = $"temp-{Guid.NewGuid()}" // Temporaneo, sovrascritto da scheduler
                     };
 
                     context.TaskDaEseguires.Add(nuovoTask);
@@ -203,8 +203,8 @@ namespace BlazorDematReports.Services.DataService
 
             if (exists)
             {
-                _logger.LogDebug("Task gi‡ esistente per Mapping {MappingId}", idFaseCentro);
-                return true; // Non Ë un errore, il task esiste gi‡
+                _logger.LogDebug("Task gi√† esistente per Mapping {MappingId}", idFaseCentro);
+                return true; // Non √® un errore, il task esiste gi√†
             }
 
             // Crea task
@@ -214,9 +214,9 @@ namespace BlazorDematReports.Services.DataService
                 IdConfigurazioneDatabase = mapping.IdConfigurazione,
                 Stato = "CONFIGURED",
                 DataStato = DateTime.Now,
-                GiorniPrecedenti = mapping.GiorniPrecedenti > 0 ? mapping.GiorniPrecedenti : 10, // Usa valore del mapping, default 10
+                GiorniPrecedenti = mapping.GiorniPrecedenti > 0 ? mapping.GiorniPrecedenti : 10,
                 CronExpression = mapping.CronExpression ?? "0 5 * * *",
-                Enabled = mapping.EnabledTask,
+                Enabled = true, //  SEMPRE TRUE per nuovi task generati
                 IdTaskHangFire = $"temp-{Guid.NewGuid()}"
             };
 
@@ -254,7 +254,7 @@ namespace BlazorDematReports.Services.DataService
                 parts.Add($"{CreatedTasks} task creati");
             
             if (ExistingTasks > 0)
-                parts.Add($"{ExistingTasks} gi‡ esistenti");
+                parts.Add($"{ExistingTasks} gi√† esistenti");
             
             if (HasErrors)
                 parts.Add($"{Errors.Count} errori");

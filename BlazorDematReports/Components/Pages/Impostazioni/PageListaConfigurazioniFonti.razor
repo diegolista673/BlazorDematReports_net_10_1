@@ -1,4 +1,4 @@
-﻿@page "/admin/fonti-dati"
+﻿@page "/fonti-dati"
 @using Entities.Models.DbApplication
 @using Microsoft.EntityFrameworkCore
 @using DataReading.Infrastructure
@@ -26,7 +26,7 @@
             <MudButton Variant="Variant.Filled"
                         Color="Color.Primary"
                         StartIcon="@Icons.Material.Filled.Add"
-                        OnClick="@(() => Navigation.NavigateTo("/admin/configura-fonte-dati"))">
+                        OnClick="@(() => Navigation.NavigateTo("/configura-fonte-dati-wizard"))">
                 Nuova Configurazione
             </MudButton>
         </MudItem>
@@ -208,7 +208,7 @@
 
     private void ModificaConfig(int id)
     {
-        Navigation.NavigateTo($"/admin/configura-fonte-dati/{id}");
+        Navigation.NavigateTo($"/configura-fonte-dati-wizard/{id}");
     }
 
     /// <summary>

@@ -16,12 +16,12 @@
     <None Remove="Token_Efficiency.md" />
   </ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="AutoMapper" Version="16.0.0" />
+		<PackageReference Include="AutoMapper" Version="14.0.0" />
 		<PackageReference Include="Azure.Identity" Version="1.17.1" />
 		<PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
-		<PackageReference Include="Hangfire.Core" Version="1.8.22" />
-		<PackageReference Include="Hangfire.SqlServer" Version="1.8.22" />
-		<PackageReference Include="Hangfire.AspNetCore" Version="1.8.22" />
+		<PackageReference Include="Hangfire.Core" Version="1.8.23" />
+		<PackageReference Include="Hangfire.SqlServer" Version="1.8.23" />
+		<PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
 		<PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.7.12" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
 		<PackageReference Include="FastMember" Version="1.5.0" />
@@ -57,6 +57,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Folder Include="Components\Pages\Admin\" />
 	  <Folder Include="Properties\" />
 	</ItemGroup>
 

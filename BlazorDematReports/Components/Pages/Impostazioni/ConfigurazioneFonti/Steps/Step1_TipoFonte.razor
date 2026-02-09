@@ -52,17 +52,33 @@
 
     private string _selectedValue = "SQL";
 
-    private void OnRadioValueChanged(string newValue)
+    protected override void OnInitialized()
     {
-        // Qui puoi inserire la tua logica personalizzata
-        _selectedValue = newValue;
-        if (_selectedValue != State.TipoFonte)
+        // Sincronizza lo state locale con lo state del wizard
+        _selectedValue = State.TipoFonte ?? "SQL";
+        
+        // Inizializza lo state del wizard se necessario
+        if (string.IsNullOrWhiteSpace(State.TipoFonte))
         {
             StateService.UpdateState(s => s.WithTipoFonte(_selectedValue));
-            InvokeAsync(StateHasChanged);
         }
-        
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Aggiorna il valore locale quando cambia lo state esterno
+        if (!string.IsNullOrWhiteSpace(State.TipoFonte) && _selectedValue != State.TipoFonte)
+        {
+            _selectedValue = State.TipoFonte;
+        }
+    }
+
+    private void OnRadioValueChanged(string newValue)
+    {
+        _selectedValue = newValue;
+        StateService.UpdateState(s => s.WithTipoFonte(_selectedValue));
     }
 
 }
+
 

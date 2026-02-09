@@ -35,6 +35,7 @@ public record ConfigurationWizardState
     
     // Edit mode
     public int? IdConfigurazioneEdit { get; init; }
+    public string? CodiceConfigurazioneOriginal { get; init; } // Preserva codice originale in edit
     public bool IsEditMode => IdConfigurazioneEdit.HasValue;
     
     // Progress
@@ -66,16 +67,22 @@ public record ConfigurationWizardState
     public ConfigurationWizardState PreviousStep() 
         => this with { CurrentStep = Math.Max(CurrentStep - 1, 1) };
     
-    public ConfigurationWizardState WithTipoFonte(string tipoFonte) 
-        => this with 
-        { 
+    public ConfigurationWizardState WithTipoFonte(string tipoFonte)
+    {
+        // Se il tipo non cambia, non resettare i campi di step 2
+        if (tipoFonte == this.TipoFonte)
+            return this;
+
+        // Se il tipo cambia, resetta i campi di step 2
+        return this with
+        {
             TipoFonte = tipoFonte,
-            // Reset step 2 fields when changing tipo
             ConnectionStringName = null,
             MailServiceCode = null,
             HandlerClassName = null,
             ConnectionTestPassed = false
         };
+    }
     
     public ConfigurationWizardState WithConnectionString(string? connectionString, bool testPassed = false) 
         => this with 
@@ -121,10 +128,29 @@ public record ConfigurationWizardState
     /// </summary>
     public ConfigurazioneFontiDati ToConfigurationEntity()
     {
+        // Genera codice univoco
+        string codiceConfigurazione;
+        if (IsEditMode && !string.IsNullOrWhiteSpace(CodiceConfigurazioneOriginal))
+        {
+            // In edit mode, mantieni il codice originale
+            codiceConfigurazione = CodiceConfigurazioneOriginal;
+        }
+        else if (IsEditMode)
+        {
+            // Fallback se non c'è il codice originale
+            codiceConfigurazione = $"Config{IdProcedura:D4}";
+        }
+        else
+        {
+            // Nuovo record: genera codice univoco con timestamp
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            codiceConfigurazione = $"Config{IdProcedura:D4}_{timestamp}";
+        }
+        
         return new ConfigurazioneFontiDati
         {
             IdConfigurazione = IdConfigurazioneEdit ?? 0,
-            CodiceConfigurazione = $"Config{IdProcedura:D4}",
+            CodiceConfigurazione = codiceConfigurazione,
             DescrizioneConfigurazione = DescrizioneConfigurazione ?? $"Config_{NomeProcedura}",
             TipoFonte = TipoFonte,
             ConnectionStringName = ConnectionStringName,
@@ -161,18 +187,23 @@ public class ConfigurationWizardStateService
         NotifyStateChanged();
     }
     
-    public void LoadEditState(ConfigurazioneFontiDati config, List<ConfigurazioneFaseCentro> mappings)
+    public void LoadEditState(ConfigurazioneFontiDati config, List<ConfigurazioneFaseCentro> mappings, int? idProcedura = null, int? idCentro = null, string? nomeProcedura = null, List<FasiLavorazione>? fasi = null)
     {
         _state = new ConfigurationWizardState
         {
             IdConfigurazioneEdit = config.IdConfigurazione,
+            CodiceConfigurazioneOriginal = config.CodiceConfigurazione, // ? Preserva codice originale
             TipoFonte = config.TipoFonte,
             ConnectionStringName = config.ConnectionStringName,
             MailServiceCode = config.MailServiceCode,
             HandlerClassName = config.HandlerClassName,
             ConnectionTestPassed = config.TipoFonte == "SQL" && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
             DescrizioneConfigurazione = config.DescrizioneConfigurazione,
-            Mappings = mappings.ToImmutableList()
+            Mappings = mappings.ToImmutableList(),
+            IdProcedura = idProcedura,
+            IdCentro = idCentro,
+            NomeProcedura = nomeProcedura,
+            FasiDisponibili = fasi?.ToImmutableList() ?? ImmutableList<FasiLavorazione>.Empty
         };
         NotifyStateChanged();
     }

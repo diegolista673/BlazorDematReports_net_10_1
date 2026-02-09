@@ -239,8 +239,8 @@ When pushing changes:
 ## 📚 Related Files
 
 - **Project System Prompt**: `prompts/PROJECT_SYSTEM_PROMPT.md`
-- **Main Page**: `BlazorDematReports/Components/Pages/Admin/PageConfiguraFonteDati.razor`
-- **List Page**: `BlazorDematReports/Components/Pages/Admin/PageListaConfigurazioniFonti.razor`
+- **Main Page**: `BlazorDematReports/Components/Pages/PageConfiguraFonteDati.razor`
+- **List Page**: `BlazorDematReports/Components/Pages/PageListaConfigurazioniFonti.razor`
 - **Validation Service**: `BlazorDematReports/Services/Validation/SqlValidationService.cs`
 
 ---

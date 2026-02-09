@@ -14,14 +14,20 @@ with (firstrow = 170,
       per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
       esempio :
 
-nuova configurazione tramite step da controllare
-
-
+      
 gestione della configurazione 
-    - se ci sono piu di un task come gestire quelli attivi?
-    - se ci sono diversi tipi di task ( sql,handler o mail) come vengono gestiti?
-    - come riportare la query se ci sono piu task? 
-    - come disattivare i task?
+finire sql nuova configurazione tramite step da controllare
+cosa fare con i task attivarli subito o dopo la creazione della configurazione? 
+come eliminarli ?
+poterli fermare o eliminarli in caso di errori o modifiche alla configurazione?
+la modifica deve permettere di eliminare i task e aggiornare la configurazinione
+in modifica deve potere eliminare tutta la configurazione + task associati , domandare prima di eliminare il button in elenco esiste già
+eliminare o tenere il button disabilita? e i task associati?
+button con task già creati per la configurazione da eliminare se task vengono creati subito in hangfire
+LoadConfigurazioniAsync va cambiato per trovare quanti sono i task totali per lavorazione, magari cambiare titolo in task da eseguire piuttosto che configurazioniCount
+
+
+
 
 ✅ RISOLTO: Eliminazione task ora funziona correttamente
     - I job vengono rimossi da Hangfire tramite ProductionScheduler.RemoveByKeyAsync()

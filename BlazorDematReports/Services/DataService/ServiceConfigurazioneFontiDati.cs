@@ -379,21 +379,38 @@ namespace BlazorDematReports.Services.DataService
             if (configurazioneFontiDati == null)
                 throw new ArgumentNullException(nameof(configurazioneFontiDati));
 
-            configurazioneFontiDati.CreatoIl = DateTime.Now;
-            configurazioneFontiDati.CreatoDa = user ?? string.Empty;
-            configurazioneFontiDati.FlagAttiva = true;
-
             await using var context = await contextFactory.CreateDbContextAsync();
             await using var transaction = await context.Database.BeginTransactionAsync();
 
-            // Insert configuration first to obtain IdConfigurazione
-            context.ConfigurazioneFontiDatis.Add(configurazioneFontiDati);
-            await context.SaveChangesAsync();
-
-            if (mappingFasi != null && mappingFasi.Any())
+            try
             {
-                foreach (var mapping in mappingFasi)
+                // Verifica se CodiceConfigurazione esiste già
+                var codiceEsistente = await context.ConfigurazioneFontiDatis
+                    .AnyAsync(c => c.CodiceConfigurazione == configurazioneFontiDati.CodiceConfigurazione);
+
+                if (codiceEsistente)
                 {
+                    // Genera codice univoco con timestamp
+                    var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                    var baseCodice = configurazioneFontiDati.CodiceConfigurazione.Split('_')[0];
+                    configurazioneFontiDati.CodiceConfigurazione = $"{baseCodice}_{timestamp}";
+                    
+                    logger.LogWarning("CodiceConfigurazione duplicato rilevato, generato nuovo codice: {NewCode}", 
+                        configurazioneFontiDati.CodiceConfigurazione);
+                }
+
+                configurazioneFontiDati.CreatoIl = DateTime.Now;
+                configurazioneFontiDati.CreatoDa = user ?? string.Empty;
+                configurazioneFontiDati.FlagAttiva = true;
+
+                // Insert configuration first to obtain IdConfigurazione
+                context.ConfigurazioneFontiDatis.Add(configurazioneFontiDati);
+                await context.SaveChangesAsync();
+
+                if (mappingFasi != null && mappingFasi.Any())
+                {
+                    foreach (var mapping in mappingFasi)
+                    {
                         // Ensure EF treats mapping as new insert
                         mapping.IdFaseCentro = 0;
                         mapping.IdConfigurazione = configurazioneFontiDati.IdConfigurazione;
@@ -406,16 +423,25 @@ namespace BlazorDematReports.Services.DataService
                             mapping.GiorniPrecedenti = 10;
                         
                         context.ConfigurazioneFaseCentros.Add(mapping);
+                    }
+
+                    await context.SaveChangesAsync();
+
+                    // **NUOVA LOGICA: Aggiorna FlagDataReading = true per le fasi con cron validi**
+                    await UpdateFlagDataReadingForMappingsAsync(context, mappingFasi);
                 }
 
-                await context.SaveChangesAsync();
-
-                // **NUOVA LOGICA: Aggiorna FlagDataReading = true per le fasi con cron validi**
-                await UpdateFlagDataReadingForMappingsAsync(context, mappingFasi);
+                await transaction.CommitAsync();
+                
+                logger.LogInformation("Configurazione {IdConf} creata con codice {Codice} e {NumMapping} mapping", 
+                    configurazioneFontiDati.IdConfigurazione, configurazioneFontiDati.CodiceConfigurazione, mappingFasi?.Count ?? 0);
             }
-
-            await transaction.CommitAsync();
-
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Errore durante creazione ConfigurazioneFontiDati");
+                try { await transaction.RollbackAsync(); } catch { }
+                throw;
+            }
         }
     }
 }

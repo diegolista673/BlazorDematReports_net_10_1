@@ -1,9 +1,0 @@
-@* DEPRECATED DIALOG - Non usare *@
-@inject NavigationManager NavManager
-
-<p>?? Funzionalità deprecata. Usa /admin/fonti-dati per configurare email.</p>
-<button @onclick="NavigateToFontiDati">Vai alle Configurazioni</button>
-
-@code {
-    private void NavigateToFontiDati() => NavManager.NavigateTo("/admin/fonti-dati");
-}

@@ -1,10 +1,10 @@
-@page "/admin/configura-fonte-dati-wizard"
-@page "/admin/configura-fonte-dati-wizard/{IdConfigurazione:int}"
+@page "/configura-fonte-dati-wizard"
+@page "/configura-fonte-dati-wizard/{IdConfigurazione:int}"
 @inherits BaseComponentPage<ConfigurazioneFontiWizard>
 @using BlazorDematReports.Services.Wizard
 @using BlazorDematReports.Services.Validation
 @using BlazorDematReports.Services.DataService
-@using BlazorDematReports.Components.Pages.Admin.ConfigurazioneFonti.Steps
+@using BlazorDematReports.Components.Pages.Impostazioni.ConfigurazioneFonti.Steps
 @inject ConfigurationWizardStateService WizardState
 @inject ConfigurationStepValidator StepValidator
 @inject IServiceWrapper ServiceWrapper
@@ -28,23 +28,17 @@
     @* Progress Stepper *@
     <MudPaper Class="pa-4 mb-4">
         <MudStepper @ref="_stepper" 
-                    Color="Color.Primary" 
-                    Variant="Variant.Filled"
-                    HeaderSize="Size.Large"
-                    HeaderTextView="HeaderTextView.All">
+                    ActiveIndex="@(_wizardState.CurrentStep - 1)"
+                    ActiveIndexChanged="OnStepperIndexChanged">
             
             <ChildContent>
-                <MudStep Title="Tipo Fonte" 
-                         Icon="@Icons.Material.Filled.Source"
-                         StatusChanged="@(() => OnStepStatusChanged(1))">
+                <MudStep Title="Tipo Fonte">
                     <ChildContent>
                         <Step1_TipoFonte State="@_wizardState" StateService="@WizardState" />
                     </ChildContent>
                 </MudStep>
                 
-                <MudStep Title="Configurazione" 
-                         Icon="@Icons.Material.Filled.Settings"
-                         StatusChanged="@(() => OnStepStatusChanged(2))">
+                <MudStep Title="Configurazione">
                     <ChildContent>
                         <Step2_ConfigurazioneSpecifica State="@_wizardState" 
                                                        StateService="@WizardState"
@@ -52,9 +46,7 @@
                     </ChildContent>
                 </MudStep>
                 
-                <MudStep Title="Procedura" 
-                         Icon="@Icons.Material.Filled.Assignment"
-                         StatusChanged="@(() => OnStepStatusChanged(3))">
+                <MudStep Title="Procedura">
                     <ChildContent>
                         <Step3_SelezioneProcedura State="@_wizardState" 
                                                   StateService="@WizardState"
@@ -62,9 +54,7 @@
                     </ChildContent>
                 </MudStep>
                 
-                <MudStep Title="Mapping" 
-                         Icon="@Icons.Material.Filled.Map"
-                         StatusChanged="@(() => OnStepStatusChanged(4))">
+                <MudStep Title="Mapping">
                     <ChildContent>
                         <Step4_Mapping State="@_wizardState" 
                                        StateService="@WizardState" />
@@ -74,7 +64,7 @@
             
             <ActionContent>
                 <MudStack Row Justify="Justify.SpaceBetween" Class="mt-4">
-                    <MudButton OnClick="@(() => Navigation.NavigateTo("/admin/fonti-dati"))"
+                    <MudButton OnClick="@(() => Navigation.NavigateTo("/fonti-dati"))"
                                Variant="Variant.Text">
                         Annulla
                     </MudButton>
@@ -142,36 +132,65 @@
 private MudStepper? _stepper;
 private ConfigurationWizardState _wizardState = new();
 private bool _saving = false;
+private bool _initialized = false;
     
 protected override async Task OnInitializedAsync()
 {
     try
     {
         UiState?.ShowOverlay("Caricamento...");
-            
+        
         // Sottoscrivi a cambiamenti di stato
-        WizardState.OnStateChanged += StateHasChanged;
-            
+        WizardState.OnStateChanged += OnWizardStateChanged;
+
         // Inizializza ConfigUser
         await ConfigUser!.InitializeAsync();
-            
+        
         // Se è edit mode, carica la configurazione
         if (IdConfigurazione.HasValue)
         {
             var config = await DataReaderService.GetConfigurazioneFontiDatiAsync(IdConfigurazione.Value);
-                
             if (config != null)
             {
                 var mappings = config.ConfigurazioneFaseCentros
                     .Where(m => m.FlagAttiva)
                     .ToList();
+                
+                // Carica anche i dati di procedura e fasi per edit mode
+                if (mappings.Any())
+                {
+                    var firstMapping = mappings.First();
+                    var idProcedura = firstMapping.IdProceduraLavorazione;
+                    var idCentro = firstMapping.IdCentro;
                     
-                WizardState.LoadEditState(config, mappings);
+                    // Carica procedura
+                    var procedura = await ServiceWrapper.ServiceProcedureLavorazioni.GetProceduraLavorazioneByIdAsync(idProcedura);
+                    var nomeProcedura = procedura?.NomeProcedura ?? $"Procedura {idProcedura}";
                     
+                    // Carica fasi disponibili
+                    var fasi = await DataReaderService.GetFasiByProceduraAsync(idProcedura);
+                    
+                    WizardState.LoadEditState(config, mappings, idProcedura, idCentro, nomeProcedura, fasi);
+                }
+                else
+                {
+                    WizardState.LoadEditState(config, mappings);
+                }
+                
                 Snackbar.Add($"Configurazione '{config.CodiceConfigurazione}' caricata in modalità modifica", Severity.Info);
             }
+            else
+            {
+                Snackbar.Add($"Configurazione {IdConfigurazione} non trovata", Severity.Error);
+                Navigation.NavigateTo("/fonti-dati");
+            }
         }
-            
+        else
+        {
+            // Se NON è edit mode, resetta lo state per evitare residui di sessioni precedenti
+            WizardState.Reset();
+        }
+        
         _wizardState = WizardState.State;
     }
     catch (Exception ex)
@@ -181,6 +200,7 @@ protected override async Task OnInitializedAsync()
     }
     finally
     {
+        _initialized = true;
         UiState?.HideOverlay();
     }
 }
@@ -188,20 +208,19 @@ protected override async Task OnInitializedAsync()
 private void ResetWizard()
 {
     WizardState.Reset();
-    _wizardState = WizardState.State;
+    // _wizardState will be updated by OnWizardStateChanged
 }
-    
+
 private void GoToPreviousStep()
 {
     WizardState.UpdateState(s => s.PreviousStep());
-    _wizardState = WizardState.State;
+    // _wizardState will be updated by OnWizardStateChanged
 }
-    
+
 private void GoToNextStep()
 {
     // Validazione prima di procedere
     var validation = StepValidator.ValidateStep(_wizardState.CurrentStep, _wizardState);
-        
     if (!validation.IsValid)
     {
         Snackbar.Add(validation.Message, validation.Severity switch
@@ -212,15 +231,51 @@ private void GoToNextStep()
         });
         return;
     }
+    
+    WizardState.UpdateState(s => s.NextStep());
+    // _wizardState will be updated by OnWizardStateChanged
+}
+
+private void OnStepperIndexChanged(int newIndex)
+{
+    // Ignora eventi durante l'inizializzazione
+    if (!_initialized)
+        return;
         
-        WizardState.UpdateState(s => s.NextStep());
-        _wizardState = WizardState.State;
+    // Gestisce il cambio di step tramite click sui pallini del stepper
+    var targetStep = newIndex + 1;
+    
+    // Validazione range: step deve essere tra 1 e TotalSteps
+    if (targetStep < 1 || targetStep > _wizardState.TotalSteps)
+    {
+        Logger?.LogWarning("Tentativo di navigare a step invalido: {TargetStep}", targetStep);
+        return;
     }
     
-    private void OnStepStatusChanged(int step)
+    if (targetStep > _wizardState.CurrentStep)
     {
-        Logger?.LogDebug("Step {Step} status changed", step);
+        // Movimento in avanti: valida tutti gli step intermedi
+        for (int step = _wizardState.CurrentStep; step < targetStep; step++)
+        {
+            // Salta la validazione se step è fuori range
+            if (step < 1 || step > _wizardState.TotalSteps)
+                continue;
+                
+            var validation = StepValidator.ValidateStep(step, _wizardState);
+            if (!validation.IsValid)
+            {
+                Snackbar.Add($"Completa lo step {step} prima di procedere: {validation.Message}", Severity.Warning);
+                return;
+            }
+        }
     }
+    
+    // Aggiorna lo state con il nuovo step
+    WizardState.UpdateState(s => s with { CurrentStep = targetStep });
+}
+
+    
+
     
     private async Task HandleFinishAsync()
     {
@@ -258,7 +313,7 @@ private void GoToNextStep()
                     "? Configurazione {ConfigId} aggiornata: {CreatedTasks} task creati, {ExistingTasks} esistenti, {Cleanup} cleanup",
                     config.IdConfigurazione, taskResult.CreatedTasks, taskResult.ExistingTasks, cleanupCount);
                 
-                Snackbar.Add("? Configurazione aggiornata con successo!", Severity.Success);
+                Snackbar.Add("Configurazione aggiornata con successo!", Severity.Success);
             }
             else
             {
@@ -273,12 +328,12 @@ private void GoToNextStep()
                     "? Configurazione {ConfigId} creata con {TaskCount} task",
                     config.IdConfigurazione, taskResult.CreatedTasks);
                 
-                Snackbar.Add($"? Configurazione creata con successo! {taskResult.CreatedTasks} task schedulati.", Severity.Success);
+                Snackbar.Add($"Configurazione creata con successo! {taskResult.CreatedTasks} task schedulati.", Severity.Success);
             }
             
             // Reset wizard e naviga alla lista
             WizardState.Reset();
-            Navigation.NavigateTo("/admin/fonti-dati");
+            Navigation.NavigateTo("/fonti-dati");
         }
         catch (Exception ex)
         {
@@ -292,8 +347,16 @@ private void GoToNextStep()
         }
     }
     
+    private void OnWizardStateChanged()
+    {
+        _wizardState = WizardState.State;
+        Logger?.LogInformation("Wizard state changed: Step={Step}, TipoFonte={TipoFonte}, CanMoveNext={CanMoveNext}", 
+            _wizardState.CurrentStep, _wizardState.TipoFonte, _wizardState.CanMoveNext);
+        InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
-        WizardState.OnStateChanged -= StateHasChanged;
+        WizardState.OnStateChanged -= OnWizardStateChanged;
     }
 }
