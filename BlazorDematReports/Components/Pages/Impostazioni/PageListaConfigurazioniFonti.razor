@@ -1,13 +1,10 @@
 ﻿@page "/fonti-dati"
 @using Entities.Models.DbApplication
-@using Microsoft.EntityFrameworkCore
-@using DataReading.Infrastructure
 @using BlazorDematReports.Interfaces.IDataService
 @inject IDbContextFactory<DematReportsContext> DbFactory
 @inject IServiceWrapper ServiceWrapper
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
-@inject IProductionJobScheduler ProductionScheduler
 @inject IDialogService DialogService
 @attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
 
@@ -133,28 +130,17 @@
                                                    OnClick="@(() => ModificaConfig(context.Item.IdConfigurazione))" />
                                 </MudTooltip>
 
-                                <MudTooltip Text="@(context.Item.NumeroFasi == 0 ? "Aggiungi almeno un mapping prima di creare task" : context.Item.TaskAttivi > 0 ? "Task già creati per questa configurazione" : "Crea task automatici per questa configurazione")">
-                                    <MudIconButton Icon="@Icons.Material.Filled.PlayCircle"
-                                                   Color="Color.Success"
+                                <MudTooltip Text="Gestione task associati (abilita/disabilita/elimina)">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                                                   Color="Color.Info"
                                                    Size="Size.Small"
-                                                   Disabled="@(context.Item.NumeroFasi == 0 || context.Item.TaskAttivi > 0)"
-                                                   OnClick="@(() => CreaTaskAutomaticiAsync(context.Item.IdConfigurazione))" />
+                                                   OnClick="@(() => GestisciTaskAsync(context.Item))" />
                                 </MudTooltip>
 
-
-                                <MudTooltip Text="@(context.Item.TaskAttivi > 0 ? $"Impossibile disattivare: {context.Item.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard." : "Disattiva configurazione (soft delete)")">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Block"
-                                                   Color="@(context.Item.TaskAttivi > 0 ? Color.Default : Color.Warning)"
-                                                   Size="Size.Small"
-                                                   Disabled="@(context.Item.TaskAttivi > 0)"
-                                                   OnClick="@(() => EliminaConfigAsync(context.Item))" />
-                                </MudTooltip>
-
-                                <MudTooltip Text="Elimina definitivamente la configurazione (hard delete, irreversibile)">
+                                <MudTooltip Text="Elimina definitivamente la configurazione">
                                     <MudIconButton Icon="@Icons.Material.Filled.DeleteForever"
                                                    Color="Color.Error"
                                                    Size="Size.Small"
-                                                   Disabled="@(context.Item.TaskAttivi > 0)"
                                                    OnClick="@(() => EliminaConfigDefinitivaAsync(context.Item))" />
                                 </MudTooltip>
                             </CellTemplate>
@@ -211,190 +197,18 @@
         Navigation.NavigateTo($"/configura-fonte-dati-wizard/{id}");
     }
 
-    /// <summary>
-    /// Crea automaticamente task Hangfire per tutti i mapping fase/centro di una configurazione.
-    /// </summary>
-    private async Task CreaTaskAutomaticiAsync(int idConfigurazione)
-    {
-        try
-        {
-            await using var context = await DbFactory.CreateDbContextAsync();
-            
-            // Carica configurazione con tutti i mapping
-            var config = await context.ConfigurazioneFontiDatis
-                .Include(c => c.ConfigurazioneFaseCentros)
-                .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
-                
-            if (config == null)
-            {
-                Snackbar.Add("Configurazione non trovata", Severity.Warning);
-                return;
-            }
-            
-            var mappingAttivi = config.ConfigurazioneFaseCentros.Where(m => m.FlagAttiva).ToList();
-            
-            if (!mappingAttivi.Any())
-            {
-                Snackbar.Add("Nessun mapping fase/centro attivo trovato", Severity.Warning);
-                return;
-            }
-            
-            int taskCreati = 0;
-            int taskEsistenti = 0;
-            var errori = new List<string>();
-            
-            foreach (var mapping in mappingAttivi)
-            {
-                try
-                {
-                    // Trova LavorazioneFasiDataReading esistente
-                    var lavorazioneFase = await context.LavorazioniFasiDataReadings
-                        .FirstOrDefaultAsync(lf => 
-                            lf.IdProceduraLavorazione == mapping.IdProceduraLavorazione &&
-                            lf.IdFaseLavorazione == mapping.IdFaseLavorazione);
-                    
-                    if (lavorazioneFase == null)
-                    {
-                        errori.Add($"LavorazioneFase non trovata per Proc={mapping.IdProceduraLavorazione}, Fase={mapping.IdFaseLavorazione}");
-                        continue;
-                    }
-                    
-                        // Verifica se esiste già un task per questa configurazione e lavorazione
-                        var taskEsistente = await context.TaskDaEseguires
-                            .AnyAsync(t => 
-                                t.IdConfigurazioneDatabase == idConfigurazione &&
-                                t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading);
-                    
-                        if (taskEsistente)
-                        {
-                            taskEsistenti++;
-                            continue;
-                        }
-                    
-                        // Usa CronExpression dal mapping (default: 0 5 * * *)
-                        string cronExpression = mapping.CronExpression ?? "0 5 * * *";
-                    
-                    
-                        // Crea nuovo task
-                        var nuovoTask = new TaskDaEseguire
-                        {
-                            IdLavorazioneFaseDateReading = lavorazioneFase.IdlavorazioneFaseDateReading,
-                            IdConfigurazioneDatabase = idConfigurazione,
-                            Stato = "CONFIGURED",
-                            DataStato = DateTime.Now,
-                            GiorniPrecedenti = 1,
-                            CronExpression = cronExpression, // Usa cron dal mapping
-                            Enabled = true,
-                            IdTaskHangFire = $"temp-{Guid.NewGuid()}" // Temporaneo, verrà sovrascritto da ProductionScheduler
-                        };
-                    
-                        context.TaskDaEseguires.Add(nuovoTask);
-                        await context.SaveChangesAsync();
-                    
-                    // Registra in Hangfire e genera chiave definitiva
-                    try
-                    {
-                        await ProductionScheduler.AddOrUpdateAsync(nuovoTask.IdTaskDaEseguire);
-                        taskCreati++;
-                    }
-                    catch (Exception schedEx)
-                    {
-                        errori.Add($"Errore scheduling task {nuovoTask.IdTaskDaEseguire}: {schedEx.Message}");
-                    }
-                }
-                catch (Exception mappingEx)
-                {
-                    errori.Add($"Errore mapping Proc={mapping.IdProceduraLavorazione}, Fase={mapping.IdFaseLavorazione}: {mappingEx.Message}");
-                }
-            }
-            
-            // Ricarica griglia
-            await LoadConfigurazioniAsync();
-            
-            // Mostra risultati
-            if (taskCreati > 0)
-            {
-                Snackbar.Add($"{taskCreati} task creati e schedulati con successo!", Severity.Success);
-            }
-            
-            if (taskEsistenti > 0)
-            {
-                Snackbar.Add($"ℹ️ {taskEsistenti} task già esistenti", Severity.Info);
-            }
-            
-            if (errori.Any())
-            {
-                foreach (var errore in errori.Take(3)) // Mostra max 3 errori
-                {
-                    Snackbar.Add($" {errore}", Severity.Warning);
-                }
-                if (errori.Count > 3)
-                {
-                    Snackbar.Add($"... e altri {errori.Count - 3} errori", Severity.Warning);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($" Errore creazione task: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task EliminaConfigAsync(ConfigurazioneRiepilogoDto config)
-    {
-        // Doppio controllo: verifica task attivi
-        if (config.TaskAttivi > 0)
-        {
-            Snackbar.Add($" Impossibile eliminare: {config.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard.", Severity.Warning);
-            return;
-        }
-
-        // Dialog di conferma
-        var parameters = new DialogParameters
-        {
-            ["ContentText"] = $"Sei sicuro di voler disattivare la configurazione '{config.CodiceConfigurazione}'? I mapping verranno mantenuti ma la configurazione non sarà più utilizzabile.",
-            ["ButtonText"] = "Disattiva",
-            ["Color"] = Color.Error
-        };
-
-        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Eliminazione", parameters);
-        var result = await dialog.Result;
-
-        if (result.Canceled)
-            return;
-
-        try
-        {
-            await using var context = await DbFactory.CreateDbContextAsync();
-            var entity = await context.ConfigurazioneFontiDatis.FindAsync(config.IdConfigurazione);
-            if (entity != null)
-            {
-                entity.FlagAttiva = false; // Soft delete
-                entity.ModificatoIl = DateTime.Now;
-                await context.SaveChangesAsync();
-                await LoadConfigurazioniAsync();
-                Snackbar.Add("Configurazione disattivata con successo", Severity.Success);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($" Errore eliminazione: {ex.Message}", Severity.Error);
-        }
-    }
-
     private async Task EliminaConfigDefinitivaAsync(ConfigurazioneRiepilogoDto config)
     {
-        // Doppio controllo: verifica task attivi
-        if (config.TaskAttivi > 0)
-        {
-            Snackbar.Add($"Impossibile eliminare: {config.TaskAttivi} task attivi associati. Disabilitare prima i task dalla dashboard.", Severity.Warning);
-            return;
-        }
+        var contentText = config.TaskAttivi > 0
+            ? $"Sei sicuro di voler ELIMINARE DEFINITIVAMENTE la configurazione '{config.CodiceConfigurazione}'?\n\n" +
+              $"{config.TaskAttivi} task attivi verranno rimossi da Hangfire e dal database.\n\n" +
+              "Questa operazione è IRREVERSIBILE."
+            : $"Sei sicuro di voler ELIMINARE DEFINITIVAMENTE la configurazione '{config.CodiceConfigurazione}'?\n\n" +
+              "Questa operazione è IRREVERSIBILE.";
 
-        // Dialog di conferma
         var parameters = new DialogParameters
         {
-            ["ContentText"] = $"Sei sicuro di voler ELIMINARE DEFINITIVAMENTE la configurazione '{config.CodiceConfigurazione}'?",
+            ["ContentText"] = contentText,
             ["ButtonText"] = "Elimina definitivamente",
             ["Color"] = Color.Error
         };
@@ -405,15 +219,42 @@
         if (result.Canceled)
             return;
 
-            try
-            {
-                await ServiceWrapper!.ServiceConfigurazioneFontiDati.DeleteConfigurazioneFontiDatiAsync(config.IdConfigurazione);
-                await LoadConfigurazioniAsync();
-                Snackbar.Add("Configurazione eliminata definitivamente", Severity.Success);
-            }
+        try
+        {
+            await ServiceWrapper!.ServiceConfigurazioneFontiDati.DeleteConfigurazioneFontiDatiAsync(config.IdConfigurazione);
+            await LoadConfigurazioniAsync();
+            Snackbar.Add("Configurazione eliminata definitivamente", Severity.Success);
+        }
         catch (Exception ex)
         {
             Snackbar.Add($"Errore eliminazione definitiva: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task GestisciTaskAsync(ConfigurazioneRiepilogoDto config)
+    {
+        var parameters = new DialogParameters
+        {
+            ["IdConfigurazione"] = config.IdConfigurazione,
+            ["CodiceConfigurazione"] = config.CodiceConfigurazione
+        };
+        
+        var options = new DialogOptions 
+        { 
+            MaxWidth = MaxWidth.Large, 
+            FullWidth = true,
+            CloseButton = true 
+        };
+        
+        var dialog = await DialogService.ShowAsync<DialogGestioneTask>(
+            "Gestione Task", 
+            parameters,
+            options);
+        
+        var result = await dialog.Result;
+        if (!result.Canceled)
+        {
+            await LoadConfigurazioniAsync();
         }
     }
 

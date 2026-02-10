@@ -284,18 +284,13 @@ namespace BlazorDematReports.Services.DataService
                             exist.HandlerClassName = m.HandlerClassName;
                             exist.MappingColonne = m.MappingColonne;
                             exist.FlagAttiva = m.FlagAttiva;
-                            exist.EnabledTask = m.EnabledTask;
                             exist.GiorniPrecedenti = m.GiorniPrecedenti; // Aggiorna GiorniPrecedenti
-                            exist.UltimaModificaTask = DateTime.Now;
                         }
                         else
                         {
                             m.IdFaseCentro = 0;
                             m.IdConfigurazione = config.IdConfigurazione;
                             m.FlagAttiva = true;
-                            m.EnabledTask = true;
-                            m.UltimaModificaTask = DateTime.Now;
-                            // Assicura che i campi obbligatori siano valorizzati
                             m.TipoTask ??= config.TipoFonte;
                             m.CronExpression ??= "0 5 * * *";
                             if (m.GiorniPrecedenti is null or <= 0)
@@ -318,9 +313,7 @@ namespace BlazorDematReports.Services.DataService
                                 existingDup.HandlerClassName = m.HandlerClassName;
                                 existingDup.MappingColonne = m.MappingColonne;
                                 existingDup.FlagAttiva = true;
-                                existingDup.EnabledTask = true;
                                 existingDup.GiorniPrecedenti = m.GiorniPrecedenti; // Aggiorna GiorniPrecedenti
-                                existingDup.UltimaModificaTask = DateTime.Now;
                             }
                         }
                         else
@@ -328,8 +321,7 @@ namespace BlazorDematReports.Services.DataService
                             m.IdFaseCentro = 0;
                             m.IdConfigurazione = config.IdConfigurazione;
                             m.FlagAttiva = true;
-                            m.EnabledTask = true;
-                            m.UltimaModificaTask = DateTime.Now;
+
                             // Assicura che i campi obbligatori siano valorizzati
                             m.TipoTask ??= config.TipoFonte;
                             m.CronExpression ??= "0 5 * * *";
@@ -415,8 +407,6 @@ namespace BlazorDematReports.Services.DataService
                         mapping.IdFaseCentro = 0;
                         mapping.IdConfigurazione = configurazioneFontiDati.IdConfigurazione;
                         mapping.FlagAttiva = true;
-                        mapping.EnabledTask = true;
-                        mapping.UltimaModificaTask = DateTime.Now;
                         
                         // Assicura che GiorniPrecedenti sia valorizzato (default 10 se 0)
                         if (mapping.GiorniPrecedenti is null or <= 0)

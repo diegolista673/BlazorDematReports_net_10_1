@@ -3,45 +3,104 @@
 **Project**: BlazorDematReports  
 **Framework**: Blazor Server  
 **.NET Version**: 10.0  
-**C# Version**: 14.0
+**C# Version**: 14.0  
+**Database**: SQL Server + Oracle (via EF Core)  
+**UI Library**: MudBlazor v7+
 
 ---
 
 ## 🎯 Project Overview
 
-BlazorDematReports is a data configuration management system for production workflows. 
-The project manages data sources, scheduling, and task automation through a Blazor Server interface with Material Design (MudBlazor) components.
+BlazorDematReports is a **data configuration management system** for production workflows that handles:
+- Data source configuration (SQL queries, Email CSV, C# handlers, Pipelines)
+- Task scheduling with cron expressions
+- Automated data extraction and reporting
+- Work procedure tracking and monitoring
+
+The system uses Blazor Server for real-time updates with Material Design (MudBlazor) components.
 
 ### Core Entities
-- **ConfigurazioneFontiDati**: Data source configurations (SQL, Email CSV, C# Handler, Pipeline)
-- **ConfigurazioneFaseCentro**: Phase/Center mappings for task scheduling
+- **ConfigurazioneFontiDati**: Data source configurations (SQL, EmailCSV, HandlerIntegrato, Pipeline)
+  - `TipoFonte`: Source type (SQL/EmailCSV/HandlerIntegrato/Pipeline)
+  - `ConnectionStringName`: Reference to appsettings connection string
+  - `TestoQuery`: Main SQL query template
+- **ConfigurazioneFaseCentro**: Phase/Center mappings for granular task scheduling
+  - `IdFaseLavorazione`: Work phase reference
+  - `IdCentro`: Work center reference
+  - `CronExpression`: Scheduling expression (e.g., "0 5 * * *")
+  - `TestoQueryTask`: Phase-specific query override (optional)
+  - `GiorniPrecedenti`: Days to look back for data extraction
 - **ProcedureLavorazioni**: Work procedures with associated centers
-- **FasiLavorazione**: Work phases
-- **CentriLavorazione**: Work centers
+- **FasiLavorazione**: Work phases (steps in procedures)
+- **CentriLavorazione**: Work centers (organizational units)
+- **TaskDaEseguire**: Scheduled tasks generated from configurations
+
+### Architecture Layers
+```
+Presentation Layer (Blazor Server)
+├── Components/Pages/           # Razor pages
+├── Components/Shared/          # Reusable components
+└── Services/Validation/        # Client-side validation
+
+Business Logic Layer
+├── DataReading/Services/       # Query execution, data extraction
+├── ClassLibraryLavorazioni/    # Legacy handlers (being migrated)
+└── Infrastructure/             # Job scheduling, task execution
+
+Data Access Layer
+├── Entities/Models/            # EF Core entities
+└── Entities/Context/           # DbContext configurations
+```
 
 ---
 
 ## 📋 Code Conventions
 
 ### Naming
-- **Private fields**: `_camelCase`
+- **Private fields**: `_camelCase` (always prefix with underscore)
 - **Public properties**: `PascalCase`
-- **Async methods**: Suffix `Async`
-- **Event handlers**: `On{Event}{Action}Async`
-- **Pages**: `Page{FeatureName}.razor`
-- **Services**: `{Feature}Service.cs`
+- **Async methods**: Suffix `Async` (mandatory for all async operations)
+- **Event handlers**: `On{Event}{Action}Async` (e.g., `OnSaveButtonClickedAsync`)
+- **Pages**: `Page{FeatureName}.razor` (e.g., `PageConfiguraFonteDati.razor`)
+- **Services**: `{Feature}Service.cs` (e.g., `QueryService.cs`, `SqlValidationService.cs`)
+- **Boolean flags**: Prefix with `is`, `has`, `can` (e.g., `_isLoading`, `_hasErrors`)
 
 ### File Structure
 ```
 BlazorDematReports/
-├── Components/Pages/Admin/
-│   └── Page*.razor           # Admin pages
+├── Components/
+│   ├── Pages/
+│   │   ├── Admin/              # Admin-only pages
+│   │   │   └── Page*.razor
+│   │   └── Impostazioni/       # Configuration pages
+│   │       └── ConfigurazioneFonti/
+│   │           ├── PageConfiguraFonteDati.razor
+│   │           └── Steps/      # Wizard steps
+│   └── Shared/                 # Reusable components
 ├── Services/
 │   ├── Validation/
 │   │   └── SqlValidationService.cs
 │   └── {Feature}Service.cs
-├── Models/ or Entities/
-└── appsettings.json
+├── Dto/                        # Data Transfer Objects
+├── Models/                     # View models
+DataReading/                    # Data extraction project
+├── Services/
+│   └── QueryService.cs         # SQL query execution
+├── Infrastructure/
+│   └── ProductionJobRunner.cs  # Task orchestration
+└── Interfaces/                 # Service contracts
+Entities/                       # Database entities project
+├── Models/
+│   ├── DbApplication/          # Application entities
+│   └── DbLavorazioni/          # Work procedure entities
+└── Context/
+    └── DematReportsContext.cs
+ClassLibraryLavorazioni/        # Legacy handlers (deprecating)
+└── Handlers/                   # C# data handlers
+Database/
+└── Migrations/                 # SQL migration scripts
+```
+
 ---
 
 ## 🛠️ Technology Stack
@@ -149,9 +208,28 @@ finally
 ## ⚙️ Key Services
 
 ### SqlValidationService
-- `ValidateQuery(string query)`: Validates SQL for injection patterns
+**Location**: `BlazorDematReports\Services\Validation\SqlValidationService.cs`
+
+**Methods**:
+- `ValidateQuery(string query)`: Validates SQL for injection patterns, required parameters, and syntax
+  - Checks: SQL injection patterns, restricted keywords, SELECT-only queries
+  - Required parameters: `@startDate` and `@endDate` (case-insensitive)
+  - Returns: `ValidationResult { IsValid, Message, Severity }`
+- `ValidateSqlSyntax(string query)`: Validates T-SQL syntax using Microsoft parser
+- `ValidateColumnNames(string query)`: Validates presence of required columns
+  - Required: `Operatore`, `DataLavorazione`, `Documenti`, `Fogli`, `Pagine`
+  - Rejects: `SELECT *`
 - `TestConnectionAsync(string connectionStringName)`: Tests database connection
-- Returns: `ValidationResult { IsValid, Message, Severity }`
+- `TestQueryExecutionAsync(string connectionStringName, string query)`: Tests query execution with schema validation
+
+### QueryService
+**Location**: `DataReading\Services\QueryService.cs`
+
+**Methods**:
+- `ExecuteQueryAsync(string connectionString, string queryString, DateTime startDate, DateTime endDate)`: Executes SQL query with parameterized dates
+  - Parameters: `@startDate` (DateTime2), `@endDate` (DateTime2)
+  - Timeout: 30 seconds
+  - Returns: `DataTable` with results
 
 ### ServiceWrapper (from BaseComponentPage)
 - `ServiceProcedureLaborazioni.GetTableProcedureLavorazioniByUserAsync()`
@@ -164,8 +242,49 @@ finally
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject SqlValidationService SqlValidator
----
+@inject ILogger<ComponentName> Logger
 ```
+
+## 📝 SQL Query Standards
+
+### Required Parameters
+All SQL queries **MUST** use exactly these parameter names:
+- `@startDate` (DateTime2) - Start date for data filtering
+- `@endDate` (DateTime2) - End date for data filtering
+
+**DO NOT USE**: `@startDataDe`, `@endDataDe`, `@startData`, `@endData` (legacy/deprecated)
+
+### Required Columns
+All production queries **MUST** return these columns (case-insensitive):
+1. `Operatore` - Operator identifier
+2. `DataLavorazione` - Processing date
+3. `Documenti` - Document count
+4. `Fogli` - Sheet count
+5. `Pagine` - Page count
+
+### Query Template Example
+```sql
+SELECT
+    OP_INDEX AS Operatore,
+    CAST(DATA_INDEX AS DATE) AS DataLavorazione,
+    COUNT(*) AS Documenti,
+    SUM(CAST(NUM_PAG AS INT)) / 2 AS Fogli,
+    SUM(CAST(NUM_PAG AS INT)) AS Pagine
+FROM TableName
+WHERE DATA_INDEX >= @startDate
+  AND DATA_INDEX < DATEADD(DAY, 1, @endDate)
+GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)
+```
+
+### Validation Rules
+- ✅ Only `SELECT` or `WITH` (CTE) queries allowed
+- ❌ No `SELECT *` - always specify columns explicitly
+- ❌ No DML operations: `UPDATE`, `INSERT`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`, `CREATE`
+- ❌ No system stored procedures: `xp_cmdshell`, `sp_executesql`, `sp_OA*`, `sp_configure`
+- ❌ No SQL comments: `--` or `/* */`
+- ✅ Maximum length: 1024 characters
+
+---
 
 ## 📝 PageConfiguraFonteDati Specifics
 
@@ -196,21 +315,111 @@ _selectedCentroId = procedura.Idcentro;  // Auto-extracted from ProcedureLavoraz
 
 ---
 
+## 🧪 Testing & Validation
+
+### SQL Query Testing
+Before saving any SQL query:
+1. Run `SqlValidator.ValidateQuery(query)` for syntax and security
+2. Run `SqlValidator.ValidateColumnNames(query)` for required columns
+3. Run `SqlValidator.TestQueryExecutionAsync(connectionString, query)` for execution test
+
+### Component Testing
+- Test all async operations with loading states
+- Verify error handling with invalid inputs
+- Test navigation and state management
+- Validate form submission with empty/invalid data
+
+### Database Migration Testing
+1. Test migration script in development environment
+2. Verify data integrity after migration
+3. Test rollback scripts
+4. Document breaking changes
+
+---
+
+## 🔄 Error Handling Standards
+
+### Try-Catch-Finally Pattern
+```csharp
+private async Task SaveAsync()
+{
+    _saving = true;
+    try
+    {
+        // Validation
+        if (string.IsNullOrWhiteSpace(_config.RequiredField))
+        {
+            Snackbar.Add("Campo obbligatorio mancante", Severity.Warning);
+            return;
+        }
+
+        // Business logic
+        await _service.SaveConfigurationAsync(_config);
+        
+        Snackbar.Add("Configurazione salvata con successo", Severity.Success);
+        NavigationManager.NavigateTo("/list-page");
+    }
+    catch (SqlException sqlEx)
+    {
+        Logger.LogError(sqlEx, "Errore database durante il salvataggio");
+        Snackbar.Add($"Errore database: {sqlEx.Message}", Severity.Error);
+    }
+    catch (Exception ex)
+    {
+        Logger.LogError(ex, "Errore imprevisto durante il salvataggio");
+        Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
+    }
+    finally
+    {
+        _saving = false;
+        await InvokeAsync(StateHasChanged);
+    }
+}
+```
+
+### Logging Guidelines
+- **LogInformation**: Successful operations, state changes
+- **LogWarning**: Validation failures, deprecated feature usage
+- **LogError**: Exceptions, database errors, service failures
+- **Never log**: Passwords, connection strings, sensitive data
+- **Always include**: Exception object, context parameters
+
+---
+
 ## ✅ Pre-Commit Checklist
 
+### Code Quality
 - [ ] Naming follows conventions (_camelCase for private, PascalCase for public)
 - [ ] Async methods end with `Async` suffix
+- [ ] Boolean flags prefixed with `is`, `has`, `can`
+- [ ] No hardcoded strings (use Configuration or constants)
+- [ ] Comments only for complex logic (self-documenting code preferred)
+
+### Database & Async Operations
 - [ ] All database operations use `await using var context = await DbFactory.CreateDbContextAsync()`
 - [ ] Try-catch-finally blocks with proper state cleanup
+- [ ] Loading indicators for async operations (`_loading`, `_saving` flags)
+- [ ] Timeout configured for database operations (30 seconds default)
+
+### UI & User Experience
 - [ ] User feedback via Snackbar (success/error/warning)
-- [ ] Loading indicators for async operations
 - [ ] Input validation before operations
-- [ ] No hardcoded strings (use Configuration or constants)
-- [ ] No Console.WriteLine (use Logger)
 - [ ] Components use MudBlazor (avoid raw HTML)
 - [ ] Responsive grid (xs, md breakpoints)
-- [ ] Comments only for complex logic
-- [ ] Logger string not contain icon
+- [ ] Loading/disabled states on buttons during async operations
+
+### Security & Logging
+- [ ] SQL queries validated with SqlValidationService
+- [ ] No Console.WriteLine (use ILogger instead)
+- [ ] Logger strings don't contain emoji/icons
+- [ ] No sensitive data in logs (passwords, tokens, etc.)
+- [ ] Authorization attributes on admin pages
+
+### Build & Testing
+- [ ] Code compiles without warnings: `dotnet build`
+- [ ] No new SonarQube issues introduced
+- [ ] Error scenarios tested (invalid input, network failures)
+- [ ] Navigation flows tested
 
 ---
 
@@ -225,10 +434,48 @@ _selectedCentroId = procedura.Idcentro;  // Auto-extracted from ProcedureLavoraz
 
 ## 🚀 Git Workflow
 
-When pushing changes:
-1. Reference this file to ensure compliance
-2. Include issue/feature numbers in commit messages
-3. Run build before committing: `dotnet build`
+### Commit Message Format
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types**:
+- `feat`: New feature
+- `fix`: Bug fix
+- `refactor`: Code refactoring
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting)
+- `test`: Adding tests
+- `chore`: Build/config changes
+
+**Examples**:
+```
+feat(sql-validation): Add parameter name validation for date parameters
+
+Added validation to ensure queries use @startDate/@endDate instead of legacy @startDataDe/@endDataDe.
+Updated SqlValidationService with enhanced error messages.
+
+Fixes #123
+```
+
+### Before Pushing
+1. Run build: `dotnet build`
+2. Check for warnings and errors
+3. Review Pre-Commit Checklist
+4. Reference issue/feature numbers in commit message
+5. Ensure all open files are saved
+
+### Migration Files
+When adding database migrations:
+1. Create SQL script in `Database\Migrations\`
+2. Name format: `YYYYMMDD_DescriptiveName.sql`
+3. Include rollback script or comments
+4. Test in development environment first
+5. Document in `MigrationHistory.md`
 
 ---
 
@@ -256,10 +503,22 @@ When pushing changes:
 - Sanitizza sempre l'input utente per prevenire SQL Injection, XSS, e path traversal.
 - Usa librerie crittografiche sicure e aggiornate.
 
-## 3. Best Practices per Linguaggio
-- [Inserisci qui il linguaggio, es: Java/Python/JS]: Segui rigorosamente le convenzioni di naming e le best practices del linguaggio per evitare "Code Smells".
-- Gestisci le eccezioni in modo specifico, non catturare eccezioni generiche (`catch(Exception e)`).
-- Chiudi risorse (file, connessioni DB) in blocchi `finally` o usa `try-with-resources`.
+## 3. Best Practices per C# (.NET 10)
+- **Naming**: Segui le convenzioni Microsoft C# (PascalCase per public, _camelCase per private)
+- **Async/Await**: Usa `async`/`await` per operazioni I/O, evita `.Result` o `.Wait()`
+- **Null Safety**: Usa nullable reference types (`string?`), null-coalescing (`??`), null-conditional (`?.`)
+- **Resource Management**: 
+  - Database: `await using var context = await DbFactory.CreateDbContextAsync()`
+  - Connections: `await using var connection = new SqlConnection(connectionString)`
+  - Streams: `await using var stream = File.OpenRead(path)`
+- **Exception Handling**:
+  - Catch specific exceptions first: `catch (SqlException)`, then `catch (Exception)`
+  - Always log exceptions with context: `Logger.LogError(ex, "Context message")`
+  - Never swallow exceptions silently
+  - Use `finally` for cleanup (flags, StateHasChanged)
+- **LINQ**: Prefer method syntax over query syntax, use `await` with async LINQ (ToListAsync, FirstOrDefaultAsync)
+- **String Operations**: Use `StringComparison.OrdinalIgnoreCase` for comparisons, prefer string interpolation (`$"..."`)
+- **Collections**: Use `List<T>` for mutable, `IReadOnlyList<T>` for immutable, prefer `Any()` over `Count() > 0`
 
 
 ## 4. Istruzioni di Prompting

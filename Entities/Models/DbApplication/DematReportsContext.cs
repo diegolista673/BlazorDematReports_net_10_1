@@ -258,14 +258,11 @@ public partial class DematReportsContext : DbContext
             entity.HasIndex(e => new { e.IdConfigurazione, e.IdProceduraLavorazione, e.IdFaseLavorazione, e.IdCentro }, "UQ_FaseCentro_Unique").IsUnique();
 
             entity.Property(e => e.CronExpression).HasMaxLength(100);
-            entity.Property(e => e.EnabledTask).HasDefaultValue(true);
             entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
             entity.Property(e => e.HandlerClassName).HasMaxLength(255);
-            entity.Property(e => e.IsTaskEnabled).HasDefaultValue(true);
             entity.Property(e => e.MailServiceCode).HasMaxLength(100);
             entity.Property(e => e.TaskDescription).HasMaxLength(255);
             entity.Property(e => e.TipoTask).HasMaxLength(50);
-            entity.Property(e => e.UltimaModificaTask).HasColumnType("datetime");
 
             entity.HasOne(d => d.IdCentroNavigation).WithMany(p => p.ConfigurazioneFaseCentros)
                 .HasForeignKey(d => d.IdCentro)

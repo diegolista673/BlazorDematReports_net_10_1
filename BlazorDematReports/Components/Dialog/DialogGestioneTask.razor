@@ -1,0 +1,313 @@
+@using Entities.Models.DbApplication
+@using DataReading.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject IDbContextFactory<DematReportsContext> DbFactory
+@inject IProductionJobScheduler ProductionScheduler
+@inject ISnackbar Snackbar
+@inject ILogger<DialogGestioneTask> Logger
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Class="mr-2" />
+            Gestione Task - @_codiceConfigurazione
+        </MudText>
+
+        @if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate />
+        }
+        else if (!_tasks.Any())
+        {
+            <MudAlert Severity="Severity.Info">
+                <MudText>Nessun task associato a questa configurazione.</MudText>
+                <MudText Typo="Typo.caption" Class="mt-2">
+                    I task vengono generati dal wizard di configurazione quando salvi i mapping.
+                </MudText>
+            </MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="mr-2">
+                    @_tasks.Count(t => t.Enabled) attivi
+                </MudChip>
+                <MudChip T="string" Color="Color.Default" Size="Size.Small">
+                    @_tasks.Count(t => !t.Enabled) disabilitati
+                </MudChip>
+                <MudText Typo="Typo.caption" Class="ml-2" Style="display: inline;">
+                    / @_tasks.Count totali
+                </MudText>
+            </MudText>
+
+            <MudTable Items="@_tasks" Dense Striped Hover Elevation="0" Class="mb-4">
+                <HeaderContent>
+                    <MudTh>ID</MudTh>
+                    <MudTh>Schedulazione</MudTh>
+                    <MudTh>Stato</MudTh>
+                    <MudTh>Ultimo Esito</MudTh>
+                    <MudTh>Azioni</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudText Typo="Typo.body2">@context.IdTaskDaEseguire</MudText>
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                            @GetCronDescription(context.CronExpression ?? "0 5 * * *")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        @if (context.Enabled)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Attivo</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Disabilitato</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (context.LastRunUtc.HasValue)
+                        {
+                            <MudText Typo="Typo.caption">
+                                @context.LastRunUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </MudText>
+                            @if (!string.IsNullOrWhiteSpace(context.LastError))
+                            {
+                                <MudTooltip Text="@context.LastError">
+                                    <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small" />
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted">Mai eseguito</MudText>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        <MudStack Row Spacing="1" Justify="Justify.FlexStart">
+                            <MudSwitch Value="@context.Enabled"
+                                       ValueChanged="@((bool _) => ToggleTaskAsync(context))"
+                                       Color="Color.Success"
+                                       Disabled="@_saving"
+                                       T="bool" />
+
+                            <MudTooltip Text="Elimina task (irreversibile)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               Disabled="@_saving"
+                                               OnClick="@(() => EliminaTaskAsync(context))" />
+                            </MudTooltip>
+                        </MudStack>
+
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudDivider Class="my-4" />
+
+            <MudStack Row Spacing="2" Justify="Justify.SpaceBetween">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.DeleteForever"
+                           Disabled="@_saving"
+                           OnClick="EliminaTuttiAsync">
+                    Elimina Tutti
+                </MudButton>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Disabled="@_saving">Chiudi</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    private IMudDialogInstance? MudDialog { get; set; }
+    
+    [Parameter] public int IdConfigurazione { get; set; }
+    [Parameter] public string CodiceConfigurazione { get; set; } = string.Empty;
+
+    private bool _loading = true;
+    private bool _saving = false;
+    private bool _hasChanges = false;
+    private List<TaskDaEseguire> _tasks = new();
+    private string _codiceConfigurazione = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasksAsync();
+    }
+
+    private async Task LoadTasksAsync()
+    {
+        _loading = true;
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            _tasks = await context.TaskDaEseguires
+                .Where(t => t.IdConfigurazioneDatabase == IdConfigurazione)
+                .OrderBy(t => t.IdTaskDaEseguire)
+                .ToListAsync();
+
+            _codiceConfigurazione = CodiceConfigurazione;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Errore caricamento task per configurazione {IdConfigurazione}", IdConfigurazione);
+            Snackbar.Add($"Errore caricamento task: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ToggleTaskAsync(TaskDaEseguire task)
+    {
+        _saving = true;
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            var dbTask = await context.TaskDaEseguires.FindAsync(task.IdTaskDaEseguire);
+            if (dbTask != null)
+            {
+                dbTask.Enabled = !dbTask.Enabled;
+                await context.SaveChangesAsync();
+
+                var stato = dbTask.Enabled ? "abilitato" : "disabilitato";
+                Snackbar.Add($"Task {dbTask.IdTaskDaEseguire} {stato}", Severity.Success);
+                
+                Logger.LogInformation("Task {TaskId} {Stato} da utente", 
+                    dbTask.IdTaskDaEseguire, stato);
+
+                _hasChanges = true; // Traccia modifica
+                await LoadTasksAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Errore toggle task {TaskId}", task.IdTaskDaEseguire);
+            Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task EliminaTaskAsync(TaskDaEseguire task)
+    {
+        _saving = true;
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+            
+            // Rimuovi da Hangfire
+            if (!string.IsNullOrWhiteSpace(task.IdTaskHangFire))
+            {
+                await ProductionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
+                Logger.LogInformation("Job Hangfire {HangfireKey} rimosso per task {TaskId}", 
+                    task.IdTaskHangFire, task.IdTaskDaEseguire);
+            }
+
+            // Rimuovi da DB
+            var dbTask = await context.TaskDaEseguires.FindAsync(task.IdTaskDaEseguire);
+            if (dbTask != null)
+            {
+                context.TaskDaEseguires.Remove(dbTask);
+                await context.SaveChangesAsync();
+                Snackbar.Add($"Task {task.IdTaskDaEseguire} eliminato", Severity.Success);
+                Logger.LogInformation("Task {TaskId} eliminato dal database", task.IdTaskDaEseguire);
+                
+                _hasChanges = true; // Traccia modifica
+                await LoadTasksAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Errore eliminazione task {TaskId}", task.IdTaskDaEseguire);
+            Snackbar.Add($"Errore eliminazione: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+
+    private async Task EliminaTuttiAsync()
+    {
+        _saving = true;
+        try
+        {
+            await using var context = await DbFactory.CreateDbContextAsync();
+
+            // Rimuovi da Hangfire
+            foreach (var task in _tasks)
+            {
+                if (!string.IsNullOrWhiteSpace(task.IdTaskHangFire))
+                {
+                    try
+                    {
+                        await ProductionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "Errore rimozione job Hangfire {HangfireKey}", task.IdTaskHangFire);
+                    }
+                }
+            }
+
+            // Rimuovi da DB
+            var dbTasks = await context.TaskDaEseguires
+                .Where(t => t.IdConfigurazioneDatabase == IdConfigurazione)
+                .ToListAsync();
+            
+            context.TaskDaEseguires.RemoveRange(dbTasks);
+            await context.SaveChangesAsync();
+
+            Snackbar.Add($"{dbTasks.Count} task eliminati", Severity.Success);
+            Logger.LogInformation("{Count} task eliminati per configurazione {IdConfigurazione}", 
+                dbTasks.Count, IdConfigurazione);
+            
+            _tasks.Clear();
+            _hasChanges = true;
+            
+            // Chiudi dialog e segnala aggiornamento alla pagina principale
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Errore eliminazione tutti i task");
+            Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+
+    private static string GetCronDescription(string cron) => cron switch
+    {
+        "0 5 * * *" => "Giornaliero 05:00",
+        "0 2 * * *" => "Giornaliero 02:00",
+        "0 */4 * * *" => "Ogni 4 ore",
+        "0 * * * *" => "Ogni ora",
+        "0 0 1 * *" => "Mensile (1° giorno)",
+        "0 0 * * 0" => "Settimanale (Domenica)",
+        "0 0 * * 1" => "Settimanale (Lunedì)",
+        _ => cron
+    };
+
+    private void Close() => MudDialog.Cancel();
+}

@@ -152,7 +152,7 @@ GROUP BY op, CONVERT(DATE, data)
                           spellcheck="false"
                           Placeholder="SELECT ..." />
             <MudText Typo="Typo.caption" Class="mt-1">
-                Parametri obbligatori: @@StartDate, @@EndDate | Colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine
+                Parametri obbligatori: @@startDate, @@endDate | Colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine
             </MudText>
         </MudItem>
 
@@ -236,8 +236,8 @@ _queryText = @"SELECT
     SUM(CAST(NUM_PAG AS INT)) / 2 AS Fogli,
     SUM(CAST(NUM_PAG AS INT)) AS Pagine
 FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-WHERE DATA_INDEX >= @startDataDe
-  AND DATA_INDEX < DATEADD(DAY, 1, @endDataDe)
+WHERE DATA_INDEX >= @startDate
+  AND DATA_INDEX < DATEADD(DAY, 1, @endDate)
 GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)";
         }
     }
@@ -304,8 +304,6 @@ GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)";
             FlagAttiva = true,
             TipoTask = State.TipoFonte,
             CronExpression = _selectedCron,
-            EnabledTask = true,
-            UltimaModificaTask = DateTime.Now,
             GiorniPrecedenti = _giorniPrecedenti,
             TestoQueryTask = State.TipoFonte == "SQL" ? _queryText : null,
             MailServiceCode = State.TipoFonte == "EmailCSV" ? State.MailServiceCode : null,
@@ -323,8 +321,8 @@ GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)";
     SUM(CAST(NUM_PAG AS INT)) / 2 AS Fogli,
     SUM(CAST(NUM_PAG AS INT)) AS Pagine
 FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-WHERE DATA_INDEX >= @startDataDe
-  AND DATA_INDEX<DATEADD(DAY, 1, @endDataDe)
+WHERE DATA_INDEX >= @startDate
+AND DATA_INDEX < DATEADD(DAY, 1, @endDate)
 GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)"
             : null;
         _validationMessage = null;

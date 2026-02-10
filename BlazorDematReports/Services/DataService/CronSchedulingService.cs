@@ -57,7 +57,6 @@ namespace BlazorDematReports.Services.DataService
                 return;
 
             mapping.CronExpression = cronValue;
-            mapping.UltimaModificaTask = DateTime.Now;
         }
 
         public List<string> SyncCronsFromMappings(List<ConfigurazioneFaseCentro> mappings)

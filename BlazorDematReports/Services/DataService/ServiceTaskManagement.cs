@@ -229,7 +229,6 @@ namespace BlazorDematReports.Services.DataService
                 TestoQueryTask = mapping.TestoQueryTask,
                 MailServiceCode = mapping.MailServiceCode ?? mapping.IdConfigurazioneNavigation?.MailServiceCode,
                 HandlerClassName = mapping.HandlerClassName ?? mapping.IdConfigurazioneNavigation?.HandlerClassName,
-                EnabledTask = mapping.EnabledTask,
                 NomeProcedura = mapping.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
                 NomeFase = mapping.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A",
                 NomeCentro = mapping.IdCentroNavigation?.Centro ?? "N/A"
@@ -285,8 +284,6 @@ namespace BlazorDematReports.Services.DataService
                 mapping.TestoQueryTask = taskDto.TestoQueryTask;
                 mapping.MailServiceCode = taskDto.MailServiceCode;
                 mapping.HandlerClassName = taskDto.HandlerClassName;
-                mapping.EnabledTask = taskDto.EnabledTask;
-                mapping.UltimaModificaTask = DateTime.Now;
 
                 await context.SaveChangesAsync();
 
@@ -297,7 +294,6 @@ namespace BlazorDematReports.Services.DataService
                 if (hangfireTask != null)
                 {
                     hangfireTask.CronExpression = taskDto.CronExpression;
-                    hangfireTask.Enabled = taskDto.EnabledTask;
                     await context.SaveChangesAsync();
 
                     // Aggiorna o ricrea il recurring job in Hangfire

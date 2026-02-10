@@ -49,7 +49,7 @@ namespace DataReading.Services
                 
                 var endDateParam = command.Parameters.Add("@endDate", SqlDbType.DateTime2);
                 endDateParam.Value = endDate;
-                
+
                 using var reader = await command.ExecuteReaderAsync();
                 table.Load(reader);
             }

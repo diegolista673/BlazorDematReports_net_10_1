@@ -19,8 +19,6 @@ public partial class ConfigurazioneFaseCentro
 
     public bool FlagAttiva { get; set; }
 
-    public bool IsTaskEnabled { get; set; }
-
     public string? TaskDescription { get; set; }
 
     public string? TipoTask { get; set; }
@@ -32,10 +30,6 @@ public partial class ConfigurazioneFaseCentro
     public string? MailServiceCode { get; set; }
 
     public string? HandlerClassName { get; set; }
-
-    public bool EnabledTask { get; set; }
-
-    public DateTime? UltimaModificaTask { get; set; }
 
     public int? GiorniPrecedenti { get; set; }
 

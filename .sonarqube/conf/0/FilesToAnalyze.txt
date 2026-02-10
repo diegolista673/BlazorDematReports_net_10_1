@@ -44,6 +44,7 @@ C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\ProduzioneOperatori.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\ProduzioneSistema.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\QueryProcedureLavorazioni.cs
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\QueryProcedureLavorazioniBackup.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\QueryProcedureLavorazioniExtensions.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\RepartiProduzione.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\Ruoli.cs
@@ -63,6 +64,8 @@ C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\TipoTurni.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\TotaliProduzione.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\Turni.cs
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\VwConfigurazioneTaskSummary.cs
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\VwConfigurazioniFontiDatiCompletum.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\Z0072370Rdmkt28autGeUdaDettaglio.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\ReportAnniSistema.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\ReportAnnuale.cs

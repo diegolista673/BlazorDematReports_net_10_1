@@ -104,18 +104,15 @@ public class SqlValidationService
                 "Solo query di lettura accettate per motivi di sicurezza.");
         }
 
-        // 5. Check parametri obbligatori (supporta entrambi i formati)
-        bool hasDateParams = 
-            (query.Contains("@startDate", StringComparison.OrdinalIgnoreCase) && 
-             query.Contains("@endDate", StringComparison.OrdinalIgnoreCase)) ||
-            (query.Contains("@startData", StringComparison.OrdinalIgnoreCase) && 
-             query.Contains("@endData", StringComparison.OrdinalIgnoreCase));
+        // 5. Check parametri obbligatori - DEVONO essere esattamente @startDate e @endDate
+        bool hasStartDate = query.Contains("@startDate", StringComparison.OrdinalIgnoreCase);
+        bool hasEndDate = query.Contains("@endDate", StringComparison.OrdinalIgnoreCase);
 
-        if (!hasDateParams)
+        if (!hasStartDate || !hasEndDate)
         {
             return ValidationResult.Error(
                 "Parametri di data mancanti. " +
-                "Utilizzare @startDate e @endDate (o @startData e @endData) per il filtraggio delle date.");
+                "Utilizzare @startDate e @endDate per il filtraggio delle date.");
         }
 
         return ValidationResult.Success("Query validata con successo.");
@@ -138,7 +135,7 @@ public class SqlValidationService
             var preCheckResult = ValidateQueryStructure(query);
             if (!preCheckResult.IsValid)
                 return preCheckResult;
-            
+
             // 2. Parser T-SQL Microsoft
             var parser = new TSql160Parser(false);
 

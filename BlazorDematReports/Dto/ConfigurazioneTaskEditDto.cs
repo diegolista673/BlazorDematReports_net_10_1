@@ -17,7 +17,6 @@ namespace BlazorDematReports.Dto
         public string? TestoQueryTask { get; set; }
         public string? MailServiceCode { get; set; }
         public string? HandlerClassName { get; set; }
-        public bool EnabledTask { get; set; } = true;
         
         // Display (readonly)
         public string NomeProcedura { get; set; } = string.Empty;
@@ -51,7 +50,7 @@ namespace BlazorDematReports.Dto
             {
                 $"Tipo: {TipoTask}",
                 $"CRON: {CronExpression}",
-                $"Stato: {(EnabledTask ? "Attivo" : "Disattivo")}"
+                "Stato: Gestito da TaskDaEseguire" 
             };
             
             if (!string.IsNullOrWhiteSpace(TestoQueryTask))

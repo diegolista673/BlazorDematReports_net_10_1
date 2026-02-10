@@ -80,14 +80,7 @@ namespace DataReading.Infrastructure
             return $"prod:{t.IdTaskDaEseguire}-{idProc}-{procName}-{faseName}";
         }
 
-        /// <summary>
-        /// Estrae l'espressione cron da ConfigurazioneFaseCentro.ParametriExtra (JSON).
-        /// Se non presente, restituisce un cron di default (05:00 giornaliero).
-        /// </summary>
-        private static string ExtractCronFromMapping(ConfigurazioneFaseCentro mapping)
-        {
-            return mapping.CronExpression ?? "0 5 * * *"; // Default giornaliero alle 05:00
-        }
+
 
         /// <summary>
         /// Risolve l'espressione cron per un task.
@@ -383,16 +376,23 @@ namespace DataReading.Infrastructure
             var db = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
             var logger = scope.ServiceProvider.GetService<ILogger>();
 
-            var entity = await db.TaskDaEseguires
+        var entity = await db.TaskDaEseguires
                 .AsSplitQuery()
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdConfigurazioneDatabaseNavigation)
                 .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
 
-            if (entity == null || !entity.Enabled)
+            if (entity == null)
             {
-                logger?.LogWarning("Task {TaskId} non trovato o disabilitato", idTaskDaEseguire);
+                logger?.LogWarning("Task {TaskId} non trovato", idTaskDaEseguire);
+                return;
+            }
+
+            // Guard Clause: Verifica se il task è abilitato prima di eseguire
+            if (!entity.Enabled)
+            {
+                logger?.LogInformation("Task {TaskId} disabilitato - esecuzione saltata", idTaskDaEseguire);
                 return;
             }
 
