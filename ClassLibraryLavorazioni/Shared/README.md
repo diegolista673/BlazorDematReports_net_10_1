@@ -1,7 +1,8 @@
 # Sistema Unificato degli Handler - MIGRAZIONE COMPLETATA
 
 ## Panoramica
-È stato implementato con successo un sistema unificato per la gestione degli handler che consolida sia le lavorazioni classiche che le importazioni mail sotto un'unica interfaccia e registry.
+È stato implementato con successo un sistema unificato per la gestione degli handler che consolida sia le lavorazioni classiche che le importazioni mail 
+sotto un'unica interfaccia e registry.
 
 ## ? Struttura del Sistema
 

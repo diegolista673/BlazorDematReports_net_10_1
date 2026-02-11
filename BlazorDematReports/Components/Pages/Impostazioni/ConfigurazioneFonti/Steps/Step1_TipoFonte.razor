@@ -13,24 +13,13 @@
             </div>
         </MudStack>
     </MudRadio>
-    <MudRadio Value="@("EmailCSV")" Color="Color.Secondary" Dense Class="mt-3">
-        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Secondary" />
-            <div>
-                <MudText Typo="Typo.body1"><strong>Email CSV</strong></MudText>
-                <MudText Typo="Typo.body2" Class="text-muted">
-                    Importa dati da allegati CSV ricevuti via email
-                </MudText>
-            </div>
-        </MudStack>
-    </MudRadio>
     <MudRadio Value="@("HandlerIntegrato")" Color="Color.Tertiary" Dense Class="mt-3">
         <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
             <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Tertiary" />
             <div>
-                <MudText Typo="Typo.body1"><strong>Handler C# Integrato</strong></MudText>
+                <MudText Typo="Typo.body1"><strong>Handler C#</strong></MudText>
                 <MudText Typo="Typo.body2" Class="text-muted">
-                    Usa un handler personalizzato per logica complessa
+                    Definisci un handler personalizzato (inclusi quelli che inviano email o elaborano file)
                 </MudText>
             </div>
         </MudStack>

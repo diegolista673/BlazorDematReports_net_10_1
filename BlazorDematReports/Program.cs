@@ -16,9 +16,6 @@ using Entities.Models.DbApplication;
 using Hangfire;
 using LibraryLavorazioni.Lavorazioni.Handlers;
 using LibraryLavorazioni.Lavorazioni.Interfaces;
-using LibraryLavorazioni.LavorazioniViaMail.Handlers;
-using LibraryLavorazioni.LavorazioniViaMail.Interfaces;
-using LibraryLavorazioni.LavorazioniViaMail.Services;
 using LibraryLavorazioni.Shared.Interfaces;
 using LibraryLavorazioni.Shared.Registry;
 using LibraryLavorazioni.Shared.Services;
@@ -271,12 +268,10 @@ public static class Program
         builder.Services.AddScoped<ILavorazioneHandler, ANT_ADER4_SORTER_1_2Handler>();
         builder.Services.AddScoped<ILavorazioneHandler, PRATICHE_SUCCESSIONEHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, RDMKT_RSPHandler>();
+        builder.Services.AddScoped<ILavorazioneHandler, Hera16EwsHandler>();
+        builder.Services.AddScoped<ILavorazioneHandler, Ader4Handler>();
 
-        // Registrazione handler MAIL SERVICE
-        builder.Services.AddScoped<IMailImportHandler, Hera16EwsHandler>();
-        builder.Services.AddScoped<IMailImportHandler, Ader4Handler>();
-
-        // Registry unificato (raccoglie sia ILavorazioneHandler che IMailImportHandler)
+        // Registry unificato (raccoglie ILavorazioneHandler)
         builder.Services.AddScoped<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
         
         // Servizio unificato principale
@@ -286,11 +281,6 @@ public static class Program
 
         // Sistema Unificato Configurazione Fonti Dati
         builder.Services.AddScoped<LibraryLavorazioni.Shared.Handlers.UnifiedDataSourceHandler>();
-        
-        // Handler Discovery Service - cached list
-        builder.Services.AddSingleton(_ => LibraryLavorazioni.Shared.Discovery.HandlerDiscoveryService.AvailableHandlers);
-
-
     }
 
 

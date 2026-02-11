@@ -51,7 +51,6 @@ public record ConfigurationWizardState
     private bool IsStep2Valid() => TipoFonte switch
     {
         "SQL" => !string.IsNullOrWhiteSpace(ConnectionStringName) && (ConnectionTestPassed || IsEditMode),
-        "EmailCSV" => !string.IsNullOrWhiteSpace(MailServiceCode),
         "HandlerIntegrato" => !string.IsNullOrWhiteSpace(HandlerClassName),
         _ => false
     };

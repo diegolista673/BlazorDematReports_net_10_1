@@ -1,5 +1,5 @@
 using LibraryLavorazioni.LavorazioniViaMail.HERA16;
-using LibraryLavorazioni.LavorazioniViaMail.Constants;
+using LibraryLavorazioni.Lavorazioni.Constants;
 using LibraryLavorazioni.Utility.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -12,7 +12,7 @@ namespace LibraryLavorazioni.Jobs
     /// Esempio di utilizzo:
     /// RecurringJob.AddOrUpdate<Hera16ProduzioneJob>(
     ///     job => job.EseguiAsync(),
-    ///     JobConstants.CronExpressions.Daily7AM
+    ///     "0 7 * * *" // Ogni giorno alle 7:00
     /// );
     /// </summary>
     public class Hera16ProduzioneJob
@@ -46,25 +46,25 @@ namespace LibraryLavorazioni.Jobs
         /// <returns>Task asincrono per l'esecuzione del job</returns>
         public async Task EseguiAsync()
         {
-            const string jobName = JobConstants.JobNames.Hera16Production;
+            const string jobName = "HERA16 Produzione Giornaliera";
             
-            _logger.LogInformation(JobConstants.LogMessages.JobStarting, jobName);
+            _logger.LogInformation("Avvio job {JobName}...", jobName);
             
             try
             {
                 // Valida la configurazione prima di procedere
                 ValidateConfiguration();
-                _logger.LogDebug(JobConstants.LogMessages.ConfigValidated);
+                _logger.LogDebug("Configurazione validata correttamente");
                 
                 // Crea ed esegue il processore di produzione
                 var processor = CreateProductionProcessor();
                 await processor.CaricaAllegato();
                 
-                _logger.LogInformation(JobConstants.LogMessages.JobCompleted, jobName);
+                _logger.LogInformation("Job {JobName} completato con successo", jobName);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, JobConstants.LogMessages.JobFailed, jobName);
+                _logger.LogError(ex, "Errore durante l'esecuzione del job {JobName}", jobName);
                 
                 // Re-throw per permettere a Hangfire di gestire il fallimento
                 throw;

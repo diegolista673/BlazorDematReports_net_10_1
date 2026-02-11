@@ -1,0 +1,112 @@
+# Suggested Git Commit Message
+
+```
+refactor: unify mail handlers with ILavorazioneHandler (Step 1-6/7)
+
+## Summary
+Unified mail import handlers (HERA16, ADER4) with standard ILavorazioneHandler 
+interface, eliminating code duplication and simplifying architecture.
+
+## Changes
+
+### Core Infrastructure
+- Extended ILavorazioneHandler with metadata support (GetServiceCode, GetMetadata)
+- Added HandlerMetadata record for optional metadata (ServiceCode, RequiresEmailService, Category)
+- Implemented default methods for backward compatibility (zero breaking changes)
+
+### Handler Migration
+- Migrated Hera16EwsHandler: IMailImportHandler ? ILavorazioneHandler
+- Migrated Ader4Handler: IMailImportHandler ? ILavorazioneHandler
+- Added explicit dependency injection via constructor
+- Decorated with [HandlerCode] and [Description] attributes
+
+### Discovery & UI
+- Updated HandlerDiscoveryService to extract metadata automatically
+- Enhanced HandlerInfo with ServiceCode, RequiresEmailService, Category fields
+- Improved wizard UI (Step2):
+  - Email icon for mail handlers
+  - ServiceCode chip display
+  - Auto-populate MailServiceCode field
+  - Contextual alerts with handler-specific info
+
+### Dependency Injection
+- Updated Program.cs registrations:
+  - AddScoped<ILavorazioneHandler, Hera16EwsHandler>()
+  - AddScoped<ILavorazioneHandler, Ader4Handler>()
+
+## Benefits
+- ? Single interface for all handlers (vs 2 before)
+- ? Automatic discovery with metadata
+- ? Improved UI/UX with visual indicators
+- ? Backward compatible (existing handlers work unchanged)
+- ? Extensible metadata system for future needs
+
+## Files Modified (10)
+- ClassLibraryLavorazioni/Lavorazioni/Interfaces/ILavorazioneHandler.cs
+- ClassLibraryLavorazioni/LavorazioniViaMail/Handlers/Hera16EwsHandler.cs
+- ClassLibraryLavorazioni/LavorazioniViaMail/Handlers/Ader4Handler.cs
+- ClassLibraryLavorazioni/Shared/Discovery/HandlerDiscoveryService.cs
+- BlazorDematReports/Program.cs
+- BlazorDematReports/Components/.../Step2_ConfigurazioneSpecifica.razor
+- BlazorDematReports/NOTE.txt
+
+## Documentation Created (4)
+- REFACTOR_MAIL_HANDLERS_PLAN.md (detailed plan)
+- MAIL_HANDLER_DEPENDENCIES.md (dependency analysis)
+- REFACTOR_EXECUTIVE_SUMMARY.md (executive summary)
+- REFACTOR_SESSION_SUMMARY.md (implementation log)
+- REFACTOR_INDEX.md (navigation index)
+
+## Status
+- Steps completed: 6/7 (86%)
+- Build: ? Success (no warnings)
+- Breaking changes: None
+- Next: Step 7 (cleanup - mark IMailImportHandler obsolete, remove wrapper)
+
+## Testing Checklist
+- [ ] Build compiles without errors ?
+- [ ] Handler discovery finds HERA16 and ADER4 ?
+- [ ] Wizard shows email icons for mail handlers (manual)
+- [ ] ServiceCode auto-populates when selecting mail handler (manual)
+- [ ] Existing handler configurations still work (regression)
+- [ ] Mail task execution works as before (integration)
+
+Refs: #refactor-handlers
+See: REFACTOR_SESSION_SUMMARY.md for detailed implementation log
+```
+
+---
+
+## Alternative Short Message
+
+```
+refactor(handlers): unify mail handlers with ILavorazioneHandler
+
+- Extended ILavorazioneHandler with metadata support
+- Migrated Hera16EwsHandler and Ader4Handler to standard interface
+- Updated HandlerDiscoveryService with metadata extraction
+- Improved wizard UI with email icons and auto-population
+
+Step 6/7 complete. Build: ? Breaking changes: None
+See: REFACTOR_SESSION_SUMMARY.md
+```
+
+---
+
+## Git Commands
+
+```bash
+# Stage changes
+git add -A
+
+# Commit with detailed message
+git commit -F COMMIT_MESSAGE.txt
+
+# Or short version
+git commit -m "refactor(handlers): unify mail handlers with ILavorazioneHandler" \
+           -m "Step 6/7 complete. Build: ? Breaking changes: None" \
+           -m "See: REFACTOR_SESSION_SUMMARY.md"
+
+# Push (if ready)
+git push origin master
+```

@@ -19,61 +19,126 @@
 }
 else
 {
-    <MudSimpleTable Dense Bordered Striped>
-        <thead>
-            <tr>
-                <th>Fase</th>
-                <th>Cron</th>
-                <th>Giorni Prec.</th>
-                @if (State.TipoFonte == "SQL")
+    @* Desktop View: Table (nascosta su mobile) *@
+    <MudHidden Breakpoint="Breakpoint.SmAndDown">
+        <MudSimpleTable Dense Bordered Striped>
+            <thead>
+                <tr>
+                    <th>Fase</th>
+                    <th>Schedulazione</th>
+                    <th>Giorni Prec.</th>
+                    @if (State.TipoFonte == "SQL")
+                    {
+                        <th>Query</th>
+                    }
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < State.Mappings.Count; i++)
                 {
-                    <th>Query</th>
+                    var mapping = State.Mappings[i];
+                    var fase = State.FasiDisponibili.FirstOrDefault(f => f.IdFaseLavorazione == mapping.IdFaseLavorazione);
+                    int index = i;
+                    
+                    <tr>
+                        <td>@fase?.FaseLavorazione</td>
+                        <td>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                @GetCronDescription(mapping.CronExpression)
+                            </MudChip>
+                        </td>
+                        <td>@mapping.GiorniPrecedenti</td>
+                        @if (State.TipoFonte == "SQL")
+                        {
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(mapping.TestoQueryTask))
+                                {
+                                    <MudTooltip Text="@mapping.TestoQueryTask">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.Code">
+                                            Query configurata
+                                        </MudChip>
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Nessuna query</MudChip>
+                                }
+                            </td>
+                        }
+                        <td>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           OnClick="@(() => RimuoviMapping(index))" />
+                        </td>
+                    </tr>
                 }
-                <th>Azioni</th>
-            </tr>
-        </thead>
-        <tbody>
+            </tbody>
+        </MudSimpleTable>
+    </MudHidden>
+    
+    @* Mobile View: Card List (visibile solo su mobile) *@
+    <MudHidden Breakpoint="Breakpoint.MdAndUp">
+        <MudStack Spacing="2">
             @for (int i = 0; i < State.Mappings.Count; i++)
             {
                 var mapping = State.Mappings[i];
                 var fase = State.FasiDisponibili.FirstOrDefault(f => f.IdFaseLavorazione == mapping.IdFaseLavorazione);
                 int index = i;
                 
-                <tr>
-                    <td>@fase?.FaseLavorazione</td>
-                    <td>
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
-                            @GetCronDescription(mapping.CronExpression)
-                        </MudChip>
-                    </td>
-                    <td>@mapping.GiorniPrecedenti</td>
-                    @if (State.TipoFonte == "SQL")
-                    {
-                        <td>
-                            @if (!string.IsNullOrWhiteSpace(mapping.TestoQueryTask))
+                <MudCard Outlined>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.subtitle1"><strong>@fase?.FaseLavorazione</strong></MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           OnClick="@(() => RimuoviMapping(index))" />
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudStack Spacing="1">
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Primary"><strong>Schedulazione:</strong></MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="mt-1">
+                                    @GetCronDescription(mapping.CronExpression)
+                                </MudChip>
+                            </div>
+                            
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Primary"><strong>Giorni Precedenti:</strong></MudText>
+                                <MudText Typo="Typo.body2">@mapping.GiorniPrecedenti</MudText>
+                            </div>
+                            
+                            @if (State.TipoFonte == "SQL")
                             {
-                                <MudTooltip Text="@mapping.TestoQueryTask">
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.Code">
-                                        Query configurata
-                                    </MudChip>
-                                </MudTooltip>
+                                <div>
+                                    <MudText Typo="Typo.caption" Color="Color.Primary"><strong>Query:</strong></MudText>
+                                    @if (!string.IsNullOrWhiteSpace(mapping.TestoQueryTask))
+                                    {
+                                        <MudExpansionPanels Dense Class="mt-1">
+                                            <MudExpansionPanel Text="Visualizza Query" Dense>
+                                                <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">
+                                                    @mapping.TestoQueryTask
+                                                </MudText>
+                                            </MudExpansionPanel>
+                                        </MudExpansionPanels>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Default">Nessuna query</MudText>
+                                    }
+                                </div>
                             }
-                            else
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Nessuna query</MudChip>
-                            }
-                        </td>
-                    }
-                    <td>
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Color="Color.Error"
-                                       Size="Size.Small"
-                                       OnClick="@(() => RimuoviMapping(index))" />
-                    </td>
-                </tr>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
             }
-        </tbody>
-    </MudSimpleTable>
+        </MudStack>
+    </MudHidden>
 }
 
 <MudDivider Class="my-4" />
@@ -81,68 +146,76 @@ else
 <MudText Typo="Typo.subtitle1" Class="mb-3"><strong>Aggiungi Nuovo Mapping</strong></MudText>
 
 <MudGrid>
-    <MudItem xs="12" md="4">
-        <MudSelect @bind-Value="@_selectedFaseId"
-                   Label="Fase"
-                   Variant="Variant.Outlined"
-                   Margin="Margin.Dense">
-            @foreach (var fase in State.FasiDisponibili)
-            {
-                <MudSelectItem Value="@fase.IdFaseLavorazione">@fase.FaseLavorazione</MudSelectItem>
-            }
-        </MudSelect>
-    </MudItem>
+<MudItem xs="12" sm="6" md="4">
+    <MudSelect @bind-Value="@_selectedFaseId"
+               Label="Fase"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense">
+        @foreach (var fase in State.FasiDisponibili)
+        {
+            <MudSelectItem Value="@fase.IdFaseLavorazione">@fase.FaseLavorazione</MudSelectItem>
+        }
+    </MudSelect>
+</MudItem>
     
-    <MudItem xs="12" md="4">
-        <MudSelect @bind-Value="@_selectedCron"
-                   Label="Schedulazione"
-                   Variant="Variant.Outlined"
-                   Margin="Margin.Dense">
-            @foreach (var cron in _presetCrons)
-            {
-                <MudSelectItem Value="@cron.Value">@cron.Label</MudSelectItem>
-            }
-        </MudSelect>
-    </MudItem>
+<MudItem xs="12" sm="6" md="5">
+    <MudSelect @bind-Value="@_selectedCron"
+               Label="Schedulazione"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense">
+        @foreach (var cron in _presetCrons)
+        {
+            <MudSelectItem Value="@cron.Value">@cron.Label</MudSelectItem>
+        }
+    </MudSelect>
+</MudItem>
     
-    <MudItem xs="12" md="2">
-        <MudNumericField @bind-Value="@_giorniPrecedenti"
-                         Label="Giorni Prec."
-                         Variant="Variant.Outlined"
-                         Margin="Margin.Dense"
-                         Min="1"
-                         Max="365" />
-    </MudItem>
+<MudItem xs="12" sm="6" md="3">
+    <MudNumericField @bind-Value="@_giorniPrecedenti"
+                     Label="Giorni Precedenti"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     Min="1"
+                     Max="365" />
+</MudItem>
     
     @if (State.TipoFonte == "SQL")
     {
         <MudItem xs="12">
-            <MudPaper Elevation="3" Class="pa-3 mb-2">
-                <MudText Typo="Typo.body2" Class="mb-2"><b>Linee guida per le query SQL:</b></MudText>
+            <MudPaper Elevation="2" Class="pa-2 pa-sm-3 mb-2">
+                <MudText Typo="Typo.body2" Class="mb-2"><strong>Linee guida per le query SQL:</strong></MudText>
                 
-                <MudText Typo="Typo.body2" Class="mb-1">1. <b>Formato dei risultati:</b></MudText>
-                <ul style="margin-left: 20px; margin-bottom: 8px;">
-                    <li><MudText Typo="Typo.caption">L'intestazione deve corrispondere a: <b>Operatore, DataLavorazione, Documenti, Fogli, Pagine</b></MudText></li>
-                </ul>
+                <MudStack Spacing="1">
+                    <div>
+                        <MudText Typo="Typo.body2" Class="mb-1">1. <strong>Formato dei risultati:</strong></MudText>
+                        <MudText Typo="Typo.caption" Class="ml-2">Colonne obbligatorie: <strong>Operatore, DataLavorazione, Documenti, Fogli, Pagine</strong></MudText>
+                    </div>
 
-                <MudText Typo="Typo.body2" Class="mb-1">2. <b>Parametrizzazione delle date:</b></MudText>
-                <ul style="margin-left: 20px; margin-bottom: 8px;">
-                    <li><MudText Typo="Typo.caption">Usa i parametri <code>@@StartDate</code> e <code>@@EndDate</code></MudText></li>
-                </ul>
+                    <div>
+                        <MudText Typo="Typo.body2" Class="mb-1">2. <strong>Parametrizzazione delle date:</strong></MudText>
+                        <MudText Typo="Typo.caption" Class="ml-2">Parametri obbligatori: <code>@@startDate</code> e <code>@@endDate</code></MudText>
+                    </div>
+                </MudStack>
 
                 <MudDivider Class="my-2" />
-                <MudText Typo="Typo.caption"><b>Esempio:</b></MudText>
-                <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap;">
-    select 
-        OP_INDEX as operatore,
-        convert(date, DATA_INDEX) as DataLavorazione,
-        COUNT(*) as Documenti,
-        SUM(convert(int,isnull(NUM_PAG,0))/2) AS Fogli,
-        SUM(convert(int,isnull(NUM_PAG,0))) AS Pagine
-    from Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-    where DATA_INDEX >= @@startDate and DATA_INDEX &lt;= DATEADD(DAY, 1, @@endDate) and department = 'GENOVA'
-    group by OP_INDEX, convert(date, DATA_INDEX)
-                </MudText>
+                
+                <MudExpansionPanels Dense>
+                    <MudExpansionPanel Text="Visualizza Esempio Query" Dense>
+                        <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 0.75rem;">
+select 
+    OP_INDEX as operatore,
+    convert(date, DATA_INDEX) as DataLavorazione,
+    COUNT(*) as Documenti,
+    SUM(convert(int,isnull(NUM_PAG,0))/2) AS Fogli,
+    SUM(convert(int,isnull(NUM_PAG,0))) AS Pagine
+from Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
+where DATA_INDEX >= @@startDate 
+  and DATA_INDEX &lt;= DATEADD(DAY, 1, @@endDate) 
+  and department = 'GENOVA'
+group by OP_INDEX, convert(date, DATA_INDEX)
+                        </MudText>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
             </MudPaper>
         </MudItem>
 
@@ -150,21 +223,22 @@ else
             <MudTextField @bind-Value="@_queryText"
                           Label="Query SQL"
                           Variant="Variant.Outlined"
-                          Lines="12"
-                          Style="font-family: monospace;"
+                          Lines="10"
+                          Style="font-family: monospace; font-size: 0.875rem;"
                           spellcheck="false"
                           Placeholder="SELECT ..." />
-            <MudText Typo="Typo.caption" Class="mt-1">
-                Parametri obbligatori: @@startDate, @@endDate | Colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine
+            <MudText Typo="Typo.caption" Class="mt-1" Style="word-break: break-word;">
+                Parametri: <code>@@startDate</code>, <code>@@endDate</code> | Colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine
             </MudText>
         </MudItem>
 
-        <MudItem xs="12" Class="d-flex gap-2">
+        <MudItem xs="12">
             <MudButton Variant="Variant.Outlined" 
                        Color="Color.Primary"
                        Size="Size.Small"
                        StartIcon="@Icons.Material.Filled.VerifiedUser"
                        OnClick="ValidateQueryAsync"
+                       FullWidth="@(_isMobile)"
                        Disabled="_validatingQuery || string.IsNullOrWhiteSpace(_queryText)">
                 @if (_validatingQuery) { <MudProgressCircular Size="Size.Small" Indeterminate Class="mr-2" /> }
                 Valida Query
@@ -204,6 +278,7 @@ else
     private string? _validationMessage;
     private MudBlazor.Severity _validationSeverity = MudBlazor.Severity.Info;
     private bool _queryValidated = false;
+    private bool _isMobile => false; // Placeholder per rilevamento mobile, può essere implementato con JSInterop se necessario
     
     private List<(string Value, string Label)> _presetCrons = new()
     {

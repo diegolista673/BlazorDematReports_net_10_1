@@ -53,8 +53,7 @@ namespace BlazorDematReports.Services.DataService
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
                 
-                var count = await context.ConfigurazioneFontiDatis
-                    .Where(c => c.TipoFonte == "EmailCSV" )
+                var count = await MailConfigurationQuery(context)
                     .CountAsync();
 
                 return count;
@@ -79,11 +78,10 @@ namespace BlazorDematReports.Services.DataService
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
                 
-                var count = await context.ConfigurazioneFontiDatis
-                    .Where(c => c.TipoFonte == "EmailCSV" && 
-                                c.ConfigurazioneFaseCentros.Any(fc => 
-                                   fc.FlagAttiva == true && 
-                                   fc.IdProceduraLavorazione == idProceduraLavorazione))
+                var count = await MailConfigurationQuery(context)
+                    .Where(c => c.ConfigurazioneFaseCentros.Any(fc => 
+                           fc.FlagAttiva == true && 
+                           fc.IdProceduraLavorazione == idProceduraLavorazione))
                     .CountAsync();
 
                 return count;
@@ -107,8 +105,7 @@ namespace BlazorDematReports.Services.DataService
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
                 
-                return await context.ConfigurazioneFontiDatis
-                    .Where(c => c.TipoFonte == "EmailCSV" )
+                return await MailConfigurationQuery(context)
                     .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva == true))
                         .ThenInclude(fc => fc.IdProceduraLavorazioneNavigation.NomeProcedura)
                     .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
@@ -137,11 +134,9 @@ namespace BlazorDematReports.Services.DataService
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
                 
-                return await context.ConfigurazioneFontiDatis
-                    .Where(c => c.TipoFonte == "EmailCSV" && 
-                               c.ConfigurazioneFaseCentros.Any(fc => 
-                                   fc.FlagAttiva == true && 
-                                   fc.IdProceduraLavorazione == idProceduraLavorazione))
+                return await MailConfigurationQuery(context)
+                    .Where(c => c.ConfigurazioneFaseCentros.Any(fc => 
+                        fc.FlagAttiva == true && fc.IdProceduraLavorazione == idProceduraLavorazione))
                     .Include(c => c.ConfigurazioneFaseCentros.Where(fc => 
                         fc.FlagAttiva == true && fc.IdProceduraLavorazione == idProceduraLavorazione))
                         .ThenInclude(fc => fc.IdFaseLavorazioneNavigation.FaseLavorazione)
@@ -155,6 +150,10 @@ namespace BlazorDematReports.Services.DataService
                 return new List<ConfigurazioneFontiDati>();
             }
         }
+
+        private static IQueryable<ConfigurazioneFontiDati> MailConfigurationQuery(DematReportsContext context)
+            => context.ConfigurazioneFontiDatis.Where(c => c.TipoFonte == "EmailCSV"
+                    || (c.TipoFonte == "HandlerIntegrato" && !string.IsNullOrWhiteSpace(c.MailServiceCode)));
 
         /// <summary>
         /// Invia una email semplice.

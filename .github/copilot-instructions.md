@@ -12,7 +12,7 @@
 ## 🎯 Project Overview
 
 BlazorDematReports is a **data configuration management system** for production workflows that handles:
-- Data source configuration (SQL queries, Email CSV, C# handlers, Pipelines)
+- Data source configuration (SQL queries, Email CSV, C# handlers)
 - Task scheduling with cron expressions
 - Automated data extraction and reporting
 - Work procedure tracking and monitoring
@@ -20,8 +20,8 @@ BlazorDematReports is a **data configuration management system** for production 
 The system uses Blazor Server for real-time updates with Material Design (MudBlazor) components.
 
 ### Core Entities
-- **ConfigurazioneFontiDati**: Data source configurations (SQL, EmailCSV, HandlerIntegrato, Pipeline)
-  - `TipoFonte`: Source type (SQL/EmailCSV/HandlerIntegrato/Pipeline)
+- **ConfigurazioneFontiDati**: Data source configurations (SQL, EmailCSV, HandlerIntegrato)
+- `TipoFonte`: Source type (SQL/EmailCSV/HandlerIntegrato)
   - `ConnectionStringName`: Reference to appsettings connection string
   - `TestoQuery`: Main SQL query template
 - **ConfigurazioneFaseCentro**: Phase/Center mappings for granular task scheduling
@@ -295,7 +295,7 @@ GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)
 ## 📝 PageConfiguraFonteDati Specifics
 
 ### Sections
-1. **Tipo Fonte**: Radio selection (SQL, EmailCSV, HandlerIntegrato, Pipeline)
+1. **Tipo Fonte**: Radio selection (SQL, EmailCSV, HandlerIntegrato)
 2. **Dettagli Configurazione**: Lavorazione + Fase (left), Codice Univoco + Descrizione (right)
 3. **Configurazione Specifica**: Type-specific fields (Connection String, Mail Service, Handler, etc.)
 4. **Mapping Fasi/Centri**: Dynamic list of phase/center/cron combinations

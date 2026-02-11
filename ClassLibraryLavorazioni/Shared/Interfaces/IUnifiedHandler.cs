@@ -38,13 +38,8 @@ namespace LibraryLavorazioni.Shared.Interfaces
     public enum HandlerType
     {
         /// <summary>
-        /// Handler per lavorazioni classiche (elaborazione dati di produzione).
+        /// Handler per lavorazioni (elaborazione dati di produzione, inclusi servizi mail).
         /// </summary>
-        Lavorazione,
-
-        /// <summary>
-        /// Handler per importazioni via mail.
-        /// </summary>
-        MailImport
+        Lavorazione
     }
 }

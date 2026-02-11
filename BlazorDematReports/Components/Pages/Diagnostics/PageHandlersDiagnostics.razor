@@ -54,7 +54,7 @@
                 </MudText>
                 
                 <MudList T="string" Dense="true">
-                    @foreach (var handler in _mailHandlers)
+                    @foreach (var handler in _lavorazioneHandlers.Where(h => IsMailHandler(h.Code)))
                     {
                         <MudListItem T="string">
                             <div class="d-flex align-center">
@@ -68,16 +68,16 @@
                     }
                 </MudList>
                 
-                @if (!_mailHandlers.Any())
+                @if (!_lavorazioneHandlers.Any(h => IsMailHandler(h.Code)))
                 {
                     <MudAlert Severity="Severity.Error" Class="mt-2">
-                        <strong>? Nessun handler Mail registrato!</strong>
+                        <strong>Nessun handler Mail registrato!</strong>
                         <br /><br />
                         <strong>Verifica:</strong>
                         <ol>
                             <li>Program.cs contiene:<br/>
-                                <pre>builder.Services.AddScoped&lt;IMailImportHandler, Hera16EwsHandler&gt;();</pre>
-                                <pre>builder.Services.AddScoped&lt;IMailImportHandler, Ader4Handler&gt;();</pre>
+                                <pre>builder.Services.AddScoped&lt;ILavorazioneHandler, Hera16EwsHandler&gt;();</pre>
+                                <pre>builder.Services.AddScoped&lt;ILavorazioneHandler, Ader4Handler&gt;();</pre>
                             </li>
                             <li>Applicazione riavviata dopo modifiche</li>
                             <li>Nessun errore di compilazione</li>
@@ -87,7 +87,7 @@
                 else
                 {
                     <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="mt-2">
-                        @_mailHandlers.Count() handler Mail
+                        @_lavorazioneHandlers.Count(h => IsMailHandler(h.Code)) handler Mail
                     </MudChip>
                 }
             </MudPaper>
@@ -131,7 +131,6 @@
 
 @code {
     private IEnumerable<IUnifiedHandler> _lavorazioneHandlers = Array.Empty<IUnifiedHandler>();
-    private IEnumerable<IUnifiedHandler> _mailHandlers = Array.Empty<IUnifiedHandler>();
 
     protected override void OnInitialized()
     {
@@ -141,12 +140,12 @@
     private void LoadHandlers()
     {
         _lavorazioneHandlers = Registry.GetHandlersByType(HandlerType.Lavorazione);
-        _mailHandlers = Registry.GetHandlersByType(HandlerType.MailImport);
     }
 
     private bool IsMailHandler(string code)
     {
-        return _mailHandlers.Any(h => h.Code == code);
+        // Gli handler mail sono HERA16 e ADER4
+        return code == "HERA16" || code == "ADER4";
     }
 
     private void Reload()

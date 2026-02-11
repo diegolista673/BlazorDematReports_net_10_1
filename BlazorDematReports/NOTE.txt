@@ -14,16 +14,29 @@ with (firstrow = 170,
       per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
       esempio :
 
-aggiorna modifica procedura aggiungendo il dialog per abilita/disabilta task
 
 
 aggiungere commenti dove mancano  
 
-gestione della configurazione 
-aggiornare gli handler togliendo la suddivisione per mail vs handler 
-Pipeline da eliminare e sostituire con un sistema di gestione task più flessibile e granulare
+inserire direttiva in copilot instructions per commenatere il codice metodi e classi
+inserire direttiva in copilot instructions per inserire gli using necessari solo nel file import se possibile
+tipo handler o fonte dati deve diventare un enum
+controlare la ui allo step 2 e capire cosa fa
 
-aggiorna lista configurazione dopo eliminazione di un task
+gestione della configurazione 
+✅ COMPLETATO (100%): Unificazione handler mail con ILavorazioneHandler
+- Handler mail (HERA16, ADER4) ora implementano ILavorazioneHandler
+- Costanti unificate in LavorazioniCodes (HERA16, ADER4)
+- Handler spostati nella cartella standard Lavorazioni/Handlers
+- Interfacce legacy rimosse (IMailImportHandler, IMailImportService)
+- HandlerDiscoveryService eliminato (usato DI container)
+- UnifiedHandlerRegistry semplificato (solo ILavorazioneHandler)
+- HandlerType.MailImport rimosso dall'enum
+- UI semplificata: rimosso campo "Codice servizio mail (opzionale)"
+- ServiceCode auto-popolato quando si seleziona handler mail
+- Sistema completamente integrato e semplificato
+
+implemtare gli handler via mail e testare letture allegati e inserimento dati in produzione
 
 
 
@@ -107,9 +120,6 @@ LIVELLO 4 - GESTISCI TASK (Button Settings - Info) - NUOVO:
     - Mostra stato real-time: Last Run, Errori, Cron
     - Disabilitato se: TaskAttivi = 0 (crea task prima)
     - USO: Gestione fine task senza lasciare pagina configurazioni
-
-
-LoadConfigurazioniAsync va cambiato per trovare quanti sono i task totali per lavorazione, magari cambiare titolo in task da eseguire piuttosto che configurazioniCount
 
 
 

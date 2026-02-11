@@ -16,7 +16,7 @@ public interface IValidationRule<T>
 /// </summary>
 public class TipoFonteValidationRule : IValidationRule<string>
 {
-    private static readonly string[] ValidTypes = { "SQL", "EmailCSV", "HandlerIntegrato", "Pipeline" };
+    private static readonly string[] ValidTypes = { "SQL", "EmailCSV", "HandlerIntegrato" };
     
     public ValidationResult Validate(string tipoFonte)
     {

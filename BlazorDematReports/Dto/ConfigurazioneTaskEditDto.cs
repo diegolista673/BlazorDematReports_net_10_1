@@ -36,7 +36,6 @@ namespace BlazorDematReports.Dto
                 TipoTaskEnum.SQL => !string.IsNullOrWhiteSpace(TestoQueryTask),
                 TipoTaskEnum.EmailCSV => !string.IsNullOrWhiteSpace(MailServiceCode),
                 TipoTaskEnum.HandlerIntegrato => !string.IsNullOrWhiteSpace(HandlerClassName),
-                TipoTaskEnum.Pipeline => true, // Pipeline ha logica separata
                 _ => false
             };
         }
@@ -74,16 +73,14 @@ namespace BlazorDematReports.Dto
         public const string SQL = "SQL";
         public const string EmailCSV = "EmailCSV";
         public const string HandlerIntegrato = "HandlerIntegrato";
-        public const string Pipeline = "Pipeline";
         
-        public static List<string> GetAll() => new() { SQL, EmailCSV, HandlerIntegrato, Pipeline };
+        public static List<string> GetAll() => new() { SQL, EmailCSV, HandlerIntegrato };
         
         public static string GetDisplayName(string tipoTask) => tipoTask switch
         {
             SQL => "Query SQL",
             EmailCSV => "Email CSV Import",
             HandlerIntegrato => "Handler C# Integrato",
-            Pipeline => "Pipeline Multi-Step",
             _ => tipoTask
         };
         
@@ -92,7 +89,6 @@ namespace BlazorDematReports.Dto
             SQL => "Storage",
             EmailCSV => "Email",
             HandlerIntegrato => "Code",
-            Pipeline => "AccountTree",
             _ => "HelpOutline"
         };
     }

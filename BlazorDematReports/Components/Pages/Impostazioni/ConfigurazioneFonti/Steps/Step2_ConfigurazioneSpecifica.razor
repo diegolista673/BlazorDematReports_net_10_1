@@ -1,5 +1,7 @@
 
+
 @inject SqlValidationService SqlValidator
+@inject IUnifiedHandlerRegistry HandlerRegistry
 
 <MudText Typo="Typo.h6" Class="mb-4">Configurazione specifica per @State.TipoFonte</MudText>
 
@@ -44,93 +46,152 @@
         }
     </MudGrid>
 }
-else if (State.TipoFonte == "EmailCSV")
-{
-    <MudSelect @bind-Value="@_mailService" 
-               Label="Servizio Mail" 
-               Variant="Variant.Outlined"
-               Required
-               Adornment="Adornment.Start"
-               AdornmentIcon="@Icons.Material.Filled.Email">
-        @foreach (var service in _mailServices)
-        {
-            <MudSelectItem Value="@service">@service</MudSelectItem>
-        }
-    </MudSelect>
-    
-    <MudAlert Severity="Severity.Info" Class="mt-4">
-        <MudText>Il servizio mail selezionato verrà utilizzato per importare CSV da allegati email.</MudText>
-    </MudAlert>
-}
 else if (State.TipoFonte == "HandlerIntegrato")
 {
-    <MudSelect @bind-Value="@_handler" 
-               Label="Handler C#" 
-               Variant="Variant.Outlined"
-               Required
-               Adornment="Adornment.Start"
-               AdornmentIcon="@Icons.Material.Filled.Code">
-        @foreach (var handler in _availableHandlers)
-        {
-            <MudSelectItem Value="@handler.ClassName">
-                <div>
-                    <MudText Typo="Typo.body1">@handler.Code</MudText>
-                    <MudText Typo="Typo.body2" Class="text-muted">@handler.Description</MudText>
-                </div>
-            </MudSelectItem>
-        }
-    </MudSelect>
-    
+    <MudGrid>
+        <MudItem xs="12">
+            <MudSelect @bind-Value="@_handler"
+                       Label="Handler C#"
+                       Variant="Variant.Outlined"
+                       Required
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.Code">
+                @foreach (var handler in _availableHandlers)
+                {
+                    <MudSelectItem Value="@handler.ClassName">
+                        <div class="d-flex align-items-center gap-2">
+                            @if (handler.RequiresEmailService)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Small" Color="Color.Default" />
+                            }
+                            <div>
+                                <MudText Typo="Typo.body1">
+                                    @handler.Code
+                                    @if (!string.IsNullOrWhiteSpace(handler.ServiceCode))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-2">@handler.ServiceCode</MudChip>
+                                    }
+                                </MudText>
+                                <MudText Typo="Typo.body2" Class="text-muted">@handler.Description</MudText>
+                            </div>
+                        </div>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
     @if (!string.IsNullOrWhiteSpace(_handler))
     {
         var handlerInfo = _availableHandlers.FirstOrDefault(h => h.ClassName == _handler);
         if (handlerInfo != null)
         {
             <MudAlert Severity="Severity.Info" Class="mt-4">
-                <MudText><strong>@handlerInfo.Code</strong></MudText>
-                <MudText Typo="Typo.body2">@handlerInfo.Description</MudText>
+                <div class="d-flex align-items-start gap-2">
+                    @if (handlerInfo.RequiresEmailService)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Info" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Info" />
+                    }
+                    <div>
+                        <MudText><strong>@handlerInfo.Code</strong></MudText>
+                        <MudText Typo="Typo.body2">@handlerInfo.Description</MudText>
+                        @if (handlerInfo.RequiresEmailService)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                Handler per servizi mail. Il codice servizio (@handlerInfo.ServiceCode) viene configurato automaticamente.
+                            </MudText>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(handlerInfo.Category))
+                        {
+                            <MudChip T="string" Size="Size.Small" Class="mt-2">@handlerInfo.Category</MudChip>
+                        }
+                    </div>
+                </div>
             </MudAlert>
         }
     }
 }
 
 @code {
-    [Parameter] public ConfigurationWizardState State { get; set; } = default!;
-    [Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
-    [Parameter] public IConfiguration Configuration { get; set; } = default!;
+[Parameter] public ConfigurationWizardState State { get; set; } = default!;
+[Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
+[Parameter] public IConfiguration Configuration { get; set; } = default!;
     
-    private List<string> _connectionStrings = new();
-    private List<string> _mailServices = new() { "HERA16", "ADER4" };
-    private IReadOnlyList<HandlerInfo> _availableHandlers = new List<HandlerInfo>();
-    private bool _testingConnection = false;
+private List<string> _connectionStrings = new();
+private List<HandlerDisplayInfo> _availableHandlers = new();
+private bool _testingConnection = false;
     
-    private string? _connectionString
+private string? _connectionString
+{
+    get => State.ConnectionStringName;
+    set => StateService.UpdateState(s => s.WithConnectionString(value));
+}
+    
+private string? _mailService
+{
+    get => State.MailServiceCode;
+    set => StateService.UpdateState(s => s.WithMailService(value));
+}
+    
+private string? _handler
+{
+    get => State.HandlerClassName;
+    set
     {
-        get => State.ConnectionStringName;
-        set => StateService.UpdateState(s => s.WithConnectionString(value));
+        StateService.UpdateState(s => s.WithHandler(value));
+            
+        // Auto-popola MailServiceCode se l'handler ha un ServiceCode (handler mail)
+        var handlerInfo = _availableHandlers.FirstOrDefault(h => h.ClassName == value);
+        if (handlerInfo?.ServiceCode != null)
+        {
+            StateService.UpdateState(s => s.WithMailService(handlerInfo.ServiceCode));
+        }
     }
+}
     
-    private string? _mailService
-    {
-        get => State.MailServiceCode;
-        set => StateService.UpdateState(s => s.WithMailService(value));
-    }
-    
-    private string? _handler
-    {
-        get => State.HandlerClassName;
-        set => StateService.UpdateState(s => s.WithHandler(value));
-    }
-    
-    protected override void OnInitialized()
-    {
-        // Carica connection strings
-        var section = Configuration.GetSection("ConnectionStrings");
-        _connectionStrings = section.GetChildren().Select(c => c.Key).ToList();
+protected override void OnInitialized()
+{
+    // Carica connection strings
+    var section = Configuration.GetSection("ConnectionStrings");
+    _connectionStrings = section.GetChildren().Select(c => c.Key).ToList();
         
-        // Carica handlers disponibili
-        _availableHandlers = LibraryLavorazioni.Shared.Discovery.HandlerDiscoveryService.AvailableHandlers;
-    }
+    // Carica handlers disponibili dal registry
+    var handlers = HandlerRegistry.GetHandlersByType(HandlerType.Lavorazione);
+    _availableHandlers = handlers.Select(h => new HandlerDisplayInfo
+    {
+        ClassName = h.Code ?? "Unknown",
+        Code = h.Code,
+        Description = h.Description ?? h.Code,
+        Category = DetermineCategory(h.Code),
+        ServiceCode = h.Code == "HERA16" || h.Code == "ADER4" ? h.Code : null,
+        RequiresEmailService = h.Code == "HERA16" || h.Code == "ADER4"
+    }).ToList();
+}
+    
+private string? DetermineCategory(string? code)
+{
+    if (code == "HERA16" || code == "ADER4")
+        return "Mail Import";
+    return "SQL Handler";
+}
+    
+private class HandlerDisplayInfo
+{
+    public string ClassName { get; set; } = "";
+    public string? Code { get; set; }
+    public string? Description { get; set; }
+    public string? Category { get; set; }
+    public string? ServiceCode { get; set; }
+    public bool RequiresEmailService { get; set; }
+}
     
     private async Task TestConnectionAsync()
     {

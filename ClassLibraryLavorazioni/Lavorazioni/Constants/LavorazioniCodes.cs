@@ -37,5 +37,15 @@ namespace LibraryLavorazioni.Lavorazioni.Constants
         /// Lavorazione RDMKT RSP per tabelle dinamiche.
         /// </summary>
         public const string RDMKT_RSP = "RDMKT_RSP";
+
+        /// <summary>
+        /// Servizio HERA16 via Exchange Web Services per importazione dati da email.
+        /// </summary>
+        public const string HERA16 = "HERA16";
+
+        /// <summary>
+        /// Servizio ADER4/Equitalia via Exchange Web Services per importazione dati da email (Verona + Genova).
+        /// </summary>
+        public const string ADER4 = "ADER4";
     }
 }

@@ -1,7 +1,6 @@
 using Entities.Models.DbApplication;
 using LibraryLavorazioni.Lavorazioni.Interfaces;
 using LibraryLavorazioni.Lavorazioni.Models;
-using LibraryLavorazioni.LavorazioniViaMail.Services;
 using LibraryLavorazioni.Utility.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -60,9 +59,8 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
         return config.TipoFonte switch
         {
             "SQL" => await ExecuteSqlQueryAsync(config, context, ct),
-            "EmailCSV" => await ExecuteMailServiceAsync(config, context, ct),
             "HandlerIntegrato" => await ExecuteCustomHandlerAsync(config, context, ct),
-            _ => throw new NotSupportedException($"TipoFonte '{config.TipoFonte}' non supportato")
+            _ => throw new NotSupportedException($"TipoFonte '{config.TipoFonte}' non supportato. Per servizi email, utilizzare i job Hangfire dedicati.")
         };
     }
 
@@ -177,33 +175,6 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
         ["Fogli"] = "Fogli",
         ["Pagine"] = "Pagine"
     };
-
-    #endregion
-
-    #region Mail Service Execution
-
-    private async Task<List<DatiLavorazione>> ExecuteMailServiceAsync(
-        ConfigurazioneFontiDati config,
-        LavorazioneExecutionContext context,
-        CancellationToken ct)
-    {
-        // Delega a UnifiedMailProduzioneService esistente
-        var mailService = _serviceProvider.GetRequiredService<UnifiedMailProduzioneService>();
-
-        var rowsInserted = config.MailServiceCode switch
-        {
-            "HERA16" => await mailService.ProcessHera16Async(ct),
-            "ADER4" => await mailService.ProcessAder4Async(ct),
-            _ => throw new NotSupportedException($"MailServiceCode '{config.MailServiceCode}' non supportato")
-        };
-
-        _logger.LogInformation("[UnifiedHandler:Mail] Elaborato {Service}: {Count} righe",
-            config.MailServiceCode, rowsInserted);
-
-        // Mail service inserisce direttamente in ProduzioneSistema
-        // Ritorna lista vuota perché dati già inseriti
-        return new List<DatiLavorazione>();
-    }
 
     #endregion
 
