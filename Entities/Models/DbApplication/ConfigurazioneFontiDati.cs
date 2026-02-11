@@ -27,11 +27,7 @@ public partial class ConfigurazioneFontiDati
 
     public DateTime? ModificatoIl { get; set; }
 
-    public bool FlagAttiva { get; set; }
-
     public virtual ICollection<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; } = new List<ConfigurazioneFaseCentro>();
-
-    public virtual ICollection<ConfigurazionePipelineStep> ConfigurazionePipelineSteps { get; set; } = new List<ConfigurazionePipelineStep>();
 
     public virtual ICollection<TaskDaEseguire> TaskDaEseguires { get; set; } = new List<TaskDaEseguire>();
 }

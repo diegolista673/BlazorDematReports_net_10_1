@@ -283,7 +283,7 @@
             _hasChanges = true;
             
             // Chiudi dialog e segnala aggiornamento alla pagina principale
-            MudDialog.Close(DialogResult.Ok(true));
+            MudDialog?.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
@@ -309,5 +309,5 @@
         _ => cron
     };
 
-    private void Close() => MudDialog.Cancel();
+    private void Close() => MudDialog?.Close(DialogResult.Ok(_hasChanges));
 }

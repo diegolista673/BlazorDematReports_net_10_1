@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 
 
+
 namespace BlazorDematReports.Services.DataService
 {
     /// <summary>
@@ -64,7 +65,6 @@ namespace BlazorDematReports.Services.DataService
                 CodiceConfigurazione = c.CodiceConfigurazione,
                 Descrizione = c.DescrizioneConfigurazione!,
                 TipoFonte = c.TipoFonte,
-                FlagAttiva = c.FlagAttiva,
                 CreatoIl = (DateTime)c.CreatoIl,
                 NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva == true),
                 TaskAttivi = c.TaskDaEseguires.Count(t => t.Enabled),
@@ -205,6 +205,8 @@ namespace BlazorDematReports.Services.DataService
                 context.Entry(dbConfig).CurrentValues.SetValues(config);
                 var incoming = mappings ?? new();
                 var existing = dbConfig.ConfigurazioneFaseCentros ?? new List<ConfigurazioneFaseCentro>();
+
+                await EnsureUniqueLavorazioneAsync(context, incoming, config.IdConfigurazione);
 
                 var incomingIds = incoming.Where(m => m.IdFaseCentro > 0).Select(m => m.IdFaseCentro).ToHashSet();
                 var mappingsToRemove = existing.Where(e => !incomingIds.Contains(e.IdFaseCentro)).ToList();
@@ -391,9 +393,13 @@ namespace BlazorDematReports.Services.DataService
                         configurazioneFontiDati.CodiceConfigurazione);
                 }
 
+                if (mappingFasi != null && mappingFasi.Any())
+                {
+                    await EnsureUniqueLavorazioneAsync(context, mappingFasi);
+                }
+
                 configurazioneFontiDati.CreatoIl = DateTime.Now;
                 configurazioneFontiDati.CreatoDa = user ?? string.Empty;
-                configurazioneFontiDati.FlagAttiva = true;
 
                 // Insert configuration first to obtain IdConfigurazione
                 context.ConfigurazioneFontiDatis.Add(configurazioneFontiDati);
@@ -431,6 +437,34 @@ namespace BlazorDematReports.Services.DataService
                 logger.LogError(ex, "Errore durante creazione ConfigurazioneFontiDati");
                 try { await transaction.RollbackAsync(); } catch { }
                 throw;
+            }
+        }
+
+        private static async Task EnsureUniqueLavorazioneAsync(DematReportsContext context, IEnumerable<ConfigurazioneFaseCentro> mappingFasi, int? currentConfigId = null)
+        {
+            var procedures = mappingFasi
+                .Where(m => m.IdProceduraLavorazione > 0)
+                .Select(m => m.IdProceduraLavorazione)
+                .Distinct()
+                .ToList();
+
+            if (!procedures.Any())
+                return;
+
+            var query = context.ConfigurazioneFaseCentros
+                .Where(fc => procedures.Contains(fc.IdProceduraLavorazione));
+
+            if (currentConfigId.HasValue)
+                query = query.Where(fc => fc.IdConfigurazione != currentConfigId.Value);
+
+            var conflict = await query
+                .Include(fc => fc.IdConfigurazioneNavigation)
+                .FirstOrDefaultAsync();
+
+            if (conflict != null)
+            {
+                var configCode = conflict.IdConfigurazioneNavigation?.CodiceConfigurazione ?? conflict.IdConfigurazione.ToString();
+                throw new InvalidOperationException($"La procedura {conflict.IdProceduraLavorazione} è già utilizzata dalla configurazione {configCode}.");
             }
         }
     }

@@ -19,10 +19,31 @@
     <MudGrid Class="mt-2 ">
 
         @*form*@
-        <MudItem xs="12" sm="12" md="12" lg="12" xl="12" Class="d-flex justify-end">
+        <MudItem xs="12" sm="12" md="12" lg="12" xl="12" Class="d-flex justify-end gap-2">
+            <AuthorizeView Roles="ADMIN">
+                <Authorized>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.PauseCircle"
+                               Disabled="@_bulkActionInProgress"
+                               OnClick="@DisableAllTasksAsync">
+                        Disabilita Tutti i Task
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.PlayCircle"
+                               Disabled="@_bulkActionInProgress"
+                               OnClick="@EnableAllTasksAsync">
+                        Abilita Tutti i Task
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+
             <MudButton Variant="Variant.Filled"
                         Color="Color.Primary"
                         StartIcon="@Icons.Material.Filled.Add"
+                        Disabled="@_bulkActionInProgress"
                         OnClick="@(() => Navigation.NavigateTo("/configura-fonte-dati-wizard"))">
                 Nuova Configurazione
             </MudButton>
@@ -93,7 +114,7 @@
                                         @foreach (var cron in context.Item.CronExpressions.Distinct())
                                         {
                                             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="mr-1 mb-1">
-                                                ⏰ @GetCronDescription(cron)
+                                                @GetCronDescription(cron)
                                             </MudChip>
                                         }
                                     </div>
@@ -108,18 +129,6 @@
                         <PropertyColumn Property="x => x.NumeroFasi" Title="N. Mapping" Filterable="false" />
                         <PropertyColumn Property="x => x.TaskAttivi" Title="Task Attivi" Filterable="false" />
 
-                        <TemplateColumn Title="Stato">
-                            <CellTemplate>
-                                @if (context.Item.FlagAttiva)
-                                {
-                                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Attiva</MudChip>
-                                }
-                                else
-                                {
-                                    <MudChip T="string" Color="Color.Default" Size="Size.Small">Disattivata</MudChip>
-                                }
-                            </CellTemplate>
-                        </TemplateColumn>
 
                         <TemplateColumn Title="Azioni" StickyRight>
                             <CellTemplate>
@@ -163,6 +172,7 @@
 @code {
 
     private bool _loading = true;
+    private bool _bulkActionInProgress = false;
     private List<ConfigurazioneRiepilogoDto> _configurazioni = new();
 
     protected override async Task OnInitializedAsync()
@@ -175,6 +185,68 @@
         _loading = true;
         _configurazioni = await ServiceWrapper.ServiceConfigurazioneFontiDati.GetConfigurazioneFontiDatiDtoAsync();
         _loading = false;
+    }
+
+    private async Task DisableAllTasksAsync()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = "Sei sicuro di voler DISABILITARE tutti i task del sistema? Le esecuzioni verranno saltate finché non saranno riabilitati.",
+            ["ButtonText"] = "Disabilita tutti",
+            ["Color"] = Color.Warning
+        };
+
+        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Disabilitazione", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled)
+            return;
+
+        _bulkActionInProgress = true;
+        try
+        {
+            var count = await ServiceWrapper.ServiceTaskDaEseguire.DisableAllTasksAsync();
+            await LoadConfigurazioniAsync();
+            Snackbar.Add($"Disabilitati {count} task", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Errore disabilitazione: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _bulkActionInProgress = false;
+        }
+    }
+
+    private async Task EnableAllTasksAsync()
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = "Sei sicuro di voler ABILITARE tutti i task del sistema?",
+            ["ButtonText"] = "Abilita tutti",
+            ["Color"] = Color.Success
+        };
+
+        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Abilitazione", parameters);
+        var result = await dialog.Result;
+        if (result.Canceled)
+            return;
+
+        _bulkActionInProgress = true;
+        try
+        {
+            var count = await ServiceWrapper.ServiceTaskDaEseguire.EnableAllTasksAsync();
+            await LoadConfigurazioniAsync();
+            Snackbar.Add($"Abilitati {count} task", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Errore abilitazione: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _bulkActionInProgress = false;
+        }
     }
 
     /// <summary>
@@ -263,7 +335,6 @@
         "SQL" => Color.Primary,
         "EmailCSV" => Color.Secondary,
         "HandlerIntegrato" => Color.Tertiary,
-        "Pipeline" => Color.Info,
         _ => Color.Default
     };
 

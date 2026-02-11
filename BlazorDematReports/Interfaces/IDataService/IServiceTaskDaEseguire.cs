@@ -48,5 +48,17 @@ namespace BlazorDematReports.Interfaces.IDataService
         /// <param name="taskId">ID del task da eliminare.</param>
         /// <returns>Task asincrono.</returns>
         Task DeleteTaskAsync(int taskId);
+
+        /// <summary>
+        /// Disabilita tutti i task del sistema.
+        /// </summary>
+        /// <returns>Numero di task disabilitati.</returns>
+        Task<int> DisableAllTasksAsync();
+
+        /// <summary>
+        /// Abilita tutti i task del sistema.
+        /// </summary>
+        /// <returns>Numero di task abilitati.</returns>
+        Task<int> EnableAllTasksAsync();
     }
 }

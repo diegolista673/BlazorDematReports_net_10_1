@@ -57,7 +57,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Components\Pages\Admin\" />
 	  <Folder Include="Properties\" />
 	</ItemGroup>
 

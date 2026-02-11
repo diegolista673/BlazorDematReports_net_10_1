@@ -42,7 +42,6 @@ namespace BlazorDematReports.Services.DataService
                 IdConfigurazione = config.IdConfigurazione,
                 CodiceConfigurazione = config.CodiceConfigurazione,
                 TipoFonte = config.TipoFonte,
-                FlagAttiva = config.FlagAttiva,
                 TestoQueryPrincipale = null
             };
 

@@ -14,11 +14,18 @@ with (firstrow = 170,
       per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
       esempio :
 
-      
-gestione della configurazione 
-
 aggiorna modifica procedura aggiungendo il dialog per abilita/disabilta task
-aggiorna scheda di lavoraione con stato task attivi o disabilitati
+
+
+aggiungere commenti dove mancano  
+
+gestione della configurazione 
+aggiornare gli handler togliendo la suddivisione per mail vs handler 
+Pipeline da eliminare e sostituire con un sistema di gestione task più flessibile e granulare
+
+aggiorna lista configurazione dopo eliminazione di un task
+
+
 
 ⚠️ DOMANDA: eliminare o tenere il button disabilita? e i task associati?
    RISPOSTA: MANTIENI il button "Disabilita" - vedi analisi dettagliata sotto

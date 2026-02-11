@@ -156,7 +156,6 @@ public record ConfigurationWizardState
             ConnectionStringName = ConnectionStringName,
             MailServiceCode = MailServiceCode,
             HandlerClassName = HandlerClassName,
-            FlagAttiva = true,
             CreatoIl = DateTime.Now,
             ModificatoIl = IsEditMode ? DateTime.Now : null
         };

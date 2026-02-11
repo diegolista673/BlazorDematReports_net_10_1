@@ -6,7 +6,6 @@
         public string CodiceConfigurazione { get; set; } = null!;
         public string Descrizione { get; set; } = null!;
         public string TipoFonte { get; set; } = null!;
-        public bool FlagAttiva { get; set; }
         public DateTime CreatoIl { get; set; }
         public int NumeroFasi { get; set; }
         public int TaskAttivi { get; set; }

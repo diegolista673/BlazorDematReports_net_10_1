@@ -1,10 +1,8 @@
 @page "/configura-fonte-dati-wizard"
 @page "/configura-fonte-dati-wizard/{IdConfigurazione:int}"
+
 @inherits BaseComponentPage<ConfigurazioneFontiWizard>
-@using BlazorDematReports.Services.Wizard
-@using BlazorDematReports.Services.Validation
-@using BlazorDematReports.Services.DataService
-@using BlazorDematReports.Components.Pages.Impostazioni.ConfigurazioneFonti.Steps
+
 @inject ConfigurationWizardStateService WizardState
 @inject ConfigurationStepValidator StepValidator
 @inject IServiceWrapper ServiceWrapper
@@ -13,6 +11,7 @@
 @inject IConfiguration Configuration
 @inject ITaskGenerationService TaskGenerationService
 @inject IProductionJobScheduler JobScheduler
+
 @attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
 
 <PageTitle>@(_wizardState.IsEditMode ? "Modifica" : "Nuova") Configurazione Fonte Dati</PageTitle>
@@ -126,156 +125,153 @@
 </MudContainer>
 
 @code {
-[Parameter] public int? IdConfigurazione { get; set; }
-[Inject] private IConfigurazioneDataReaderService DataReaderService { get; set; } = default!;
+    [Parameter] public int? IdConfigurazione { get; set; }
+    [Inject] private IConfigurazioneDataReaderService DataReaderService { get; set; } = default!;
     
-private MudStepper? _stepper;
-private ConfigurationWizardState _wizardState = new();
-private bool _saving = false;
-private bool _initialized = false;
+    private MudStepper? _stepper;
+    private ConfigurationWizardState _wizardState = new();
+    private bool _saving = false;
+    private bool _initialized = false;
     
-protected override async Task OnInitializedAsync()
-{
-    try
+    protected override async Task OnInitializedAsync()
     {
-        UiState?.ShowOverlay("Caricamento...");
-        
-        // Sottoscrivi a cambiamenti di stato
-        WizardState.OnStateChanged += OnWizardStateChanged;
-
-        // Inizializza ConfigUser
-        await ConfigUser!.InitializeAsync();
-        
-        // Se è edit mode, carica la configurazione
-        if (IdConfigurazione.HasValue)
+        try
         {
-            var config = await DataReaderService.GetConfigurazioneFontiDatiAsync(IdConfigurazione.Value);
-            if (config != null)
+            UiState?.ShowOverlay("Caricamento...");
+        
+            // Sottoscrivi a cambiamenti di stato
+            WizardState.OnStateChanged += OnWizardStateChanged;
+
+            // Inizializza ConfigUser
+            await ConfigUser!.InitializeAsync();
+        
+            // Se è edit mode, carica la configurazione
+            if (IdConfigurazione.HasValue)
             {
-                var mappings = config.ConfigurazioneFaseCentros
-                    .Where(m => m.FlagAttiva)
-                    .ToList();
-                
-                // Carica anche i dati di procedura e fasi per edit mode
-                if (mappings.Any())
+                var config = await DataReaderService.GetConfigurazioneFontiDatiAsync(IdConfigurazione.Value);
+                if (config != null)
                 {
-                    var firstMapping = mappings.First();
-                    var idProcedura = firstMapping.IdProceduraLavorazione;
-                    var idCentro = firstMapping.IdCentro;
+                    var mappings = config.ConfigurazioneFaseCentros
+                        .Where(m => m.FlagAttiva)
+                        .ToList();
+                
+                    // Carica anche i dati di procedura e fasi per edit mode
+                    if (mappings.Any())
+                    {
+                        var firstMapping = mappings.First();
+                        var idProcedura = firstMapping.IdProceduraLavorazione;
+                        var idCentro = firstMapping.IdCentro;
                     
-                    // Carica procedura
-                    var procedura = await ServiceWrapper.ServiceProcedureLavorazioni.GetProceduraLavorazioneByIdAsync(idProcedura);
-                    var nomeProcedura = procedura?.NomeProcedura ?? $"Procedura {idProcedura}";
+                        // Carica procedura
+                        var procedura = await ServiceWrapper.ServiceProcedureLavorazioni.GetProceduraLavorazioneByIdAsync(idProcedura);
+                        var nomeProcedura = procedura?.NomeProcedura ?? $"Procedura {idProcedura}";
                     
-                    // Carica fasi disponibili
-                    var fasi = await DataReaderService.GetFasiByProceduraAsync(idProcedura);
+                        // Carica fasi disponibili
+                        var fasi = await DataReaderService.GetFasiByProceduraAsync(idProcedura);
                     
-                    WizardState.LoadEditState(config, mappings, idProcedura, idCentro, nomeProcedura, fasi);
+                        WizardState.LoadEditState(config, mappings, idProcedura, idCentro, nomeProcedura, fasi);
+                    }
+                    else
+                    {
+                        WizardState.LoadEditState(config, mappings);
+                    }
+                
+                    Snackbar.Add($"Configurazione '{config.CodiceConfigurazione}' caricata in modalità modifica", Severity.Info);
                 }
                 else
                 {
-                    WizardState.LoadEditState(config, mappings);
+                    Snackbar.Add($"Configurazione {IdConfigurazione} non trovata", Severity.Error);
+                    Navigation.NavigateTo("/fonti-dati");
                 }
-                
-                Snackbar.Add($"Configurazione '{config.CodiceConfigurazione}' caricata in modalità modifica", Severity.Info);
             }
             else
             {
-                Snackbar.Add($"Configurazione {IdConfigurazione} non trovata", Severity.Error);
-                Navigation.NavigateTo("/fonti-dati");
+                // Se NON è edit mode, resetta lo state per evitare residui di sessioni precedenti
+                WizardState.Reset();
             }
-        }
-        else
-        {
-            // Se NON è edit mode, resetta lo state per evitare residui di sessioni precedenti
-            WizardState.Reset();
-        }
         
-        _wizardState = WizardState.State;
-    }
-    catch (Exception ex)
-    {
-        Logger?.LogError(ex, "Errore inizializzazione wizard");
-        Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
-    }
-    finally
-    {
-        _initialized = true;
-        UiState?.HideOverlay();
-    }
-}
-    
-private void ResetWizard()
-{
-    WizardState.Reset();
-    // _wizardState will be updated by OnWizardStateChanged
-}
-
-private void GoToPreviousStep()
-{
-    WizardState.UpdateState(s => s.PreviousStep());
-    // _wizardState will be updated by OnWizardStateChanged
-}
-
-private void GoToNextStep()
-{
-    // Validazione prima di procedere
-    var validation = StepValidator.ValidateStep(_wizardState.CurrentStep, _wizardState);
-    if (!validation.IsValid)
-    {
-        Snackbar.Add(validation.Message, validation.Severity switch
+            _wizardState = WizardState.State;
+        }
+        catch (Exception ex)
         {
-            ValidationSeverity.Error => Severity.Error,
-            ValidationSeverity.Warning => Severity.Warning,
-            _ => Severity.Info
-        });
-        return;
-    }
-    
-    WizardState.UpdateState(s => s.NextStep());
-    // _wizardState will be updated by OnWizardStateChanged
-}
-
-private void OnStepperIndexChanged(int newIndex)
-{
-    // Ignora eventi durante l'inizializzazione
-    if (!_initialized)
-        return;
-        
-    // Gestisce il cambio di step tramite click sui pallini del stepper
-    var targetStep = newIndex + 1;
-    
-    // Validazione range: step deve essere tra 1 e TotalSteps
-    if (targetStep < 1 || targetStep > _wizardState.TotalSteps)
-    {
-        Logger?.LogWarning("Tentativo di navigare a step invalido: {TargetStep}", targetStep);
-        return;
-    }
-    
-    if (targetStep > _wizardState.CurrentStep)
-    {
-        // Movimento in avanti: valida tutti gli step intermedi
-        for (int step = _wizardState.CurrentStep; step < targetStep; step++)
+            Logger?.LogError(ex, "Errore inizializzazione wizard");
+            Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
+        }
+        finally
         {
-            // Salta la validazione se step è fuori range
-            if (step < 1 || step > _wizardState.TotalSteps)
-                continue;
-                
-            var validation = StepValidator.ValidateStep(step, _wizardState);
-            if (!validation.IsValid)
+            _initialized = true;
+            UiState?.HideOverlay();
+        }
+    }
+    
+    private void ResetWizard()
+    {
+        WizardState.Reset();
+        // _wizardState will be updated by OnWizardStateChanged
+    }
+
+    private void GoToPreviousStep()
+    {
+        WizardState.UpdateState(s => s.PreviousStep());
+        // _wizardState will be updated by OnWizardStateChanged
+    }
+
+    private void GoToNextStep()
+    {
+        // Validazione prima di procedere
+        var validation = StepValidator.ValidateStep(_wizardState.CurrentStep, _wizardState);
+        if (!validation.IsValid)
+        {
+            Snackbar.Add(validation.Message, validation.Severity switch
             {
-                Snackbar.Add($"Completa lo step {step} prima di procedere: {validation.Message}", Severity.Warning);
-                return;
+                ValidationSeverity.Error => Severity.Error,
+                ValidationSeverity.Warning => Severity.Warning,
+                _ => Severity.Info
+            });
+            return;
+        }
+    
+        WizardState.UpdateState(s => s.NextStep());
+        // _wizardState will be updated by OnWizardStateChanged
+    }
+
+    private void OnStepperIndexChanged(int newIndex)
+    {
+        // Ignora eventi durante l'inizializzazione
+        if (!_initialized)
+            return;
+        
+        // Gestisce il cambio di step tramite click sui pallini del stepper
+        var targetStep = newIndex + 1;
+    
+        // Validazione range: step deve essere tra 1 e TotalSteps
+        if (targetStep < 1 || targetStep > _wizardState.TotalSteps)
+        {
+            Logger?.LogWarning("Tentativo di navigare a step invalido: {TargetStep}", targetStep);
+            return;
+        }
+    
+        if (targetStep > _wizardState.CurrentStep)
+        {
+            // Movimento in avanti: valida tutti gli step intermedi
+            for (int step = _wizardState.CurrentStep; step < targetStep; step++)
+            {
+                // Salta la validazione se step è fuori range
+                if (step < 1 || step > _wizardState.TotalSteps)
+                    continue;
+                
+                var validation = StepValidator.ValidateStep(step, _wizardState);
+                if (!validation.IsValid)
+                {
+                    Snackbar.Add($"Completa lo step {step} prima di procedere: {validation.Message}", Severity.Warning);
+                    return;
+                }
             }
         }
+    
+        // Aggiorna lo state con il nuovo step
+        WizardState.UpdateState(s => s with { CurrentStep = targetStep });
     }
-    
-    // Aggiorna lo state con il nuovo step
-    WizardState.UpdateState(s => s with { CurrentStep = targetStep });
-}
-
-    
-
     
     private async Task HandleFinishAsync()
     {

@@ -105,7 +105,6 @@
         {
             var configs = await ServiceWrapper.ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
             _emailConfigIds = configs
-                .Where(c => c.FlagAttiva == true)
                 .Select(c => c.IdConfigurazione)
                 .ToHashSet();
         }

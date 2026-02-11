@@ -135,16 +135,6 @@
                                             @context.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva)
                                         </MudChip>
                                     </MudTd>
-                                    <MudTd DataLabel="Stato">
-                                        @if (context.FlagAttiva)
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Attiva</MudChip>
-                                        }
-                                        else
-                                        {
-                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Disattivata</MudChip>
-                                        }
-                                    </MudTd>
                                     <MudTd DataLabel="Azioni">
                                         <MudTooltip Text="Modifica configurazione">
                                             <MudIconButton Icon="@Icons.Material.Filled.Edit"
@@ -320,8 +310,7 @@
             await using var context = await DbFactory!.CreateDbContextAsync();
             _configurazioni = await context.ConfigurazioneFontiDatis
                 .Include(c => c.ConfigurazioneFaseCentros)
-                .Where(c => c.FlagAttiva && 
-                       c.ConfigurazioneFaseCentros.Any(fc => 
+                .Where(c => c.ConfigurazioneFaseCentros.Any(fc => 
                            fc.FlagAttiva && 
                            fc.IdProceduraLavorazione == IdProcedura))
                 .OrderBy(c => c.CodiceConfigurazione)

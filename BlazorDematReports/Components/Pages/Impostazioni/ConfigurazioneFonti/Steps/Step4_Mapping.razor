@@ -1,6 +1,4 @@
-﻿@using BlazorDematReports.Services.Wizard
-@using BlazorDematReports.Services.Validation
-@using Entities.Models.DbApplication
+﻿
 @inject SqlValidationService SqlValidator
 
 <MudText Typo="Typo.h6" Class="mb-4">Configura i mapping Fase/Centro</MudText>
@@ -135,10 +133,15 @@ else
                 <MudDivider Class="my-2" />
                 <MudText Typo="Typo.caption"><b>Esempio:</b></MudText>
                 <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap;">
-SELECT op AS Operatore, CONVERT(DATE, data) AS DataLavorazione,
-       COUNT(*) AS Documenti, SUM(num_pag)/2 AS Fogli, SUM(num_pag) AS Pagine
-FROM tabella WHERE data >= @@StartDate AND data &lt;= @@EndDate
-GROUP BY op, CONVERT(DATE, data)
+    select 
+        OP_INDEX as operatore,
+        convert(date, DATA_INDEX) as DataLavorazione,
+        COUNT(*) as Documenti,
+        SUM(convert(int,isnull(NUM_PAG,0))/2) AS Fogli,
+        SUM(convert(int,isnull(NUM_PAG,0))) AS Pagine
+    from Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
+    where DATA_INDEX >= @@startDate and DATA_INDEX &lt;= DATEADD(DAY, 1, @@endDate) and department = 'GENOVA'
+    group by OP_INDEX, convert(date, DATA_INDEX)
                 </MudText>
             </MudPaper>
         </MudItem>
@@ -226,20 +229,6 @@ GROUP BY op, CONVERT(DATE, data)
             _selectedFaseId = State.FasiDisponibili.First().IdFaseLavorazione;
         }
         
-        // Inizializza query di default per SQL
-        if (State.TipoFonte == "SQL" && string.IsNullOrWhiteSpace(_queryText))
-        {
-_queryText = @"SELECT
-    OP_INDEX AS operatore,
-    CAST(DATA_INDEX AS DATE) AS DataLavorazione,
-    COUNT(*) AS Documenti,
-    SUM(CAST(NUM_PAG AS INT)) / 2 AS Fogli,
-    SUM(CAST(NUM_PAG AS INT)) AS Pagine
-FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-WHERE DATA_INDEX >= @startDate
-  AND DATA_INDEX < DATEADD(DAY, 1, @endDate)
-GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)";
-        }
     }
     
     private async Task ValidateQueryAsync()
@@ -314,16 +303,7 @@ GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)";
         
         // Reset form dopo l'aggiunta
         _queryText = State.TipoFonte == "SQL" 
-            ? @"SELECT
-    OP_INDEX AS operatore,
-    CAST(DATA_INDEX AS DATE) AS DataLavorazione,
-    COUNT(*) AS Documenti,
-    SUM(CAST(NUM_PAG AS INT)) / 2 AS Fogli,
-    SUM(CAST(NUM_PAG AS INT)) AS Pagine
-FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-WHERE DATA_INDEX >= @startDate
-AND DATA_INDEX < DATEADD(DAY, 1, @endDate)
-GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)"
+            ? @""
             : null;
         _validationMessage = null;
         _queryValidated = false;
@@ -344,13 +324,13 @@ GROUP BY OP_INDEX, CAST(DATA_INDEX AS DATE)"
     
     private string GetCronDescription(string? cron) => cron switch
     {
-        "0 5 * * *" => "⏰ Giornaliero 05:00",
-        "0 2 * * *" => "⏰ Giornaliero 02:00",
-        "0 */4 * * *" => "⏰ Ogni 4 ore",
-        "0 * * * *" => "⏰ Ogni ora",
-        "0 0 1 * *" => "📅 Mensile",
-        "0 0 * * 0" => "📅 Domenica",
-        "0 0 * * 1" => "📅 Lunedì",
+        "0 5 * * *" => "Giornaliero 05:00",
+        "0 2 * * *" => "Giornaliero 02:00",
+        "0 */4 * * *" => "Ogni 4 ore",
+        "0 * * * *" => "Ogni ora",
+        "0 0 1 * *" => "Mensile",
+        "0 0 * * 0" => "Domenica",
+        "0 0 * * 1" => "Lunedì",
         _ => cron ?? "N/A"
     };
 }

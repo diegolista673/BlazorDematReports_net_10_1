@@ -35,8 +35,6 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<ConfigurazioneFontiDati> ConfigurazioneFontiDatis { get; set; }
 
-    public virtual DbSet<ConfigurazionePipelineStep> ConfigurazionePipelineSteps { get; set; }
-
     public virtual DbSet<Counter> Counters { get; set; }
 
     public virtual DbSet<FasiLavorazione> FasiLavoraziones { get; set; }
@@ -309,7 +307,6 @@ public partial class DematReportsContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.DescrizioneConfigurazione).HasMaxLength(500);
-            entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
             entity.Property(e => e.HandlerClassName)
                 .HasMaxLength(200)
                 .IsUnicode(false);
@@ -323,25 +320,6 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.TipoFonte)
                 .HasMaxLength(50)
                 .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<ConfigurazionePipelineStep>(entity =>
-        {
-            entity.HasKey(e => e.IdPipelineStep).HasName("PK__Configur__A6B2F34757045CBD");
-
-            entity.ToTable("ConfigurazionePipelineStep");
-
-            entity.HasIndex(e => new { e.IdConfigurazione, e.NumeroStep }, "IX_Pipeline_Config");
-
-            entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
-            entity.Property(e => e.NomeStep).HasMaxLength(100);
-            entity.Property(e => e.TipoStep)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-
-            entity.HasOne(d => d.IdConfigurazioneNavigation).WithMany(p => p.ConfigurazionePipelineSteps)
-                .HasForeignKey(d => d.IdConfigurazione)
-                .HasConstraintName("FK_Pipeline_Configurazione");
         });
 
         modelBuilder.Entity<Counter>(entity =>

@@ -162,5 +162,47 @@ namespace BlazorDematReports.Services.DataService
                 await ctx.SaveChangesAsync();
             }
         }
+
+        /// <summary>
+        /// Disabilita tutti i task del sistema.
+        /// </summary>
+        /// <returns>Numero di task disabilitati.</returns>
+        public async Task<int> DisableAllTasksAsync()
+        {
+            QueryLoggingHelper.LogQueryExecution(logger);
+
+            await using var ctx = await contextFactory.CreateDbContextAsync();
+            var tasks = await ctx.TaskDaEseguires.Where(t => t.Enabled).ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                task.Enabled = false;
+            }
+
+            await ctx.SaveChangesAsync();
+            logger.LogInformation("Disabilitati {Count} task", tasks.Count);
+            return tasks.Count;
+        }
+
+        /// <summary>
+        /// Abilita tutti i task del sistema.
+        /// </summary>
+        /// <returns>Numero di task abilitati.</returns>
+        public async Task<int> EnableAllTasksAsync()
+        {
+            QueryLoggingHelper.LogQueryExecution(logger);
+
+            await using var ctx = await contextFactory.CreateDbContextAsync();
+            var tasks = await ctx.TaskDaEseguires.Where(t => !t.Enabled).ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                task.Enabled = true;
+            }
+
+            await ctx.SaveChangesAsync();
+            logger.LogInformation("Abilitati {Count} task", tasks.Count);
+            return tasks.Count;
+        }
     }
 }

@@ -1,10 +1,6 @@
 ﻿@page "/scheda-lavorazione"
 @page "/scheda-lavorazione/{IdproceduraLavorazione:int}"
-@using DataReading.Dto
-@using BlazorDematReports.Dto
-@using BlazorDematReports.Components.Shared
-@using Entities.Models.DbApplication
-@using Microsoft.EntityFrameworkCore
+
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inherits BaseComponentPage<PageSchedaLavorazione,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject NavigationManager NavManager
@@ -103,10 +99,26 @@ else
                         <div class="d-flex align-center gap-2">
                             <MudIcon Icon="@Icons.Material.Filled.Task" />
                             <MudText>Task Configurati</MudText>
+                            @{
+                                var allTasksCount = _currentModel.LavorazioniFasiDataReadingsDto?
+                                    .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
+                                    .ToList();
+                                var enabledCount = allTasksCount?.Count(t => t.Enabled) ?? 0;
+                                var disabledCount = allTasksCount?.Count(t => !t.Enabled) ?? 0;
+                                var totalCount = allTasksCount?.Count ?? 0;
+                            }
                             <MudChip T="int" Size="Size.Small" Color="Color.Info">
-                                @(_currentModel.LavorazioniFasiDataReadingsDto?
-                                               .Where(f => f.TaskDaEseguireDto?.Any() == true)?.Count(f => f.IdFaseLavorazione != 0) ?? 0)
+                                @totalCount
                             </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">
+                                @enabledCount Attivi
+                            </MudChip>
+                            @if (disabledCount > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                                    @disabledCount Disabilitati
+                                </MudChip>
+                            }
                         </div>
                     </TitleContent>
                     <ChildContent>
@@ -115,7 +127,19 @@ else
                                 .Where(f => f.TaskDaEseguireDto?.Any() == true)
                                 .SelectMany(f => f.TaskDaEseguireDto.Select(t => new { Fase = f, Task = t }))
                                 .ToList();
+                            
+                            var disabledTasks = allTasks?.Where(t => !t.Task.Enabled).ToList();
                         }
+                        
+                        @if (disabledTasks?.Any() == true)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="ma-2 mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" />
+                                <strong>Attenzione:</strong> @disabledTasks.Count task disabilitati non verranno eseguiti automaticamente.
+                                Gestisci lo stato dei task dalla pagina <MudLink Href="/fonti-dati" Typo="Typo.body2">Configurazioni Fonti Dati</MudLink>.
+                            </MudAlert>
+                        }
+                        
                         @if (allTasks?.Any() == true)
                         {
                             <MudGrid Spacing="2" Class="pa-2">
@@ -129,9 +153,17 @@ else
                                                     <MudText Typo="Typo.h6">@item.Task.TaskName</MudText>
                                                 </CardHeaderContent>
                                                 <CardHeaderActions>
-                                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(item.Task.Stato)">
-                                                        @(item.Task.Stato ?? "CONFIGURED")
-                                                    </MudChip>
+                                                    <div class="d-flex flex-column gap-1">
+                                                        <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(item.Task.Stato)">
+                                                            @(item.Task.Stato ?? "CONFIGURED")
+                                                        </MudChip>
+                                                        <MudChip T="string" 
+                                                                 Size="Size.Small" 
+                                                                 Color="@(item.Task.Enabled ? Color.Success : Color.Default)"
+                                                                 Variant="@(item.Task.Enabled ? Variant.Filled : Variant.Outlined)">
+                                                            @(item.Task.Enabled ? "Attivo" : "Disabilitato")
+                                                        </MudChip>
+                                                    </div>
                                                 </CardHeaderActions>
                                             </MudCardHeader>
                                             <MudCardContent>
@@ -257,11 +289,27 @@ else
                         <div class="d-flex align-center gap-2">
                             <MudIcon Icon="@Icons.Material.Filled.Email" />
                             <MudText>Servizi Mail</MudText>
-                            <MudChip T="int" Size="Size.Small" Color="Color.Info">
-                                @(_currentModel?.LavorazioniFasiDataReadingsDto?
+                            @{
+                                var allMailTasks = _currentModel?.LavorazioniFasiDataReadingsDto?
                                     .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
-                                    .Count(t => t.IdConfigurazioneDatabase.HasValue && _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value)) ?? 0)
+                                    .Where(t => t.IdConfigurazioneDatabase.HasValue && _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value))
+                                    .ToList();
+                                var enabledMailCount = allMailTasks?.Count(t => t.Enabled) ?? 0;
+                                var disabledMailCount = allMailTasks?.Count(t => !t.Enabled) ?? 0;
+                                var totalMailCount = allMailTasks?.Count ?? 0;
+                            }
+                            <MudChip T="int" Size="Size.Small" Color="Color.Info">
+                                @totalMailCount
                             </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">
+                                @enabledMailCount Attivi
+                            </MudChip>
+                            @if (disabledMailCount > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                                    @disabledMailCount Disabilitati
+                                </MudChip>
+                            }
                         </div>
                     </TitleContent>
                     <ChildContent>
@@ -511,8 +559,7 @@ else
             // Carica gli ID delle configurazioni EmailCSV per questa procedura
             _emailConfigIds = await context.ConfigurazioneFontiDatis
                 .Where(c => c.TipoFonte == "EmailCSV" && 
-                           c.FlagAttiva == true &&
-                           c.ConfigurazioneFaseCentros.Any(fc => 
+                            c.ConfigurazioneFaseCentros.Any(fc => 
                                fc.FlagAttiva == true && 
                                fc.IdProceduraLavorazione == idProcedura))
                 .Select(c => c.IdConfigurazione)

@@ -362,6 +362,8 @@ namespace DataReading.Infrastructure
     /// <summary>
     /// Aggiorna sempre audit (LastRunUtc, errori, contatore failure).
     /// </summary>
+    /// 
+
     public static class ProductionJobRunner
     {
         public static IServiceProvider ServiceProvider { get; set; } = default!;
@@ -374,7 +376,9 @@ namespace DataReading.Infrastructure
         {
             using var scope = ServiceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
-            var logger = scope.ServiceProvider.GetService<ILogger>();
+            var logger = scope.ServiceProvider
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger("DataReading.Infrastructure.ProductionJobRunner");
 
         var entity = await db.TaskDaEseguires
                 .AsSplitQuery()

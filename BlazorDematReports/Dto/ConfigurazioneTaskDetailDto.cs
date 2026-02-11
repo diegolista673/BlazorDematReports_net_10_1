@@ -10,7 +10,6 @@ namespace BlazorDematReports.Dto
         public int IdConfigurazione { get; set; }
         public string CodiceConfigurazione { get; set; } = null!;
         public string TipoFonte { get; set; } = null!;
-        public bool FlagAttiva { get; set; }
         
         // Query Management
         public string? TestoQueryPrincipale { get; set; }

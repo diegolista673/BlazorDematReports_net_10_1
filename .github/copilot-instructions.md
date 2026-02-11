@@ -52,6 +52,12 @@ Data Access Layer
 └── Entities/Context/           # DbContext configurations
 ```
 
+**CRITICAL RULE - Component Data Access:**
+- **Components must ONLY use Services** - NO direct database access or DbContext usage
+- All data operations MUST go through Service layer (e.g., `ServiceWrapper`, `IServiceConfigurazioneFontiDati`)
+- Never inject `IDbContextFactory` or `DbContext` directly into Blazor components
+- Keep components focused on presentation logic, delegate all data access to services
+
 ---
 
 ## 📋 Code Conventions
@@ -383,6 +389,7 @@ private async Task SaveAsync()
 - **LogError**: Exceptions, database errors, service failures
 - **Never log**: Passwords, connection strings, sensitive data
 - **Always include**: Exception object, context parameters
+- **NO ICONS/EMOJI**: Never use emoji or icons in log messages or codebase strings (e.g., avoid ✅, ❌, 🔧)
 
 ---
 
@@ -394,6 +401,7 @@ private async Task SaveAsync()
 - [ ] Boolean flags prefixed with `is`, `has`, `can`
 - [ ] No hardcoded strings (use Configuration or constants)
 - [ ] Comments only for complex logic (self-documenting code preferred)
+- [ ] No emoji or icons in code, comments, or log messages
 
 ### Database & Async Operations
 - [ ] All database operations use `await using var context = await DbFactory.CreateDbContextAsync()`

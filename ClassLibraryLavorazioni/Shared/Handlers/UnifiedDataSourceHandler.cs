@@ -53,13 +53,6 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
         // 1. Carica configurazione dal DB
         var config = await LoadConfigurationAsync(context.IdConfigurazioneDatabase.Value, ct);
 
-        if (config == null || config.FlagAttiva == false)
-        {
-            _logger.LogWarning("[UnifiedHandler] Config {Id} non trovata o non attiva",
-                context.IdConfigurazioneDatabase);
-            return new List<DatiLavorazione>();
-        }
-
         _logger.LogInformation("[UnifiedHandler] Esecuzione {Codice} (Tipo: {Tipo})",
             config.CodiceConfigurazione, config.TipoFonte);
 
@@ -69,7 +62,6 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
             "SQL" => await ExecuteSqlQueryAsync(config, context, ct),
             "EmailCSV" => await ExecuteMailServiceAsync(config, context, ct),
             "HandlerIntegrato" => await ExecuteCustomHandlerAsync(config, context, ct),
-            "Pipeline" => await ExecutePipelineAsync(config, context, ct),
             _ => throw new NotSupportedException($"TipoFonte '{config.TipoFonte}' non supportato")
         };
     }
@@ -249,153 +241,7 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
 
     #endregion
 
-    #region Pipeline Execution
-
-    private async Task<List<DatiLavorazione>> ExecutePipelineAsync(
-        ConfigurazioneFontiDati config,
-        LavorazioneExecutionContext context,
-        CancellationToken ct)
-    {
-        var result = new List<DatiLavorazione>();
-        var pipelineData = new List<Dictionary<string, object?>>();
-
-        // Ordina step per NumeroStep
-        var steps = config.ConfigurazionePipelineSteps
-            .Where(s => s.FlagAttiva == true)
-            .OrderBy(s => s.NumeroStep)
-            .ToList();
-
-        _logger.LogInformation("[UnifiedHandler:Pipeline] Esecuzione {Count} step per {Codice}",
-            steps.Count, config.CodiceConfigurazione);
-
-        foreach (var step in steps)
-        {
-            _logger.LogDebug("[UnifiedHandler:Pipeline] Step {Num}: {Nome} ({Tipo})",
-                step.NumeroStep, step.NomeStep, step.TipoStep);
-
-            Dictionary<string, object?>? stepConfig = null;
-            try
-            {
-                stepConfig = JsonSerializer.Deserialize<Dictionary<string, object?>>(step.ConfigurazioneStep);
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning(ex, "[UnifiedHandler:Pipeline] Errore parsing ConfigurazioneStep per step {Num}", step.NumeroStep);
-            }
-
-            pipelineData = step.TipoStep switch
-            {
-                "Query" => await ExecutePipelineQueryStepAsync(stepConfig!, config.ConnectionStringName!, context, ct),
-                "Filter" => ApplyPipelineFilter(pipelineData, stepConfig!),
-                "Transform" => ApplyPipelineTransform(pipelineData, stepConfig!),
-                "Aggregate" => ApplyPipelineAggregate(pipelineData, stepConfig!),
-                "Merge" => await MergePipelineDataAsync(pipelineData, stepConfig!, context, ct),
-                _ => throw new NotSupportedException($"TipoStep '{step.TipoStep}' non supportato")
-            };
-        }
-
-        // Converti risultato finale in DatiLavorazione
-        foreach (var item in pipelineData)
-        {
-            result.Add(new DatiLavorazione
-            {
-                Operatore = item.GetValueOrDefault("operatore")?.ToString(),
-                DataLavorazione = DateTime.TryParse(item.GetValueOrDefault("DataLavorazione")?.ToString(), out var dt)
-                    ? dt : DateTime.Today,
-                Documenti = int.TryParse(item.GetValueOrDefault("Documenti")?.ToString(), out var doc) ? doc : null,
-                Fogli = int.TryParse(item.GetValueOrDefault("Fogli")?.ToString(), out var fogli) ? fogli : null,
-                Pagine = int.TryParse(item.GetValueOrDefault("Pagine")?.ToString(), out var pag) ? pag : null,
-                AppartieneAlCentroSelezionato = true
-            });
-        }
-
-        _logger.LogInformation("[UnifiedHandler:Pipeline] Completato: {Count} record",
-            result.Count);
-
-        return result;
-    }
-
-    private async Task<List<Dictionary<string, object?>>> ExecutePipelineQueryStepAsync(
-        Dictionary<string, object?> stepConfig,
-        string connectionStringName,
-        LavorazioneExecutionContext context,
-        CancellationToken ct)
-    {
-        var result = new List<Dictionary<string, object?>>();
-
-        if (!stepConfig.TryGetValue("Query", out var queryObj) || queryObj == null)
-        {
-            throw new InvalidOperationException("Pipeline Query step richiede campo 'Query'");
-        }
-
-        var query = queryObj.ToString()!;
-        var connectionString = _configuration.GetConnectionString(connectionStringName);
-
-        await using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync(ct);
-
-        await using var cmd = new SqlCommand(query, connection);
-        cmd.CommandTimeout = 60;
-        cmd.Parameters.AddWithValue("@startData", context.StartDataLavorazione.ToString("yyyyMMdd"));
-        cmd.Parameters.AddWithValue("@endData",
-            (context.EndDataLavorazione ?? context.StartDataLavorazione).ToString("yyyyMMdd"));
-
-        using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-        {
-            var row = new Dictionary<string, object?>();
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-            }
-            result.Add(row);
-        }
-
-        return result;
-    }
-
-    private List<Dictionary<string, object?>> ApplyPipelineFilter(
-        List<Dictionary<string, object?>> data,
-        Dictionary<string, object?> stepConfig)
-    {
-        // TODO: Implementare filtri configurabili
-        // Esempio: {"Field": "status", "Operator": "equals", "Value": "active"}
-        _logger.LogDebug("[UnifiedHandler:Pipeline:Filter] Filtro non implementato, dati passati senza modifiche");
-        return data;
-    }
-
-    private List<Dictionary<string, object?>> ApplyPipelineTransform(
-        List<Dictionary<string, object?>> data,
-        Dictionary<string, object?> stepConfig)
-    {
-        // TODO: Implementare trasformazioni configurabili
-        // Esempio: {"SourceField": "raw_date", "TargetField": "date", "Transform": "ParseDate"}
-        _logger.LogDebug("[UnifiedHandler:Pipeline:Transform] Trasformazione non implementata, dati passati senza modifiche");
-        return data;
-    }
-
-    private List<Dictionary<string, object?>> ApplyPipelineAggregate(
-        List<Dictionary<string, object?>> data,
-        Dictionary<string, object?> stepConfig)
-    {
-        // TODO: Implementare aggregazioni configurabili
-        // Esempio: {"GroupBy": ["operatore", "data"], "Aggregations": [{"Field": "docs", "Function": "SUM"}]}
-        _logger.LogDebug("[UnifiedHandler:Pipeline:Aggregate] Aggregazione non implementata, dati passati senza modifiche");
-        return data;
-    }
-
-    private async Task<List<Dictionary<string, object?>>> MergePipelineDataAsync(
-        List<Dictionary<string, object?>> data,
-        Dictionary<string, object?> stepConfig,
-        LavorazioneExecutionContext context,
-        CancellationToken ct)
-    {
-        // TODO: Implementare merge dati da fonti multiple
-        _logger.LogDebug("[UnifiedHandler:Pipeline:Merge] Merge non implementato, dati passati senza modifiche");
-        return await Task.FromResult(data);
-    }
-
-    #endregion
+  
 
     #region Helpers
 
@@ -405,7 +251,6 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
 
         return await context.ConfigurazioneFontiDatis
             .Include(c => c.ConfigurazioneFaseCentros)
-            .Include(c => c.ConfigurazionePipelineSteps)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione, ct);
     }
