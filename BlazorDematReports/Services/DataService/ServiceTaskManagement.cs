@@ -1,5 +1,7 @@
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
+using Entities.Converters;
+using Entities.Enums;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
@@ -223,10 +225,9 @@ namespace BlazorDematReports.Services.DataService
                 IdProceduraLavorazione = mapping.IdProceduraLavorazione,
                 IdFaseLavorazione = mapping.IdFaseLavorazione,
                 IdCentro = mapping.IdCentro,
-                TipoTask = mapping.TipoTask ?? mapping.IdConfigurazioneNavigation?.TipoFonte ?? TipoTaskEnum.SQL,
+                TipoTask = mapping.IdConfigurazioneNavigation?.TipoFonte ?? TipoFonteData.SQL,
                 CronExpression = mapping.CronExpression ?? "0 5 * * *",
                 TestoQueryTask = mapping.TestoQueryTask,
-                MailServiceCode = mapping.MailServiceCode ?? mapping.IdConfigurazioneNavigation?.MailServiceCode,
                 HandlerClassName = mapping.HandlerClassName ?? mapping.IdConfigurazioneNavigation?.HandlerClassName,
                 NomeProcedura = mapping.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
                 NomeFase = mapping.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A",
@@ -278,10 +279,9 @@ namespace BlazorDematReports.Services.DataService
                 }
 
                 // Aggiorna mapping con nuova configurazione
-                mapping.TipoTask = taskDto.TipoTask;
+                mapping.TipoTask = TipoFonteDataConverter.ConvertToDatabase(taskDto.TipoTask);
                 mapping.CronExpression = taskDto.CronExpression;
                 mapping.TestoQueryTask = taskDto.TestoQueryTask;
-                mapping.MailServiceCode = taskDto.MailServiceCode;
                 mapping.HandlerClassName = taskDto.HandlerClassName;
 
                 await context.SaveChangesAsync();

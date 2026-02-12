@@ -126,7 +126,7 @@
                                     <MudTd DataLabel="Codice">@context.CodiceConfigurazione</MudTd>
                                     <MudTd DataLabel="Descrizione">@context.DescrizioneConfigurazione</MudTd>
                                     <MudTd DataLabel="Tipo">
-                                        <MudChip T="string" Size="Size.Small" Color="@GetTipoColor(context.TipoFonte)">
+                                        <MudChip T="string" Size="Size.Small" Color="@GetTipoColor(context.TipoFonte.ToString())">
                                             @context.TipoFonte
                                         </MudChip>
                                     </MudTd>

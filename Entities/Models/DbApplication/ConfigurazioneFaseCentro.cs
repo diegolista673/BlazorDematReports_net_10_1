@@ -27,8 +27,6 @@ public partial class ConfigurazioneFaseCentro
 
     public string? TestoQueryTask { get; set; }
 
-    public string? MailServiceCode { get; set; }
-
     public string? HandlerClassName { get; set; }
 
     public int? GiorniPrecedenti { get; set; }

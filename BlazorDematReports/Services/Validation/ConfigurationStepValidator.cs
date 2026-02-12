@@ -1,4 +1,5 @@
 using BlazorDematReports.Services.Wizard;
+using Entities.Enums;
 
 namespace BlazorDematReports.Services.Validation;
 
@@ -14,18 +15,13 @@ public interface IValidationRule<T>
 /// <summary>
 /// Validatore per lo Step 1: Tipo Fonte
 /// </summary>
-public class TipoFonteValidationRule : IValidationRule<string>
+public class TipoFonteValidationRule : IValidationRule<TipoFonteData?>
 {
-    private static readonly string[] ValidTypes = { "SQL", "EmailCSV", "HandlerIntegrato" };
-    
-    public ValidationResult Validate(string tipoFonte)
+    public ValidationResult Validate(TipoFonteData? tipoFonte)
     {
-        if (string.IsNullOrWhiteSpace(tipoFonte))
+        if (!tipoFonte.HasValue)
             return ValidationResult.Error("Seleziona un tipo di fonte dati");
-        
-        if (!ValidTypes.Contains(tipoFonte))
-            return ValidationResult.Error($"Tipo fonte '{tipoFonte}' non valido");
-        
+
         return ValidationResult.Success("Tipo fonte valido");
     }
 }
@@ -39,9 +35,8 @@ public class ConfigurazioneSpecificaValidationRule : IValidationRule<Configurati
     {
         return state.TipoFonte switch
         {
-            "SQL" => ValidateSql(state),
-            "EmailCSV" => ValidateEmail(state),
-            "HandlerIntegrato" => ValidateHandler(state),
+            TipoFonteData.SQL => ValidateSql(state),
+            TipoFonteData.HandlerIntegrato => ValidateHandler(state),
             _ => ValidationResult.Error("Tipo fonte non riconosciuto")
         };
     }
@@ -56,14 +51,7 @@ public class ConfigurazioneSpecificaValidationRule : IValidationRule<Configurati
         
         return ValidationResult.Success("Configurazione SQL valida");
     }
-    
-    private ValidationResult ValidateEmail(ConfigurationWizardState state)
-    {
-        if (string.IsNullOrWhiteSpace(state.MailServiceCode))
-            return ValidationResult.Error("Seleziona un servizio mail");
-        
-        return ValidationResult.Success("Configurazione Email valida");
-    }
+
     
     private ValidationResult ValidateHandler(ConfigurationWizardState state)
     {
@@ -111,7 +99,7 @@ public class MappingsValidationRule : IValidationRule<ConfigurationWizardState>
             return ValidationResult.Error("Mapping duplicati rilevati: stessa fase con stesso cron non consentita");
         
         // Verifica query SQL se tipo SQL
-        if (state.TipoFonte == "SQL")
+        if (state.TipoFonte == TipoFonteData.SQL)
         {
             var mappingsWithoutQuery = state.Mappings
                 .Where(m => string.IsNullOrWhiteSpace(m.TestoQueryTask))

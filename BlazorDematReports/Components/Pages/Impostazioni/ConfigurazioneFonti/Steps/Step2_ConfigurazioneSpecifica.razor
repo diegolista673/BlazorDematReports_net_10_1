@@ -1,11 +1,11 @@
-
-
+@using Entities.Enums
+@using BlazorDematReports.Helpers
 @inject SqlValidationService SqlValidator
 @inject IUnifiedHandlerRegistry HandlerRegistry
 
-<MudText Typo="Typo.h6" Class="mb-4">Configurazione specifica per @State.TipoFonte</MudText>
+<MudText Typo="Typo.h6" Class="mb-4">Configurazione specifica per @State.TipoFonte?.GetDescription()</MudText>
 
-@if (State.TipoFonte == "SQL")
+@if (State.TipoFonte == TipoFonteData.SQL)
 {
     <MudGrid>
         <MudItem xs="12" md="8">
@@ -46,7 +46,7 @@
         }
     </MudGrid>
 }
-else if (State.TipoFonte == "HandlerIntegrato")
+else if (State.TipoFonte == TipoFonteData.HandlerIntegrato)
 {
     <MudGrid>
         <MudItem xs="12">

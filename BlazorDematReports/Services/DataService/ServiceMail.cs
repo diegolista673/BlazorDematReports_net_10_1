@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BlazorDematReports.Application;
 using BlazorDematReports.Interfaces.IDataService;
+using Entities.Enums;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using FluentEmail.Core;
@@ -110,7 +111,7 @@ namespace BlazorDematReports.Services.DataService
                         .ThenInclude(fc => fc.IdProceduraLavorazioneNavigation.NomeProcedura)
                     .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva))
                         .ThenInclude(fc => fc.IdFaseLavorazioneNavigation.FaseLavorazione)
-                    .OrderBy(c => c.MailServiceCode)
+                    .OrderBy(c => c.HandlerClassName)
                     .AsNoTracking()
                     .ToListAsync();
             }
@@ -140,7 +141,7 @@ namespace BlazorDematReports.Services.DataService
                     .Include(c => c.ConfigurazioneFaseCentros.Where(fc => 
                         fc.FlagAttiva == true && fc.IdProceduraLavorazione == idProceduraLavorazione))
                         .ThenInclude(fc => fc.IdFaseLavorazioneNavigation.FaseLavorazione)
-                    .OrderBy(c => c.MailServiceCode)
+                    .OrderBy(c => c.HandlerClassName)
                     .AsNoTracking()
                     .ToListAsync();
             }
@@ -152,8 +153,9 @@ namespace BlazorDematReports.Services.DataService
         }
 
         private static IQueryable<ConfigurazioneFontiDati> MailConfigurationQuery(DematReportsContext context)
-            => context.ConfigurazioneFontiDatis.Where(c => c.TipoFonte == "EmailCSV"
-                    || (c.TipoFonte == "HandlerIntegrato" && !string.IsNullOrWhiteSpace(c.MailServiceCode)));
+            => context.ConfigurazioneFontiDatis.Where(c => c.TipoFonte == TipoFonteData.HandlerIntegrato 
+                && !string.IsNullOrWhiteSpace(c.HandlerClassName)
+                && (c.HandlerClassName == "Hera16EwsHandler" || c.HandlerClassName == "Ader4Handler"));
 
         /// <summary>
         /// Invia una email semplice.

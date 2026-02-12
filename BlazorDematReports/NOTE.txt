@@ -18,10 +18,11 @@ with (firstrow = 170,
 
 aggiungere commenti dove mancano  
 
-inserire direttiva in copilot instructions per commenatere il codice metodi e classi
-inserire direttiva in copilot instructions per inserire gli using necessari solo nel file import se possibile
+
 tipo handler o fonte dati deve diventare un enum
+
 controlare la ui allo step 2 e capire cosa fa
+
 
 gestione della configurazione 
 ✅ COMPLETATO (100%): Unificazione handler mail con ILavorazioneHandler

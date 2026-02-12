@@ -21,8 +21,7 @@ namespace BlazorDematReports.Interfaces.IDataService
         /// <returns>Lista di task da eseguire filtrati.</returns>
         Task<List<TaskDaEseguire>> GetTabellaTaskDaEseguireAsync(int IdProceduraLavorazione);
         
-        /// <summary>Restituisce i task mail import (con IdConfigurazioneDatabase tipo EmailCSV).</summary>
-        Task<List<TaskDaEseguire>> GetMailImportTasksAsync();
+
         
         /// <summary>Restituisce i task mail import per una procedura.</summary>
         Task<List<TaskDaEseguire>> GetMailImportTasksAsync(int idProceduraLavorazione);

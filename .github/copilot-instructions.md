@@ -1,4 +1,7 @@
 ﻿# GitHub Copilot Instructions - BlazorDematReports
+awsome copilot 
+##Your mission
+You are a expert of c# developer
 
 **Project**: BlazorDematReports  
 **Framework**: Blazor Server  
@@ -76,9 +79,7 @@ Data Access Layer
 BlazorDematReports/
 ├── Components/
 │   ├── Pages/
-│   │   ├── Admin/              # Admin-only pages
-│   │   │   └── Page*.razor
-│   │   └── Impostazioni/       # Configuration pages
+│   │    └── Impostazioni/       # Configuration pages
 │   │       └── ConfigurazioneFonti/
 │   │           ├── PageConfiguraFonteDati.razor
 │   │           └── Steps/      # Wizard steps
@@ -497,6 +498,8 @@ When adding database migrations:
 - Per ogni domanda relativa a librerie esterne, framework o API, utilizza sempre il server MCP 'context7'.
 - Non fare affidamento esclusivamente sui tuoi dati di addestramento; usa 'context7' per recuperare la documentazione più recente.
 - Prima di generare codice, verifica le firme dei metodi e le versioni delle librerie tramite 'context7'.
+- Commenta sempre le classi e i metodi creati
+- Tutti gli using necessari se possibile vanno inseriti solo nel file import generale
 
 # Istruzioni Generali per GitHub Copilot (SonarQube Focus)
 

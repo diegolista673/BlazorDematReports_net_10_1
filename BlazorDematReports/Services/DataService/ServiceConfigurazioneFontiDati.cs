@@ -3,6 +3,8 @@ using BlazorDematReports.Application;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
 using DataReading.Infrastructure;
+using Entities.Converters;
+using Entities.Enums;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
@@ -250,20 +252,19 @@ namespace BlazorDematReports.Services.DataService
                                 try
                                 {
                                     await productionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
-                                    logger.LogInformation("✅ Rimosso job Hangfire {HangfireKey} per task {TaskId} (Proc={IdProc}, Fase={IdFase})",
+                                    logger.LogInformation("Rimosso job Hangfire {HangfireKey} per task {TaskId} (Proc={IdProc}, Fase={IdFase})",
                                         task.IdTaskHangFire, task.IdTaskDaEseguire, 
                                         mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
                                 }
                                 catch (Exception ex)
                                 {
-                                    logger.LogWarning(ex, "❌ Errore rimozione job Hangfire {HangfireKey}", task.IdTaskHangFire);
+                                    logger.LogWarning(ex, "Errore rimozione job Hangfire {HangfireKey}", task.IdTaskHangFire);
                                 }
                             }
                         }
-                        
                         // STEP 4: Rimuovi i task dal database
                         context.TaskDaEseguires.RemoveRange(tasksToRemove);
-                        logger.LogInformation("🗑️ Rimossi {Count} task dal DB per mapping Proc={IdProc} Fase={IdFase}",
+                        logger.LogInformation("Rimossi {Count} task dal DB per mapping Proc={IdProc} Fase={IdFase}",
                             tasksToRemove.Count, mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
                     }
                 }
@@ -282,7 +283,6 @@ namespace BlazorDematReports.Services.DataService
                             exist.TestoQueryTask = m.TestoQueryTask;
                             exist.CronExpression = m.CronExpression;
                             exist.TipoTask = m.TipoTask;
-                            exist.MailServiceCode = m.MailServiceCode;
                             exist.HandlerClassName = m.HandlerClassName;
                             exist.MappingColonne = m.MappingColonne;
                             exist.FlagAttiva = m.FlagAttiva;
@@ -293,7 +293,7 @@ namespace BlazorDematReports.Services.DataService
                             m.IdFaseCentro = 0;
                             m.IdConfigurazione = config.IdConfigurazione;
                             m.FlagAttiva = true;
-                            m.TipoTask ??= config.TipoFonte;
+                            m.TipoTask ??= TipoFonteDataConverter.ConvertToDatabase(config.TipoFonte);
                             m.CronExpression ??= "0 5 * * *";
                             if (m.GiorniPrecedenti is null or <= 0)
                                 m.GiorniPrecedenti = 10;
@@ -311,7 +311,6 @@ namespace BlazorDematReports.Services.DataService
                                 existingDup.TestoQueryTask = m.TestoQueryTask;
                                 existingDup.CronExpression = m.CronExpression;
                                 existingDup.TipoTask = m.TipoTask;
-                                existingDup.MailServiceCode = m.MailServiceCode;
                                 existingDup.HandlerClassName = m.HandlerClassName;
                                 existingDup.MappingColonne = m.MappingColonne;
                                 existingDup.FlagAttiva = true;
@@ -325,7 +324,7 @@ namespace BlazorDematReports.Services.DataService
                             m.FlagAttiva = true;
 
                             // Assicura che i campi obbligatori siano valorizzati
-                            m.TipoTask ??= config.TipoFonte;
+                            m.TipoTask ??= TipoFonteDataConverter.ConvertToDatabase(config.TipoFonte);
                             m.CronExpression ??= "0 5 * * *";
                             if (m.GiorniPrecedenti is null or <= 0)
                                 m.GiorniPrecedenti = 10;
@@ -349,12 +348,12 @@ namespace BlazorDematReports.Services.DataService
                     var cleanupCount = await productionScheduler.CleanupOrphansAsync();
                     if (cleanupCount > 0)
                     {
-                        logger.LogInformation("🧹 Cleanup post-update: {Count} job Hangfire processati", cleanupCount);
+                        logger.LogInformation("Cleanup post-update: {Count} job Hangfire processati", cleanupCount);
                     }
                 }
                 catch (Exception cleanupEx)
                 {
-                    logger.LogWarning(cleanupEx, "⚠️ Errore durante cleanup Hangfire post-update");
+                    logger.LogWarning(cleanupEx, "Errore durante cleanup Hangfire post-update");
                 }
             }
             catch (Exception ex)

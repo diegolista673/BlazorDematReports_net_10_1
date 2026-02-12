@@ -1,5 +1,6 @@
 using DataReading.Dto;
 using DataReading.Interfaces;
+using Entities.Enums;
 using Entities.Models.DbApplication;
 using LibraryLavorazioni.Shared.Interfaces;
 using LibraryLavorazioni.Shared.Models;
@@ -54,8 +55,8 @@ namespace DataReading.Infrastructure
         private static string NormalizeService(string svc) => NormalizeToken(svc.Replace('.', '-'));
 
         /// <summary>
-        /// Costruisce la chiave Hangfire in base al tipo di task
-        /// Formato unificato: {type}:{IdTaskDaEseguire}-{IdProceduraLavorazione}:{nomeprocedura-normal}-{detail}
+        /// Costruisce la chiave Hangfire in base al tipo di task.
+        /// Formato unificato: prod:{IdTaskDaEseguire}-{IdProceduraLavorazione}:{nomeprocedura-normal}-{detail}
         /// </summary>
         private static string BuildHangfireKey(TaskDaEseguire t)
         {
@@ -63,17 +64,14 @@ namespace DataReading.Infrastructure
             var procName = NormalizeToken(t.IdLavorazioneFaseDateReadingNavigation?.IdProceduraLavorazioneNavigation?.NomeProcedura);
             var faseName = NormalizeToken(t.IdLavorazioneFaseDateReadingNavigation?.IdFaseLavorazioneNavigation?.FaseLavorazione);
 
-            // NUOVO SISTEMA: usa ConfigurazioneFontiDati per determinare il tipo
+            // usa ConfigurazioneFontiDati per determinare il dettaglio
             if (t.IdConfigurazioneDatabase.HasValue && t.IdConfigurazioneDatabaseNavigation != null)
             {
-                var tipoFonte = t.IdConfigurazioneDatabaseNavigation.TipoFonte?.ToLowerInvariant();
-                var detail = tipoFonte switch
-                {
-                    "emailcsv" => NormalizeService(t.IdConfigurazioneDatabaseNavigation.MailServiceCode ?? "email"),
-                    _ => faseName
-                };
-                var prefix = tipoFonte == "emailcsv" ? "mail" : "prod";
-                return $"{prefix}:{t.IdTaskDaEseguire}-{idProc}-{procName}:{detail}";
+                var detail = t.IdConfigurazioneDatabaseNavigation.TipoFonte == TipoFonteData.HandlerIntegrato
+                    ? NormalizeToken(t.IdConfigurazioneDatabaseNavigation.HandlerClassName ?? "handler")
+                    : faseName;
+
+                return $"prod:{t.IdTaskDaEseguire}-{idProc}-{procName}:{detail}";
             }
 
             // FALLBACK (non dovrebbe mai succedere con nuovo sistema)
@@ -447,6 +445,7 @@ namespace DataReading.Infrastructure
         /// Determina il tipo di job basandosi su IdConfigurazioneDatabase.
         /// Tutti i task DEVONO avere IdConfigurazioneDatabase configurato.
         /// </summary>
+        /// 
         private static (string jobType, string handlerCode) DetermineJobTypeAndCode(TaskDaEseguire entity)
         {
             if (!entity.IdConfigurazioneDatabase.HasValue || entity.IdConfigurazioneDatabaseNavigation == null)
@@ -457,13 +456,11 @@ namespace DataReading.Infrastructure
             }
 
             var config = entity.IdConfigurazioneDatabaseNavigation;
-            
-            return config.TipoFonte?.ToUpperInvariant() switch
+
+            return config.TipoFonte switch
             {
-                "SQL" => ("DatabaseQuery", config.ConnectionStringName ?? ""),
-                "EMAILCSV" => ("UnifiedHandler", config.MailServiceCode ?? "EMAIL"),
-                "HANDLERINTEGRATO" => ("UnifiedHandler", config.HandlerClassName ?? ""),
-                "PIPELINE" => ("Pipeline", ""),
+                TipoFonteData.SQL => ("DatabaseQuery", config.ConnectionStringName ?? ""),
+                TipoFonteData.HandlerIntegrato => ("UnifiedHandler", config.HandlerClassName ?? ""),
                 _ => throw new InvalidOperationException(
                     $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
             };
@@ -523,7 +520,7 @@ namespace DataReading.Infrastructure
                     $"Configurazione {entity.IdConfigurazioneDatabase.Value} non trovata per task {entity.IdTaskDaEseguire}");
             }
 
-            if (config.TipoFonte != "SQL")
+            if (config.TipoFonte != TipoFonteData.SQL)
             {
                 throw new InvalidOperationException(
                     $"Configurazione {config.IdConfigurazione} ha TipoFonte='{config.TipoFonte}' invece di 'SQL'");

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Entities.Models.DbApplication;
+using Entities.Enums;
 
 namespace BlazorDematReports.Services.Wizard;
 
@@ -11,62 +12,61 @@ public record ConfigurationWizardState
 {
     public int CurrentStep { get; init; } = 1;
     public int TotalSteps { get; init; } = 4;
-    
+
     // Step 1: Tipo Fonte
-    public string TipoFonte { get; init; } = "SQL";
-    
+    public TipoFonteData? TipoFonte { get; init; } = TipoFonteData.SQL;
+
     // Step 2: Configurazione Specifica
     public string? ConnectionStringName { get; init; }
-    public string? MailServiceCode { get; init; }
     public string? HandlerClassName { get; init; }
     public bool ConnectionTestPassed { get; init; }
     public string? ValidationMessage { get; init; }
-    
+
     // Step 3: Procedura
     public int? IdProcedura { get; init; }
     public int? IdCentro { get; init; }
     public string? NomeProcedura { get; init; }
     public ImmutableList<FasiLavorazione> FasiDisponibili { get; init; } = ImmutableList<FasiLavorazione>.Empty;
-    
+
     // Step 4: Mappings
     public ImmutableList<ConfigurazioneFaseCentro> Mappings { get; init; } = ImmutableList<ConfigurazioneFaseCentro>.Empty;
     public string? DescrizioneConfigurazione { get; init; }
     public int GiorniPrecedentiDefault { get; init; } = 10;
-    
+
     // Edit mode
     public int? IdConfigurazioneEdit { get; init; }
     public string? CodiceConfigurazioneOriginal { get; init; } // Preserva codice originale in edit
     public bool IsEditMode => IdConfigurazioneEdit.HasValue;
-    
+
     // Progress
     public bool IsStepValid(int step) => step switch
     {
-        1 => !string.IsNullOrWhiteSpace(TipoFonte),
+        1 => TipoFonte.HasValue,
         2 => IsStep2Valid(),
         3 => IdProcedura.HasValue && FasiDisponibili.Any(),
         4 => Mappings.Any(),
         _ => false
     };
-    
+
     private bool IsStep2Valid() => TipoFonte switch
     {
-        "SQL" => !string.IsNullOrWhiteSpace(ConnectionStringName) && (ConnectionTestPassed || IsEditMode),
-        "HandlerIntegrato" => !string.IsNullOrWhiteSpace(HandlerClassName),
+        TipoFonteData.SQL => !string.IsNullOrWhiteSpace(ConnectionStringName) && (ConnectionTestPassed || IsEditMode),
+        TipoFonteData.HandlerIntegrato => !string.IsNullOrWhiteSpace(HandlerClassName),
         _ => false
     };
-    
+
     public bool CanMoveNext => IsStepValid(CurrentStep);
     public bool CanMovePrevious => CurrentStep > 1;
     public bool CanFinish => CurrentStep == TotalSteps && IsStepValid(4);
-    
+
     // Helper methods per creare nuovi stati
     public ConfigurationWizardState NextStep() 
         => this with { CurrentStep = Math.Min(CurrentStep + 1, TotalSteps) };
-    
+
     public ConfigurationWizardState PreviousStep() 
         => this with { CurrentStep = Math.Max(CurrentStep - 1, 1) };
-    
-    public ConfigurationWizardState WithTipoFonte(string tipoFonte)
+
+    public ConfigurationWizardState WithTipoFonte(TipoFonteData tipoFonte)
     {
         // Se il tipo non cambia, non resettare i campi di step 2
         if (tipoFonte == this.TipoFonte)
@@ -77,7 +77,6 @@ public record ConfigurationWizardState
         {
             TipoFonte = tipoFonte,
             ConnectionStringName = null,
-            MailServiceCode = null,
             HandlerClassName = null,
             ConnectionTestPassed = false
         };
@@ -89,10 +88,7 @@ public record ConfigurationWizardState
             ConnectionStringName = connectionString,
             ConnectionTestPassed = testPassed
         };
-    
-    public ConfigurationWizardState WithMailService(string? mailService) 
-        => this with { MailServiceCode = mailService };
-    
+
     public ConfigurationWizardState WithHandler(string? handler) 
         => this with { HandlerClassName = handler };
     
@@ -151,9 +147,8 @@ public record ConfigurationWizardState
             IdConfigurazione = IdConfigurazioneEdit ?? 0,
             CodiceConfigurazione = codiceConfigurazione,
             DescrizioneConfigurazione = DescrizioneConfigurazione ?? $"Config_{NomeProcedura}",
-            TipoFonte = TipoFonte,
+            TipoFonte = TipoFonte ?? TipoFonteData.SQL,
             ConnectionStringName = ConnectionStringName,
-            MailServiceCode = MailServiceCode,
             HandlerClassName = HandlerClassName,
             CreatoIl = DateTime.Now,
             ModificatoIl = IsEditMode ? DateTime.Now : null
@@ -190,12 +185,11 @@ public class ConfigurationWizardStateService
         _state = new ConfigurationWizardState
         {
             IdConfigurazioneEdit = config.IdConfigurazione,
-            CodiceConfigurazioneOriginal = config.CodiceConfigurazione, // ? Preserva codice originale
+            CodiceConfigurazioneOriginal = config.CodiceConfigurazione,
             TipoFonte = config.TipoFonte,
             ConnectionStringName = config.ConnectionStringName,
-            MailServiceCode = config.MailServiceCode,
             HandlerClassName = config.HandlerClassName,
-            ConnectionTestPassed = config.TipoFonte == "SQL" && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
+            ConnectionTestPassed = config.TipoFonte == TipoFonteData.SQL && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
             DescrizioneConfigurazione = config.DescrizioneConfigurazione,
             Mappings = mappings.ToImmutableList(),
             IdProcedura = idProcedura,

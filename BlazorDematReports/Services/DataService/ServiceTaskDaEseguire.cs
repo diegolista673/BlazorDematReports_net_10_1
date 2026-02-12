@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using BlazorDematReports.Application;
 using BlazorDematReports.Interfaces.IDataService;
+using Entities.Enums;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
@@ -63,22 +64,7 @@ namespace BlazorDematReports.Services.DataService
                 .AsNoTracking().ToListAsync();
         }
 
-        /// <summary>
-        /// Restituisce l'elenco dei task da eseguire con configurazione EmailCSV.
-        /// </summary>
-        /// <returns>Lista di task da eseguire per l'importazione tramite mail.</returns>
-        public async Task<List<TaskDaEseguire>> GetMailImportTasksAsync()
-        {
-            QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll()
-                .Include(t => t.IdConfigurazioneDatabaseNavigation)
-                .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                .Where(t => t.IdConfigurazioneDatabase.HasValue && 
-                           t.IdConfigurazioneDatabaseNavigation!.TipoFonte == "EmailCSV")
-                .AsNoTracking()
-                .ToListAsync();
-        }
 
         /// <summary>
         /// Restituisce l'elenco dei task da eseguire filtrati per ID della procedura di lavorazione e con configurazione EmailCSV.
@@ -92,8 +78,7 @@ namespace BlazorDematReports.Services.DataService
             return await FindAll()
                 .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                .Where(t => t.IdConfigurazioneDatabase.HasValue && 
-                           t.IdConfigurazioneDatabaseNavigation!.TipoFonte == "EmailCSV" &&
+                .Where(t => t.IdConfigurazioneDatabase.HasValue &&
                            t.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione == idProceduraLavorazione)
                 .AsNoTracking()
                 .ToListAsync();
@@ -112,8 +97,7 @@ namespace BlazorDematReports.Services.DataService
                 .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                .Where(t => t.IdConfigurazioneDatabase.HasValue && 
-                           t.IdConfigurazioneDatabaseNavigation!.TipoFonte == "EmailCSV")
+                .Where(t => t.IdConfigurazioneDatabase.HasValue )
                 .AsNoTracking()
                 .ToListAsync();
         }

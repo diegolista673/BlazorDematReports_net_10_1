@@ -1,6 +1,8 @@
 ﻿@page "/fonti-dati"
 @using Entities.Models.DbApplication
 @using BlazorDematReports.Interfaces.IDataService
+@using Entities.Enums
+@using BlazorDematReports.Helpers
 @inject IDbContextFactory<DematReportsContext> DbFactory
 @inject IServiceWrapper ServiceWrapper
 @inject NavigationManager Navigation
@@ -330,13 +332,7 @@
         }
     }
 
-    private Color GetTipoColor(string tipo) => tipo switch
-    {
-        "SQL" => Color.Primary,
-        "EmailCSV" => Color.Secondary,
-        "HandlerIntegrato" => Color.Tertiary,
-        _ => Color.Default
-    };
+    private Color GetTipoColor(TipoFonteData tipo) => TipoFonteDataHelper.GetColor(tipo);
 
 
 }

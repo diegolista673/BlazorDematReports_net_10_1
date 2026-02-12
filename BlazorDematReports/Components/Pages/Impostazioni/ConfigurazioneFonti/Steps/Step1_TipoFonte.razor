@@ -1,52 +1,42 @@
+@using Entities.Enums
+@using BlazorDematReports.Helpers
 
 <MudText Typo="Typo.h6" Class="mb-4">Seleziona il tipo di fonte dati</MudText>
 
-<MudRadioGroup T="string" ValueChanged="OnRadioValueChanged" Value="@_selectedValue">
-    <MudRadio Value="@("SQL")" Color="Color.Primary" Dense>
-        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Primary" />
-            <div>
-                <MudText Typo="Typo.body1"><strong>SQL Database</strong></MudText>
-                <MudText Typo="Typo.body2" Class="text-muted">
-                    Esegui query SQL su database SQL Server o Oracle
-                </MudText>
-            </div>
-        </MudStack>
-    </MudRadio>
-    <MudRadio Value="@("HandlerIntegrato")" Color="Color.Tertiary" Dense Class="mt-3">
-        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
-            <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Tertiary" />
-            <div>
-                <MudText Typo="Typo.body1"><strong>Handler C#</strong></MudText>
-                <MudText Typo="Typo.body2" Class="text-muted">
-                    Definisci un handler personalizzato (inclusi quelli che inviano email o elaborano file)
-                </MudText>
-            </div>
-        </MudStack>
-    </MudRadio>
+<MudRadioGroup T="TipoFonteData" ValueChanged="OnRadioValueChanged" Value="@_selectedValue">
+    @foreach (var tipoFonte in TipoFonteDataHelper.GetAvailableTypes())
+    {
+        <MudRadio Value="@tipoFonte" Color="@TipoFonteDataHelper.GetColor(tipoFonte)" Dense Class="@(tipoFonte != TipoFonteData.SQL ? "mt-3" : "")">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@TipoFonteDataHelper.GetIcon(tipoFonte)" Color="@TipoFonteDataHelper.GetColor(tipoFonte)" />
+                <div>
+                    <MudText Typo="Typo.body1"><strong>@tipoFonte.GetDescription()</strong></MudText>
+                    <MudText Typo="Typo.body2" Class="text-muted">
+                        @GetTipoFonteHelperText(tipoFonte)
+                    </MudText>
+                </div>
+            </MudStack>
+        </MudRadio>
+    }
 </MudRadioGroup>
 
-
-@if (!string.IsNullOrWhiteSpace(_selectedValue))
-{
-    <MudAlert Severity="Severity.Success" Class="mt-4" Variant="Variant.Outlined">
-        <MudText>Tipo fonte selezionato: <strong>@_selectedValue</strong></MudText>
-    </MudAlert>
-}
+<MudAlert Severity="Severity.Success" Class="mt-4" Variant="Variant.Outlined">
+    <MudText>Tipo fonte selezionato: <strong>@_selectedValue.GetDescription()</strong></MudText>
+</MudAlert>
 
 @code {
     [Parameter] public ConfigurationWizardState State { get; set; } = default!;
     [Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
 
-    private string _selectedValue = "SQL";
+    private TipoFonteData _selectedValue = TipoFonteData.SQL;
 
     protected override void OnInitialized()
     {
         // Sincronizza lo state locale con lo state del wizard
-        _selectedValue = State.TipoFonte ?? "SQL";
-        
+        _selectedValue = State.TipoFonte ?? TipoFonteData.SQL;
+
         // Inizializza lo state del wizard se necessario
-        if (string.IsNullOrWhiteSpace(State.TipoFonte))
+        if (State.TipoFonte == null)
         {
             StateService.UpdateState(s => s.WithTipoFonte(_selectedValue));
         }
@@ -55,18 +45,27 @@
     protected override void OnParametersSet()
     {
         // Aggiorna il valore locale quando cambia lo state esterno
-        if (!string.IsNullOrWhiteSpace(State.TipoFonte) && _selectedValue != State.TipoFonte)
+        if (State.TipoFonte.HasValue && _selectedValue != State.TipoFonte.Value)
         {
-            _selectedValue = State.TipoFonte;
+            _selectedValue = State.TipoFonte.Value;
         }
     }
 
-    private void OnRadioValueChanged(string newValue)
+    private void OnRadioValueChanged(TipoFonteData newValue)
     {
         _selectedValue = newValue;
         StateService.UpdateState(s => s.WithTipoFonte(_selectedValue));
     }
 
+    private string GetTipoFonteHelperText(TipoFonteData tipoFonte)
+    {
+        return tipoFonte switch
+        {
+            TipoFonteData.SQL => "Esegui query SQL su database SQL Server o Oracle",
+            TipoFonteData.HandlerIntegrato => "Definisci un handler personalizzato (inclusi quelli per email)",
+            _ => ""
+        };
+    }
 }
 
 

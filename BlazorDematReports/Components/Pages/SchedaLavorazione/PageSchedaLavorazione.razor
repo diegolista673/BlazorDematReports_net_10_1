@@ -458,9 +458,6 @@ else
                 _currentModel = loadedModel;
                 _selectedLavorazione = loadedModel.NomeProcedura;
                 
-                // Carica gli ID delle configurazioni EmailCSV per questa procedura
-                await LoadEmailConfigIdsAsync(id);
-                
                 Logger?.LogInformation("Loaded procedure {ProcedureId}: {ProcedureName}", id, loadedModel.NomeProcedura);
             }
             else
@@ -550,30 +547,7 @@ else
         _emailConfigIds.Clear();
     }
     
-    private async Task LoadEmailConfigIdsAsync(int idProcedura)
-    {
-        try
-        {
-            await using var context = await DbFactory.CreateDbContextAsync();
-            
-            // Carica gli ID delle configurazioni EmailCSV per questa procedura
-            _emailConfigIds = await context.ConfigurazioneFontiDatis
-                .Where(c => c.TipoFonte == "EmailCSV" && 
-                            c.ConfigurazioneFaseCentros.Any(fc => 
-                               fc.FlagAttiva == true && 
-                               fc.IdProceduraLavorazione == idProcedura))
-                .Select(c => c.IdConfigurazione)
-                .ToHashSetAsync();
-                
-            Logger?.LogInformation("Loaded {Count} email configurations for procedure {IdProcedura}", 
-                _emailConfigIds.Count, idProcedura);
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "Error loading email configurations for procedure {IdProcedura}", idProcedura);
-            _emailConfigIds.Clear();
-        }
-    }
+
     
     private Color GetStatusColor(string? stato, bool? attivaFlag = null)
     {

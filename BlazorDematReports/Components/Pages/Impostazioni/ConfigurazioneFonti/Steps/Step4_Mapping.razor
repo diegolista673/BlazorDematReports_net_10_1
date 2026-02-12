@@ -1,4 +1,5 @@
-﻿
+﻿@using Entities.Enums
+@using BlazorDematReports.Helpers
 @inject SqlValidationService SqlValidator
 
 <MudText Typo="Typo.h6" Class="mb-4">Configura i mapping Fase/Centro</MudText>
@@ -27,7 +28,7 @@ else
                     <th>Fase</th>
                     <th>Schedulazione</th>
                     <th>Giorni Prec.</th>
-                    @if (State.TipoFonte == "SQL")
+                    @if (State.TipoFonte == TipoFonteData.SQL)
                     {
                         <th>Query</th>
                     }
@@ -49,7 +50,7 @@ else
                             </MudChip>
                         </td>
                         <td>@mapping.GiorniPrecedenti</td>
-                        @if (State.TipoFonte == "SQL")
+                        @if (State.TipoFonte == TipoFonteData.SQL)
                         {
                             <td>
                                 @if (!string.IsNullOrWhiteSpace(mapping.TestoQueryTask))
@@ -112,8 +113,8 @@ else
                                 <MudText Typo="Typo.caption" Color="Color.Primary"><strong>Giorni Precedenti:</strong></MudText>
                                 <MudText Typo="Typo.body2">@mapping.GiorniPrecedenti</MudText>
                             </div>
-                            
-                            @if (State.TipoFonte == "SQL")
+
+                            @if (State.TipoFonte == TipoFonteData.SQL)
                             {
                                 <div>
                                     <MudText Typo="Typo.caption" Color="Color.Primary"><strong>Query:</strong></MudText>
@@ -178,8 +179,8 @@ else
                      Min="1"
                      Max="365" />
 </MudItem>
-    
-    @if (State.TipoFonte == "SQL")
+
+    @if (State.TipoFonte == TipoFonteData.SQL)
     {
         <MudItem xs="12">
             <MudPaper Elevation="2" Class="pa-2 pa-sm-3 mb-2">
@@ -347,7 +348,7 @@ group by OP_INDEX, convert(date, DATA_INDEX)
             return false;
         
         // Se SQL, richiedi query validata
-        if (State.TipoFonte == "SQL")
+        if (State.TipoFonte == TipoFonteData.SQL)
         {
             return !string.IsNullOrWhiteSpace(_queryText) && _queryValidated;
         }
@@ -366,18 +367,17 @@ group by OP_INDEX, convert(date, DATA_INDEX)
             IdCentro = State.IdCentro.Value,
             IdFaseLavorazione = _selectedFaseId,
             FlagAttiva = true,
-            TipoTask = State.TipoFonte,
+            TipoTask = State.TipoFonte?.ToTaskString(),
             CronExpression = _selectedCron,
             GiorniPrecedenti = _giorniPrecedenti,
-            TestoQueryTask = State.TipoFonte == "SQL" ? _queryText : null,
-            MailServiceCode = State.TipoFonte == "EmailCSV" ? State.MailServiceCode : null,
-            HandlerClassName = State.TipoFonte == "HandlerIntegrato" ? State.HandlerClassName : null
+            TestoQueryTask = State.TipoFonte == TipoFonteData.SQL ? _queryText : null,
+            HandlerClassName = State.TipoFonte == TipoFonteData.HandlerIntegrato ? State.HandlerClassName : null
         };
         
         StateService.UpdateState(s => s.WithMapping(newMapping));
         
         // Reset form dopo l'aggiunta
-        _queryText = State.TipoFonte == "SQL" 
+        _queryText = State.TipoFonte == TipoFonteData.SQL
             ? @""
             : null;
         _validationMessage = null;

@@ -1,4 +1,5 @@
 using Entities.Models.DbApplication;
+using Entities.Enums;
 using LibraryLavorazioni.Lavorazioni.Interfaces;
 using LibraryLavorazioni.Lavorazioni.Models;
 using LibraryLavorazioni.Utility.Models;
@@ -58,8 +59,8 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
         // 2. Routing basato su TipoFonte
         return config.TipoFonte switch
         {
-            "SQL" => await ExecuteSqlQueryAsync(config, context, ct),
-            "HandlerIntegrato" => await ExecuteCustomHandlerAsync(config, context, ct),
+            TipoFonteData.SQL => await ExecuteSqlQueryAsync(config, context, ct),
+            TipoFonteData.HandlerIntegrato => await ExecuteCustomHandlerAsync(config, context, ct),
             _ => throw new NotSupportedException($"TipoFonte '{config.TipoFonte}' non supportato. Per servizi email, utilizzare i job Hangfire dedicati.")
         };
     }

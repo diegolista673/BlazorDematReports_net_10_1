@@ -1,7 +1,11 @@
+using BlazorDematReports.Helpers;
+using Entities.Enums;
+
 namespace BlazorDematReports.Dto
 {
     /// <summary>
-    /// DTO per la creazione/modifica di un singolo task
+    /// DTO per la creazione/modifica di un singolo task.
+    /// Usa TipoFonteData enum per type safety completa.
     /// </summary>
     public class ConfigurazioneTaskEditDto
     {
@@ -10,86 +14,57 @@ namespace BlazorDematReports.Dto
         public int IdProceduraLavorazione { get; set; }
         public int IdFaseLavorazione { get; set; }
         public int IdCentro { get; set; }
-        
-        // Configurazione Task
-        public string TipoTask { get; set; } = TipoTaskEnum.SQL;
+
+        /// <summary>
+        /// Tipo di task (SQL o HandlerIntegrato).
+        /// Type-safe: usa enum invece di stringa.
+        /// </summary>
+        public TipoFonteData TipoTask { get; set; } = TipoFonteData.SQL;
+
         public string CronExpression { get; set; } = "0 5 * * *";
         public string? TestoQueryTask { get; set; }
-        public string? MailServiceCode { get; set; }
         public string? HandlerClassName { get; set; }
-        
+
         // Display (readonly)
         public string NomeProcedura { get; set; } = string.Empty;
         public string NomeFase { get; set; } = string.Empty;
         public string NomeCentro { get; set; } = string.Empty;
-        
+
         /// <summary>
-        /// Valida che la configurazione sia corretta in base al tipo task
+        /// Valida che la configurazione sia corretta in base al tipo task.
         /// </summary>
         public bool IsValid()
         {
             if (string.IsNullOrWhiteSpace(CronExpression))
                 return false;
-            
+
             return TipoTask switch
             {
-                TipoTaskEnum.SQL => !string.IsNullOrWhiteSpace(TestoQueryTask),
-                TipoTaskEnum.EmailCSV => !string.IsNullOrWhiteSpace(MailServiceCode),
-                TipoTaskEnum.HandlerIntegrato => !string.IsNullOrWhiteSpace(HandlerClassName),
+                TipoFonteData.SQL => !string.IsNullOrWhiteSpace(TestoQueryTask),
+                TipoFonteData.HandlerIntegrato => !string.IsNullOrWhiteSpace(HandlerClassName),
                 _ => false
             };
         }
-        
+
         /// <summary>
-        /// Restituisce una descrizione leggibile della configurazione
+        /// Restituisce una descrizione leggibile della configurazione.
         /// </summary>
         public string GetDescription()
         {
             var parts = new List<string>
             {
-                $"Tipo: {TipoTask}",
+                $"Tipo: {TipoTask.GetDescription()}",
                 $"CRON: {CronExpression}",
                 "Stato: Gestito da TaskDaEseguire" 
             };
-            
+
             if (!string.IsNullOrWhiteSpace(TestoQueryTask))
                 parts.Add($"Query: {TestoQueryTask.Substring(0, Math.Min(50, TestoQueryTask.Length))}...");
-            
-            if (!string.IsNullOrWhiteSpace(MailServiceCode))
-                parts.Add($"Mail: {MailServiceCode}");
-            
+
             if (!string.IsNullOrWhiteSpace(HandlerClassName))
                 parts.Add($"Handler: {HandlerClassName}");
-            
+
             return string.Join(" | ", parts);
         }
-    }
-    
-    /// <summary>
-    /// Enum per tipologie task supportate
-    /// </summary>
-    public static class TipoTaskEnum
-    {
-        public const string SQL = "SQL";
-        public const string EmailCSV = "EmailCSV";
-        public const string HandlerIntegrato = "HandlerIntegrato";
-        
-        public static List<string> GetAll() => new() { SQL, EmailCSV, HandlerIntegrato };
-        
-        public static string GetDisplayName(string tipoTask) => tipoTask switch
-        {
-            SQL => "Query SQL",
-            EmailCSV => "Email CSV Import",
-            HandlerIntegrato => "Handler C# Integrato",
-            _ => tipoTask
-        };
-        
-        public static string GetIcon(string tipoTask) => tipoTask switch
-        {
-            SQL => "Storage",
-            EmailCSV => "Email",
-            HandlerIntegrato => "Code",
-            _ => "HelpOutline"
-        };
     }
 }
