@@ -258,7 +258,6 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.CronExpression).HasMaxLength(100);
             entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
             entity.Property(e => e.HandlerClassName).HasMaxLength(255);
-            entity.Property(e => e.MailServiceCode).HasMaxLength(100);
             entity.Property(e => e.TaskDescription).HasMaxLength(255);
             entity.Property(e => e.TipoTask).HasMaxLength(50);
 
@@ -309,9 +308,6 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.DescrizioneConfigurazione).HasMaxLength(500);
             entity.Property(e => e.HandlerClassName)
                 .HasMaxLength(200)
-                .IsUnicode(false);
-            entity.Property(e => e.MailServiceCode)
-                .HasMaxLength(100)
                 .IsUnicode(false);
             entity.Property(e => e.ModificatoDa)
                 .HasMaxLength(100)

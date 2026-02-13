@@ -3,6 +3,10 @@ using System.Collections.Generic;
 
 namespace Entities.Models.DbApplication;
 
+/// <summary>
+/// Rappresenta un task schedulato per l'esecuzione di una lavorazione o importazione dati.
+/// Contiene informazioni su stato, cron, errori e navigazioni relazionali.
+/// </summary>
 public partial class TaskDaEseguire
 {
     public int IdTaskDaEseguire { get; set; }

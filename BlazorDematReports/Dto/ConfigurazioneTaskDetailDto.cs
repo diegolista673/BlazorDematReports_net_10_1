@@ -25,6 +25,9 @@ namespace BlazorDematReports.Dto
         public int TaskInErrore => Mappings.Sum(m => m.Tasks.Count(t => t.Stato == "ERROR"));
     }
 
+    /// <summary>
+    /// DTO che rappresenta un mapping fase/centro con la lista dei task associati.
+    /// </summary>
     public class MappingConTaskDto
     {
         public int IdFaseCentro { get; set; }
@@ -41,6 +44,9 @@ namespace BlazorDematReports.Dto
         public List<TaskDto> Tasks { get; set; } = new();
     }
 
+    /// <summary>
+    /// DTO che rappresenta un task schedulato con stato, cron e informazioni di esecuzione.
+    /// </summary>
     public class TaskDto
     {
         public int IdTaskDaEseguire { get; set; }

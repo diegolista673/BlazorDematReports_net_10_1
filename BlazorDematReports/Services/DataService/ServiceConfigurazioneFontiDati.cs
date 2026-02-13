@@ -15,7 +15,9 @@ using MudBlazor;
 namespace BlazorDematReports.Services.DataService
 {
     /// <summary>
-    /// Servizio per la gestione delle procedure di lavorazione e delle relative operazioni sui dati.
+    /// Service per la gestione delle configurazioni fonti dati, mapping fasi/centro e task associati.
+    /// Implementa logica di business e orchestrazione Hangfire.
+    /// </summary>
     public class ServiceConfigurazioneFontiDati : ServiceBase<ConfigurazioneFontiDati>, IServiceConfigurazioneFontiDati
     {
         
@@ -66,7 +68,7 @@ namespace BlazorDematReports.Services.DataService
                 IdConfigurazione = c.IdConfigurazione,
                 CodiceConfigurazione = c.CodiceConfigurazione,
                 Descrizione = c.DescrizioneConfigurazione!,
-                TipoFonte = c.TipoFonte,
+                TipoFonte = c.TipoFonte.ToString(),
                 CreatoIl = (DateTime)c.CreatoIl,
                 NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva == true),
                 TaskAttivi = c.TaskDaEseguires.Count(t => t.Enabled),
@@ -99,9 +101,12 @@ namespace BlazorDematReports.Services.DataService
         }
 
 
+
         /// <summary>
         /// Aggiorna FlagDataReading = true nella tabella LavorazioniFasiDataReading per le fasi con cron validi.
         /// </summary>
+        /// <param name="context">Contesto dati EF.</param>
+        /// <param name="mappings">Lista mapping da aggiornare.</param>
         private async Task UpdateFlagDataReadingForMappingsAsync(DematReportsContext context, List<ConfigurazioneFaseCentro> mappings)
         {
             foreach (var mapping in mappings.Where(m => m.FlagAttiva))
@@ -439,6 +444,12 @@ namespace BlazorDematReports.Services.DataService
             }
         }
 
+        /// <summary>
+        /// Verifica che non ci siano duplicati di lavorazione tra le configurazioni.
+        /// </summary>
+        /// <param name="context">Contesto dati EF.</param>
+        /// <param name="mappingFasi">Lista mapping da verificare.</param>
+        /// <param name="currentConfigId">ID configurazione corrente (opzionale).</param>
         private static async Task EnsureUniqueLavorazioneAsync(DematReportsContext context, IEnumerable<ConfigurazioneFaseCentro> mappingFasi, int? currentConfigId = null)
         {
             var procedures = mappingFasi

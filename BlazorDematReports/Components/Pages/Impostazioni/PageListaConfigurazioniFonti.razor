@@ -81,7 +81,7 @@
                              Height="100%">
                     <Columns>
                         <PropertyColumn Property="x => x.CodiceConfigurazione" Title="Codice" />
-                        <PropertyColumn Property="x => x.Descrizione" Title="Descrizione" />
+                        <PropertyColumn Property="x => x.Descrizione ?? string.Empty" Title="Descrizione" />
 
                         <TemplateColumn Title="Tipo">
                             <CellTemplate>
@@ -332,7 +332,14 @@
         }
     }
 
-    private Color GetTipoColor(TipoFonteData tipo) => TipoFonteDataHelper.GetColor(tipo);
+    private Color GetTipoColor(string tipoFonte)
+    {
+        if (Enum.TryParse<TipoFonteData>(tipoFonte, out var tipo))
+        {
+            return TipoFonteDataHelper.GetColor(tipo);
+        }
+        return Color.Default;
+    }
 
 
 }

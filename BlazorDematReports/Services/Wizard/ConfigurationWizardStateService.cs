@@ -168,18 +168,34 @@ public class ConfigurationWizardStateService
     
     public ConfigurationWizardState State => _state;
     
+    /// <summary>
+    /// Aggiorna lo stato corrente del wizard applicando una funzione di trasformazione.
+    /// </summary>
+    /// <param name="updateFunc">Funzione che trasforma lo stato corrente in un nuovo stato.</param>
     public void UpdateState(Func<ConfigurationWizardState, ConfigurationWizardState> updateFunc)
     {
         _state = updateFunc(_state);
         NotifyStateChanged();
     }
     
+    /// <summary>
+    /// Reimposta lo stato del wizard ai valori iniziali.
+    /// </summary>
     public void Reset()
     {
         _state = new ConfigurationWizardState();
         NotifyStateChanged();
     }
     
+    /// <summary>
+    /// Carica lo stato del wizard per la modalità modifica di una configurazione esistente.
+    /// </summary>
+    /// <param name="config">Configurazione da modificare.</param>
+    /// <param name="mappings">Mappings esistenti.</param>
+    /// <param name="idProcedura">ID procedura (opzionale).</param>
+    /// <param name="idCentro">ID centro (opzionale).</param>
+    /// <param name="nomeProcedura">Nome procedura (opzionale).</param>
+    /// <param name="fasi">Fasi disponibili (opzionale).</param>
     public void LoadEditState(ConfigurazioneFontiDati config, List<ConfigurazioneFaseCentro> mappings, int? idProcedura = null, int? idCentro = null, string? nomeProcedura = null, List<FasiLavorazione>? fasi = null)
     {
         _state = new ConfigurationWizardState
@@ -200,5 +216,8 @@ public class ConfigurationWizardStateService
         NotifyStateChanged();
     }
     
+    /// <summary>
+    /// Notifica ai sottoscrittori che lo stato è cambiato.
+    /// </summary>
     private void NotifyStateChanged() => OnStateChanged?.Invoke();
 }

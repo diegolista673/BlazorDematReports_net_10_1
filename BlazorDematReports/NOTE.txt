@@ -14,15 +14,7 @@ with (firstrow = 170,
       per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
       esempio :
 
-
-
-aggiungere commenti dove mancano  
-
-
-tipo handler o fonte dati deve diventare un enum
-
-controlare la ui allo step 2 e capire cosa fa
-
+gestione configurazione, escludere handler di default e gestire solo quelli personalizzati
 
 gestione della configurazione 
 ✅ COMPLETATO (100%): Unificazione handler mail con ILavorazioneHandler
@@ -33,8 +25,9 @@ gestione della configurazione
 - HandlerDiscoveryService eliminato (usato DI container)
 - UnifiedHandlerRegistry semplificato (solo ILavorazioneHandler)
 - HandlerType.MailImport rimosso dall'enum
-- UI semplificata: rimosso campo "Codice servizio mail (opzionale)"
-- ServiceCode auto-popolato quando si seleziona handler mail
+- ✅ UI Step 2 completamente unificata: nessun riconoscimento speciale per servizi email
+- ✅ Rimossa logica condizionale per icone/chip email (HERA16, ADER4)
+- ✅ Tutti gli handler trattati allo stesso modo tramite convenzione enum
 - Sistema completamente integrato e semplificato
 
 implemtare gli handler via mail e testare letture allegati e inserimento dati in produzione

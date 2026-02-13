@@ -100,6 +100,13 @@ namespace Entities.Models.DbApplication
             {
                 entity.HasNoKey();
             });
+
+            // Configurazione per enum TipoFonte salvato come stringa
+            modelBuilder.Entity<ConfigurazioneFontiDati>(entity =>
+            {
+                entity.Property(e => e.TipoFonte)
+                    .HasConversion<string>();
+            });
         }
 
 

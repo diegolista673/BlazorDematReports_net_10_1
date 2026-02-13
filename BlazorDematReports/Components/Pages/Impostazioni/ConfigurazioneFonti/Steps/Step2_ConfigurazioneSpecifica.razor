@@ -1,5 +1,5 @@
 @using Entities.Enums
-@using BlazorDematReports.Helpers
+
 @inject SqlValidationService SqlValidator
 @inject IUnifiedHandlerRegistry HandlerRegistry
 
@@ -60,23 +60,9 @@ else if (State.TipoFonte == TipoFonteData.HandlerIntegrato)
                 {
                     <MudSelectItem Value="@handler.ClassName">
                         <div class="d-flex align-items-center gap-2">
-                            @if (handler.RequiresEmailService)
-                            {
-                                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Color="Color.Secondary" />
-                            }
-                            else
-                            {
-                                <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Small" Color="Color.Default" />
-                            }
+                            <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Small" Color="Color.Primary" />
                             <div>
-                                <MudText Typo="Typo.body1">
-                                    @handler.Code
-                                    @if (!string.IsNullOrWhiteSpace(handler.ServiceCode))
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ml-2">@handler.ServiceCode</MudChip>
-                                    }
-                                </MudText>
-                                <MudText Typo="Typo.body2" Class="text-muted">@handler.Description</MudText>
+                                <MudText Typo="Typo.body1">@handler.Code</MudText>
                             </div>
                         </div>
                     </MudSelectItem>
@@ -92,33 +78,18 @@ else if (State.TipoFonte == TipoFonteData.HandlerIntegrato)
         {
             <MudAlert Severity="Severity.Info" Class="mt-4">
                 <div class="d-flex align-items-start gap-2">
-                    @if (handlerInfo.RequiresEmailService)
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Info" />
-                    }
-                    else
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Info" />
-                    }
+                    <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Info" />
                     <div>
                         <MudText><strong>@handlerInfo.Code</strong></MudText>
                         <MudText Typo="Typo.body2">@handlerInfo.Description</MudText>
-                        @if (handlerInfo.RequiresEmailService)
-                        {
-                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
-                                Handler per servizi mail. Il codice servizio (@handlerInfo.ServiceCode) viene configurato automaticamente.
-                            </MudText>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(handlerInfo.Category))
-                        {
-                            <MudChip T="string" Size="Size.Small" Class="mt-2">@handlerInfo.Category</MudChip>
-                        }
                     </div>
                 </div>
             </MudAlert>
         }
     }
 }
+
+
 
 @code {
 [Parameter] public ConfigurationWizardState State { get; set; } = default!;
@@ -135,11 +106,6 @@ private string? _connectionString
     set => StateService.UpdateState(s => s.WithConnectionString(value));
 }
     
-private string? _mailService
-{
-    get => State.MailServiceCode;
-    set => StateService.UpdateState(s => s.WithMailService(value));
-}
     
 private string? _handler
 {
@@ -147,13 +113,6 @@ private string? _handler
     set
     {
         StateService.UpdateState(s => s.WithHandler(value));
-            
-        // Auto-popola MailServiceCode se l'handler ha un ServiceCode (handler mail)
-        var handlerInfo = _availableHandlers.FirstOrDefault(h => h.ClassName == value);
-        if (handlerInfo?.ServiceCode != null)
-        {
-            StateService.UpdateState(s => s.WithMailService(handlerInfo.ServiceCode));
-        }
     }
 }
     
@@ -162,38 +121,31 @@ protected override void OnInitialized()
     // Carica connection strings
     var section = Configuration.GetSection("ConnectionStrings");
     _connectionStrings = section.GetChildren().Select(c => c.Key).ToList();
-        
+
     // Carica handlers disponibili dal registry
     var handlers = HandlerRegistry.GetHandlersByType(HandlerType.Lavorazione);
     _availableHandlers = handlers.Select(h => new HandlerDisplayInfo
     {
         ClassName = h.Code ?? "Unknown",
         Code = h.Code,
-        Description = h.Description ?? h.Code,
-        Category = DetermineCategory(h.Code),
-        ServiceCode = h.Code == "HERA16" || h.Code == "ADER4" ? h.Code : null,
-        RequiresEmailService = h.Code == "HERA16" || h.Code == "ADER4"
+        Description = h.Description ?? h.Code
     }).ToList();
 }
-    
-private string? DetermineCategory(string? code)
-{
-    if (code == "HERA16" || code == "ADER4")
-        return "Mail Import";
-    return "SQL Handler";
-}
-    
+
+/// <summary>
+/// Rappresenta le informazioni visualizzate per un handler C# disponibile nella configurazione specifica.
+/// </summary>
 private class HandlerDisplayInfo
 {
     public string ClassName { get; set; } = "";
     public string? Code { get; set; }
     public string? Description { get; set; }
-    public string? Category { get; set; }
-    public string? ServiceCode { get; set; }
-    public bool RequiresEmailService { get; set; }
 }
     
-    private async Task TestConnectionAsync()
+/// <summary>
+/// Esegue il test della connessione SQL selezionata e aggiorna lo stato di validazione.
+/// </summary>
+private async Task TestConnectionAsync()
     {
         if (string.IsNullOrWhiteSpace(_connectionString)) return;
         

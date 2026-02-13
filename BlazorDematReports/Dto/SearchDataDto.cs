@@ -2,6 +2,9 @@
 
 namespace BlazorDematReports.Dto
 {
+    /// <summary>
+    /// DTO per i criteri di ricerca dei dati di produzione (date range, procedura, centro, fase).
+    /// </summary>
     public partial class SearchDataDto
     {
         [Required]

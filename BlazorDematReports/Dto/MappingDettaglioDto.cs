@@ -1,5 +1,8 @@
 ﻿namespace BlazorDematReports.Dto
 {
+    /// <summary>
+    /// DTO per rappresentare il dettaglio di un mapping fase/centro/crontab all'interno di una configurazione.
+    /// </summary>
     public class MappingDettaglioDto
     {
         public string NomeProcedura { get; set; } = null!;

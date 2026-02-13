@@ -29,6 +29,9 @@ namespace BlazorDematReports.Services.DataService
         Task<List<CentriLavorazione>> GetCentriByProceduraAsync(int idProcedura);
     }
 
+    /// <summary>
+    /// Implementazione del servizio per la gestione dei dati di configurazione fonte dati (lettura).
+    /// </summary>
     public class ConfigurazioneDataReaderService : IConfigurazioneDataReaderService
     {
         private readonly IDbContextFactory<DematReportsContext> contextFactory;

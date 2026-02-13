@@ -1,5 +1,8 @@
 ﻿namespace BlazorDematReports.Dto
 {
+    /// <summary>
+    /// DTO per il riepilogo delle configurazioni fonti dati, usato per visualizzare le informazioni principali e i dettagli di mapping.
+    /// </summary>
     public class ConfigurazioneRiepilogoDto
     {
         public int IdConfigurazione { get; set; }

@@ -34,6 +34,9 @@ namespace BlazorDematReports.Services.DataService
         List<(string Value, string Label)> GetPresetCrons();
     }
 
+    /// <summary>
+    /// Implementazione del servizio per la gestione della schedulazione CRON nei mapping configurazioni.
+    /// </summary>
     public class CronSchedulingService : ICronSchedulingService
     {
         private static readonly List<(string Value, string Label)> PresetCrons = new()
