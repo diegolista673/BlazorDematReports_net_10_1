@@ -16,7 +16,7 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers
     /// Gestisce l'elaborazione dei dati di produzione dalla sorgente Oracle
     /// relativa alle pratiche di successione.
     /// </summary>
-    public sealed class PRATICHE_SUCCESSIONEHandler : ILavorazioneHandler
+    public sealed class PraticheSuccessioneHandler : ILavorazioneHandler
     {
         /// <summary>
         /// Codice identificativo univoco della lavorazione.

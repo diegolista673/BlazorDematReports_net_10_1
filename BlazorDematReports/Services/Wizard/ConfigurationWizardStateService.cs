@@ -141,13 +141,13 @@ public record ConfigurationWizardState
             var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
             codiceConfigurazione = $"Config{IdProcedura:D4}_{timestamp}";
         }
-        
+
         return new ConfigurazioneFontiDati
         {
             IdConfigurazione = IdConfigurazioneEdit ?? 0,
             CodiceConfigurazione = codiceConfigurazione,
             DescrizioneConfigurazione = DescrizioneConfigurazione ?? $"Config_{NomeProcedura}",
-            TipoFonte = TipoFonte ?? TipoFonteData.SQL,
+            TipoFonte = (TipoFonte ?? TipoFonteData.SQL).ToString(),
             ConnectionStringName = ConnectionStringName,
             HandlerClassName = HandlerClassName,
             CreatoIl = DateTime.Now,
@@ -198,14 +198,21 @@ public class ConfigurationWizardStateService
     /// <param name="fasi">Fasi disponibili (opzionale).</param>
     public void LoadEditState(ConfigurazioneFontiDati config, List<ConfigurazioneFaseCentro> mappings, int? idProcedura = null, int? idCentro = null, string? nomeProcedura = null, List<FasiLavorazione>? fasi = null)
     {
+        // Parse TipoFonte da string a enum
+        TipoFonteData? tipoFonte = null;
+        if (!string.IsNullOrWhiteSpace(config.TipoFonte) && Enum.TryParse<TipoFonteData>(config.TipoFonte, out var parsedTipo))
+        {
+            tipoFonte = parsedTipo;
+        }
+
         _state = new ConfigurationWizardState
         {
             IdConfigurazioneEdit = config.IdConfigurazione,
             CodiceConfigurazioneOriginal = config.CodiceConfigurazione,
-            TipoFonte = config.TipoFonte,
+            TipoFonte = tipoFonte ?? TipoFonteData.SQL,
             ConnectionStringName = config.ConnectionStringName,
             HandlerClassName = config.HandlerClassName,
-            ConnectionTestPassed = config.TipoFonte == TipoFonteData.SQL && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
+            ConnectionTestPassed = tipoFonte == TipoFonteData.SQL && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
             DescrizioneConfigurazione = config.DescrizioneConfigurazione,
             Mappings = mappings.ToImmutableList(),
             IdProcedura = idProcedura,

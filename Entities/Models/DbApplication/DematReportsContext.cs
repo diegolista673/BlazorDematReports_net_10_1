@@ -37,6 +37,8 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Counter> Counters { get; set; }
 
+    public virtual DbSet<ElaborazioneEmailGiornaliera> ElaborazioneEmailGiornalieras { get; set; }
+
     public virtual DbSet<FasiLavorazione> FasiLavoraziones { get; set; }
 
     public virtual DbSet<FormatoDati> FormatoDatis { get; set; }
@@ -258,6 +260,7 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.CronExpression).HasMaxLength(100);
             entity.Property(e => e.FlagAttiva).HasDefaultValue(true);
             entity.Property(e => e.HandlerClassName).HasMaxLength(255);
+            entity.Property(e => e.MailServiceCode).HasMaxLength(100);
             entity.Property(e => e.TaskDescription).HasMaxLength(255);
             entity.Property(e => e.TipoTask).HasMaxLength(50);
 
@@ -327,6 +330,21 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.Key).HasMaxLength(100);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.ExpireAt).HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<ElaborazioneEmailGiornaliera>(entity =>
+        {
+            entity.HasKey(e => e.IdElaborazione).HasName("PK__Elaboraz__52A4A5874CD9CA32");
+
+            entity.ToTable("ElaborazioneEmailGiornaliera");
+
+            entity.HasIndex(e => new { e.CodiceServizio, e.DataElaborazione }, "IX_EmailFlag_Service_Date");
+
+            entity.HasIndex(e => new { e.CodiceServizio, e.DataElaborazione }, "UQ_EmailFlag_Service_Date").IsUnique();
+
+            entity.Property(e => e.CodiceServizio).HasMaxLength(50);
+            entity.Property(e => e.ElaborataDaTask).HasMaxLength(200);
+            entity.Property(e => e.ElaborataIl).HasColumnType("datetime");
         });
 
         modelBuilder.Entity<FasiLavorazione>(entity =>

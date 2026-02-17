@@ -124,12 +124,12 @@ protected override void OnInitialized()
 
     // Carica handlers disponibili dal registry
     var handlers = HandlerRegistry.GetHandlersByType(HandlerType.Lavorazione);
-    _availableHandlers = handlers.Select(h => new HandlerDisplayInfo
+        _availableHandlers = handlers.Where(h => h.Code != "DEFAULT").Select(h => new HandlerDisplayInfo
     {
         ClassName = h.Code ?? "Unknown",
         Code = h.Code,
         Description = h.Description ?? h.Code
-    }).ToList();
+    }).OrderBy(handlers=>handlers.ClassName).ToList();
 }
 
 /// <summary>

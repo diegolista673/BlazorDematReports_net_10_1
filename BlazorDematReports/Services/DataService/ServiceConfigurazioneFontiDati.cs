@@ -298,7 +298,7 @@ namespace BlazorDematReports.Services.DataService
                             m.IdFaseCentro = 0;
                             m.IdConfigurazione = config.IdConfigurazione;
                             m.FlagAttiva = true;
-                            m.TipoTask ??= TipoFonteDataConverter.ConvertToDatabase(config.TipoFonte);
+                            m.TipoTask ??= config.TipoFonte; // TipoFonte è già una stringa nel DB
                             m.CronExpression ??= "0 5 * * *";
                             if (m.GiorniPrecedenti is null or <= 0)
                                 m.GiorniPrecedenti = 10;
@@ -329,7 +329,7 @@ namespace BlazorDematReports.Services.DataService
                             m.FlagAttiva = true;
 
                             // Assicura che i campi obbligatori siano valorizzati
-                            m.TipoTask ??= TipoFonteDataConverter.ConvertToDatabase(config.TipoFonte);
+                            m.TipoTask ??= config.TipoFonte; // TipoFonte è già una stringa nel DB
                             m.CronExpression ??= "0 5 * * *";
                             if (m.GiorniPrecedenti is null or <= 0)
                                 m.GiorniPrecedenti = 10;

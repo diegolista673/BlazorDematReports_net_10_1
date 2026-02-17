@@ -19,6 +19,7 @@ using LibraryLavorazioni.Lavorazioni.Interfaces;
 using LibraryLavorazioni.Shared.Interfaces;
 using LibraryLavorazioni.Shared.Registry;
 using LibraryLavorazioni.Shared.Services;
+using LibraryLavorazioni.Shared.Services.Email;
 using LibraryLavorazioni.Utility;
 using LibraryLavorazioni.Utility.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -27,6 +28,9 @@ using MudBlazor;
 using MudBlazor.Services;
 using NLog.Web;
 using BlazorDematReports.Services.Authentication;
+using LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Ader4;
+using LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Hera16;
+using ClassLibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Ader4;
 
 /// <summary>
 /// Classe principale dell'applicazione che gestisce la configurazione e l'avvio del sistema.
@@ -260,16 +264,22 @@ public static class Program
         // ? Wizard Multi-Step Configuration Services
         builder.Services.AddScoped<BlazorDematReports.Services.Wizard.ConfigurationWizardStateService>();
         builder.Services.AddScoped<BlazorDematReports.Services.Validation.ConfigurationStepValidator>();
+        
+        // Registra servizi email
+        builder.Services.AddScoped<EmailDailyFlagService>();
+        builder.Services.AddTransient<Ader4EmailService>();
+        //builder.Services.AddTransient<Hera16EmailService>(); 
 
         // Registrazione handler lavorazioni SQL
         builder.Services.AddScoped<ILavorazioneHandler, DefaultLavorazioneHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, Z0072370_28AUTHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, Z0082041_SOFTLINEHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, ANT_ADER4_SORTER_1_2Handler>();
-        builder.Services.AddScoped<ILavorazioneHandler, PRATICHE_SUCCESSIONEHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, RDMKT_RSPHandler>();
+        builder.Services.AddScoped<ILavorazioneHandler, Z0072370_28AutHandler>();
+        builder.Services.AddScoped<ILavorazioneHandler, Z0082041_SoftlineHandler>();
+        builder.Services.AddScoped<ILavorazioneHandler, Ant_Ader4_Sorter_1_2Handler>();
+        builder.Services.AddScoped<ILavorazioneHandler, PraticheSuccessioneHandler>();
+        builder.Services.AddScoped<ILavorazioneHandler, Rdmkt_RSPHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, Hera16EwsHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, Ader4Handler>();
+
 
         // Registry unificato (raccoglie ILavorazioneHandler)
         builder.Services.AddScoped<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();

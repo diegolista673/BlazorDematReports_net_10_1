@@ -16,7 +16,7 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers
     /// Gestisce l'elaborazione dei dati di produzione per la procedura Z0072370_28AUT,
     /// sia per la fase di scansione che di indicizzazione.
     /// </summary>
-    public sealed class Z0072370_28AUTHandler : ILavorazioneHandler
+    public sealed class Z0072370_28AutHandler : ILavorazioneHandler
     {
         /// <summary>
         /// Codice identificativo univoco della lavorazione.

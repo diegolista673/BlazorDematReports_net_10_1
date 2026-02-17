@@ -16,7 +16,7 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers
     /// Gestisce l'elaborazione dei dati di produzione da più tabelle Oracle
     /// relative alla procedura Z0082041_SOFTLINE.
     /// </summary>
-    public sealed class Z0082041_SOFTLINEHandler : ILavorazioneHandler
+    public sealed class Z0082041_SoftlineHandler : ILavorazioneHandler
     {
         /// <summary>
         /// Codice identificativo univoco della lavorazione.

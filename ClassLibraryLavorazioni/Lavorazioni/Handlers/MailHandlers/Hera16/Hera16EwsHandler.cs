@@ -4,7 +4,7 @@ using LibraryLavorazioni.Lavorazioni.Models;
 using LibraryLavorazioni.Utility.Models;
 using System.ComponentModel;
 
-namespace LibraryLavorazioni.Lavorazioni.Handlers
+namespace LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Hera16
 {
     /// <summary>
     /// Handler per l'importazione dati dal servizio Hera16 via Exchange Web Services.

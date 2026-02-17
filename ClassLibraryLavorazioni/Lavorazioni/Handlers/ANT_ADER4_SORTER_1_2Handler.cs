@@ -16,7 +16,7 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers
     /// Gestisce l'elaborazione dei dati di produzione dalle sorgenti dati
     /// associate ai sistemi ADER4 SORTER 1 e 2.
     /// </summary>
-    public sealed class ANT_ADER4_SORTER_1_2Handler : ILavorazioneHandler
+    public sealed class Ant_Ader4_Sorter_1_2Handler : ILavorazioneHandler
     {
         /// <summary>
         /// Codice identificativo univoco della lavorazione.

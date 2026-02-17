@@ -15,6 +15,12 @@ with (firstrow = 170,
       esempio :
 
 gestione configurazione, escludere handler di default e gestire solo quelli personalizzati
+scrivere documentazione per la crazione dei task e di tutte le operazioni 
+spiegare funzionamento degli handler e le inrterfacce
+spiegare come recupera tutti gli handles in registry e come funziona il patern registry
+fare guida per developer per aggiungere un nuovo handler passo passo
+
+spiegare funzinamento del processo lavoazione di default e i suoi metodi , e se ci sono metodi da eliminare?
 
 gestione della configurazione 
 ✅ COMPLETATO (100%): Unificazione handler mail con ILavorazioneHandler

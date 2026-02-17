@@ -153,7 +153,7 @@ namespace BlazorDematReports.Services.DataService
         }
 
         private static IQueryable<ConfigurazioneFontiDati> MailConfigurationQuery(DematReportsContext context)
-            => context.ConfigurazioneFontiDatis.Where(c => c.TipoFonte == TipoFonteData.HandlerIntegrato 
+            => context.ConfigurazioneFontiDatis.Where(c => c.TipoFonte == nameof(TipoFonteData.HandlerIntegrato)
                 && !string.IsNullOrWhiteSpace(c.HandlerClassName)
                 && (c.HandlerClassName == "Hera16EwsHandler" || c.HandlerClassName == "Ader4Handler"));
 

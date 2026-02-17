@@ -67,7 +67,8 @@ namespace DataReading.Infrastructure
             // usa ConfigurazioneFontiDati per determinare il dettaglio
             if (t.IdConfigurazioneDatabase.HasValue && t.IdConfigurazioneDatabaseNavigation != null)
             {
-                var detail = t.IdConfigurazioneDatabaseNavigation.TipoFonte == TipoFonteData.HandlerIntegrato
+                var tipoFonte = t.IdConfigurazioneDatabaseNavigation.TipoFonte;
+                var detail = tipoFonte == nameof(TipoFonteData.HandlerIntegrato)
                     ? NormalizeToken(t.IdConfigurazioneDatabaseNavigation.HandlerClassName ?? "handler")
                     : faseName;
 
@@ -457,12 +458,19 @@ namespace DataReading.Infrastructure
 
             var config = entity.IdConfigurazioneDatabaseNavigation;
 
-            return config.TipoFonte switch
+            // Parse TipoFonte da string
+            if (!Enum.TryParse<TipoFonteData>(config.TipoFonte, out var tipoFonte))
+            {
+                throw new InvalidOperationException(
+                    $"TipoFonte '{config.TipoFonte}' non è valido per task {entity.IdTaskDaEseguire}");
+            }
+
+            return tipoFonte switch
             {
                 TipoFonteData.SQL => ("DatabaseQuery", config.ConnectionStringName ?? ""),
                 TipoFonteData.HandlerIntegrato => ("UnifiedHandler", config.HandlerClassName ?? ""),
                 _ => throw new InvalidOperationException(
-                    $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
+                    $"TipoFonte '{tipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
             };
         }
 
@@ -513,14 +521,14 @@ namespace DataReading.Infrastructure
             var config = await db.ConfigurazioneFontiDatis
                 .Include(c => c.ConfigurazioneFaseCentros)
                 .FirstOrDefaultAsync(c => c.IdConfigurazione == entity.IdConfigurazioneDatabase.Value);
-            
+
             if (config == null)
             {
                 throw new InvalidOperationException(
                     $"Configurazione {entity.IdConfigurazioneDatabase.Value} non trovata per task {entity.IdTaskDaEseguire}");
             }
 
-            if (config.TipoFonte != TipoFonteData.SQL)
+            if (config.TipoFonte != nameof(TipoFonteData.SQL))
             {
                 throw new InvalidOperationException(
                     $"Configurazione {config.IdConfigurazione} ha TipoFonte='{config.TipoFonte}' invece di 'SQL'");
@@ -529,7 +537,7 @@ namespace DataReading.Infrastructure
             // Trova il mapping corretto per questa fase
             // Nota: ConfigurazioneFaseCentro contiene IdCentro, LavorazioniFasiDataReading no
             var idFaseLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdFaseLavorazione;
-            
+
             var mapping = config.ConfigurazioneFaseCentros.FirstOrDefault(fc =>
                 fc.IdFaseLavorazione == idFaseLavorazione &&
                 fc.FlagAttiva == true);

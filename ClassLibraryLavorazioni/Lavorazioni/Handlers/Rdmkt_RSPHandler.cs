@@ -16,7 +16,7 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers
     /// Gestisce l'elaborazione dei dati di produzione da tabelle dinamiche SQL Server
     /// relative alla procedura RDMKT_RSP.
     /// </summary>
-    public sealed class RDMKT_RSPHandler : ILavorazioneHandler
+    public sealed class Rdmkt_RSPHandler : ILavorazioneHandler
     {
         /// <summary>
         /// Codice identificativo univoco della lavorazione.

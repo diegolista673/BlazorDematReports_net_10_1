@@ -43,7 +43,7 @@ namespace BlazorDematReports.Services.DataService
             {
                 IdConfigurazione = config.IdConfigurazione,
                 CodiceConfigurazione = config.CodiceConfigurazione,
-                TipoFonte = config.TipoFonte,
+                TipoFonte = TipoFonteDataConverter.ConvertFromDatabase(config.TipoFonte),
                 TestoQueryPrincipale = null
             };
 
@@ -225,7 +225,9 @@ namespace BlazorDematReports.Services.DataService
                 IdProceduraLavorazione = mapping.IdProceduraLavorazione,
                 IdFaseLavorazione = mapping.IdFaseLavorazione,
                 IdCentro = mapping.IdCentro,
-                TipoTask = mapping.IdConfigurazioneNavigation?.TipoFonte ?? TipoFonteData.SQL,
+                TipoTask = mapping.IdConfigurazioneNavigation?.TipoFonte != null 
+                    ? TipoFonteDataConverter.ConvertFromDatabase(mapping.IdConfigurazioneNavigation.TipoFonte)
+                    : TipoFonteData.SQL,
                 CronExpression = mapping.CronExpression ?? "0 5 * * *",
                 TestoQueryTask = mapping.TestoQueryTask,
                 HandlerClassName = mapping.HandlerClassName ?? mapping.IdConfigurazioneNavigation?.HandlerClassName,
