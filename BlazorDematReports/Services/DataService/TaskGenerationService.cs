@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DataReading.Infrastructure;
+using BlazorDematReports.Constants;
 
 namespace BlazorDematReports.Services.DataService
 {
@@ -115,10 +116,12 @@ namespace BlazorDematReports.Services.DataService
                         IdConfigurazioneDatabase = idConfigurazione,
                         Stato = "CONFIGURED",
                         DataStato = DateTime.Now,
-                        GiorniPrecedenti = mapping.GiorniPrecedenti > 0 ? mapping.GiorniPrecedenti : 10,
-                        CronExpression = mapping.CronExpression ?? "0 5 * * *",
-                        Enabled = true, // ✅ SEMPRE TRUE per nuovi task generati
-                        IdTaskHangFire = $"temp-{Guid.NewGuid()}" // Temporaneo, sovrascritto da scheduler
+                        GiorniPrecedenti = mapping.GiorniPrecedenti > 0 
+                            ? mapping.GiorniPrecedenti 
+                            : TaskConfigurationDefaults.DefaultGiorniPrecedenti,
+                        CronExpression = mapping.CronExpression ?? TaskConfigurationDefaults.DefaultCronExpression,
+                        Enabled = true,
+                        IdTaskHangFire = $"temp-{Guid.NewGuid()}"
                     };
 
                     context.TaskDaEseguires.Add(nuovoTask);

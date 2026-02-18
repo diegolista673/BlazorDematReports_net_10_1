@@ -2,6 +2,7 @@ using Entities.Models.DbApplication;
 using Entities.Enums;
 using LibraryLavorazioni.Lavorazioni.Interfaces;
 using LibraryLavorazioni.Lavorazioni.Models;
+using LibraryLavorazioni.Shared.Constants;
 using LibraryLavorazioni.Utility.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -56,19 +57,12 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
         _logger.LogInformation("[UnifiedHandler] Esecuzione {Codice} (Tipo: {Tipo})",
             config.CodiceConfigurazione, config.TipoFonte);
 
-        // 2. Parse TipoFonte da string a enum
-        if (!Enum.TryParse<TipoFonteData>(config.TipoFonte, out var tipoFonte))
-        {
-            throw new InvalidOperationException(
-                $"TipoFonte '{config.TipoFonte}' non è un valore valido");
-        }
-
-        // 3. Routing basato su TipoFonte
-        return tipoFonte switch
+        // 2. Routing basato su TipoFonte (già enum, no conversione!)
+        return config.TipoFonte switch
         {
             TipoFonteData.SQL => await ExecuteSqlQueryAsync(config, context, ct),
             TipoFonteData.HandlerIntegrato => await ExecuteCustomHandlerAsync(config, context, ct),
-            _ => throw new NotSupportedException($"TipoFonte '{tipoFonte}' non supportato. Per servizi email, utilizzare i job Hangfire dedicati.")
+            _ => throw new NotSupportedException($"TipoFonte '{config.TipoFonte}' non supportato. Per servizi email, utilizzare i job Hangfire dedicati.")
         };
     }
 
@@ -115,7 +109,7 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
             await connection.OpenAsync(ct);
 
             await using var cmd = new SqlCommand(query, connection);
-            cmd.CommandTimeout = 60;
+            cmd.CommandTimeout = TaskConfigurationDefaults.DefaultQueryTimeoutSeconds;
             cmd.Parameters.AddWithValue("@startData", context.StartDataLavorazione.ToString("yyyyMMdd"));
             cmd.Parameters.AddWithValue("@endData",
                 (context.EndDataLavorazione ?? context.StartDataLavorazione).ToString("yyyyMMdd"));

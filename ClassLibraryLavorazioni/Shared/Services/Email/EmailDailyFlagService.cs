@@ -1,4 +1,5 @@
 using Entities.Models.DbApplication;
+using LibraryLavorazioni.Shared.Constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -34,10 +35,7 @@ namespace LibraryLavorazioni.Shared.Services.Email
             string nomeTask,
             CancellationToken ct = default)
         {
-            const int maxRetries = 3;
-            const int retryDelayMs = 500;
-
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            for (int attempt = 1; attempt <= TaskConfigurationDefaults.MaxRetryAttempts; attempt++)
             {
                 try
                 {
@@ -95,28 +93,28 @@ namespace LibraryLavorazioni.Shared.Services.Email
                 }
                 catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
                 {
-                    // ⚠️ Race condition: altro task ha acquisito lock
-                    if (attempt < maxRetries)
+                    // Race condition: altro task ha acquisito lock
+                    if (attempt < TaskConfigurationDefaults.MaxRetryAttempts)
                     {
                         _logger.LogWarning(
                             "Race condition su {CodiceServizio}, tentativo {Attempt}/{MaxRetries}. Retry in {Delay}ms...",
                             codiceServizio,
                             attempt,
-                            maxRetries,
-                            retryDelayMs
+                            TaskConfigurationDefaults.MaxRetryAttempts,
+                            TaskConfigurationDefaults.RetryDelayMilliseconds
                         );
 
-                        await System.Threading.Tasks.Task.Delay(retryDelayMs, ct);
-                        continue; // Riprova
+                        await System.Threading.Tasks.Task.Delay(TaskConfigurationDefaults.RetryDelayMilliseconds, ct);
+                        continue;
                     }
 
                     _logger.LogWarning(
                         "Tutti i {MaxRetries} tentativi falliti per {CodiceServizio}. Altro task ha vinto la race.",
-                        maxRetries,
+                        TaskConfigurationDefaults.MaxRetryAttempts,
                         codiceServizio
                     );
 
-                    return false; // Altro task ha vinto dopo N tentativi
+                    return false;
                 }
             }
 

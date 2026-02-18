@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Entities.Enums;
 
 namespace Entities.Models.DbApplication;
 
+/// <summary>
+/// Configurazione fonte dati unificata.
+/// TipoFonte è un enum convertito automaticamente in string dal Value Converter.
+/// </summary>
 public partial class ConfigurazioneFontiDati
 {
     public int IdConfigurazione { get; set; }
@@ -11,7 +16,11 @@ public partial class ConfigurazioneFontiDati
 
     public string? DescrizioneConfigurazione { get; set; }
 
-    public string TipoFonte { get; set; } = null!;
+    /// <summary>
+    /// Tipo fonte dati (SQL, HandlerIntegrato).
+    /// Enum con conversione automatica a string nel database.
+    /// </summary>
+    public TipoFonteData TipoFonte { get; set; }
 
     public string? ConnectionStringName { get; set; }
 

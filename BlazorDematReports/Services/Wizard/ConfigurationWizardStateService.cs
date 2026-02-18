@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using BlazorDematReports.Constants;
 using Entities.Models.DbApplication;
 using Entities.Enums;
 
@@ -31,7 +32,7 @@ public record ConfigurationWizardState
     // Step 4: Mappings
     public ImmutableList<ConfigurazioneFaseCentro> Mappings { get; init; } = ImmutableList<ConfigurazioneFaseCentro>.Empty;
     public string? DescrizioneConfigurazione { get; init; }
-    public int GiorniPrecedentiDefault { get; init; } = 10;
+    public int GiorniPrecedentiDefault { get; init; } = TaskConfigurationDefaults.DefaultGiorniPrecedenti;
 
     // Edit mode
     public int? IdConfigurazioneEdit { get; init; }
@@ -147,7 +148,7 @@ public record ConfigurationWizardState
             IdConfigurazione = IdConfigurazioneEdit ?? 0,
             CodiceConfigurazione = codiceConfigurazione,
             DescrizioneConfigurazione = DescrizioneConfigurazione ?? $"Config_{NomeProcedura}",
-            TipoFonte = (TipoFonte ?? TipoFonteData.SQL).ToString(),
+            TipoFonte = TipoFonte ?? TipoFonteData.SQL, // ? Nessuna conversione necessaria!
             ConnectionStringName = ConnectionStringName,
             HandlerClassName = HandlerClassName,
             CreatoIl = DateTime.Now,
@@ -198,21 +199,14 @@ public class ConfigurationWizardStateService
     /// <param name="fasi">Fasi disponibili (opzionale).</param>
     public void LoadEditState(ConfigurazioneFontiDati config, List<ConfigurazioneFaseCentro> mappings, int? idProcedura = null, int? idCentro = null, string? nomeProcedura = null, List<FasiLavorazione>? fasi = null)
     {
-        // Parse TipoFonte da string a enum
-        TipoFonteData? tipoFonte = null;
-        if (!string.IsNullOrWhiteSpace(config.TipoFonte) && Enum.TryParse<TipoFonteData>(config.TipoFonte, out var parsedTipo))
-        {
-            tipoFonte = parsedTipo;
-        }
-
         _state = new ConfigurationWizardState
         {
             IdConfigurazioneEdit = config.IdConfigurazione,
             CodiceConfigurazioneOriginal = config.CodiceConfigurazione,
-            TipoFonte = tipoFonte ?? TipoFonteData.SQL,
+            TipoFonte = config.TipoFonte, // ? Già enum!
             ConnectionStringName = config.ConnectionStringName,
             HandlerClassName = config.HandlerClassName,
-            ConnectionTestPassed = tipoFonte == TipoFonteData.SQL && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
+            ConnectionTestPassed = config.TipoFonte == TipoFonteData.SQL && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
             DescrizioneConfigurazione = config.DescrizioneConfigurazione,
             Mappings = mappings.ToImmutableList(),
             IdProcedura = idProcedura,

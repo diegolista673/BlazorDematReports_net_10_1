@@ -48,7 +48,7 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Ader4
                 context.EndDataLavorazione
             );
 
-            // ✅ CHECK FLAG: Primo task oggi?
+            // CHECK FLAG: Primo task oggi?
             bool isFirstToday = await flagService.TryMarkAsProcessingAsync(
                 LavorazioniCodes.ADER4, 
                 taskName, 
@@ -57,12 +57,12 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Ader4
 
             if (isFirstToday)
             {
-                logger.LogInformation("✅ Primo task oggi. Elaborazione email completa per TUTTE le fasi...");
+                logger.LogInformation("Primo task oggi. Elaborazione email completa per TUTTE le fasi...");
                 return await ProcessEmailAndInsertAllDataAsync(context, logger, ct);
             }
             else
             {
-                logger.LogInformation("⏭️ Email già elaborata oggi da altro task. Skip elaborazione.");
+                logger.LogInformation("Email già elaborata oggi da altro task. Skip elaborazione.");
                 return new List<DatiLavorazione>(); // Dati già inseriti dal primo task
             }
         }
@@ -92,7 +92,7 @@ namespace LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Ader4
             var datiLavorazione = ConvertEmailResultsToDatiLavorazione(emailResults, context);
 
             logger.LogInformation(
-                "✅ Dati estratti per TUTTE le fasi: {Count} record totali",
+                "Dati estratti per TUTTE le fasi: {Count} record totali",
                 datiLavorazione.Count
             );
 

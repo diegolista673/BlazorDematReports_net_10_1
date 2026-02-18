@@ -1,5 +1,7 @@
+﻿using BlazorDematReports.Constants;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
+using BlazorDematReports.Services.DataService.Queries;
 using Entities.Converters;
 using Entities.Enums;
 using Entities.Models.DbApplication;
@@ -22,43 +24,42 @@ namespace BlazorDematReports.Services.DataService
         }
 
         /// <summary>
-        /// Recupera configurazione con tutti i mapping e task associati
+        /// Recupera configurazione con tutti i mapping e task associati.
+        /// Versione ottimizzata con projection diretta a DTO.
         /// </summary>
         public async Task<ConfigurazioneTaskDetailDto?> GetConfigurazioneWithTasksAsync(int idConfigurazione)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            var config = await context.ConfigurazioneFontiDatis
-                .Include(c => c.ConfigurazioneFaseCentros)
-                    .ThenInclude(fc => fc.IdFaseLavorazioneNavigation)
-                .Include(c => c.ConfigurazioneFaseCentros)
-                    .ThenInclude(fc => fc.IdProceduraLavorazioneNavigation)
-                .Include(c => c.ConfigurazioneFaseCentros)
-                    .ThenInclude(fc => fc.IdCentroNavigation)
+            // Query ottimizzata con projection
+            var configDto = await context.ConfigurazioneFontiDatis
+                .GetConfigurazioneWithMappings()
                 .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
 
-            if (config == null) return null;
+            if (configDto == null) return null;
 
-            var dto = new ConfigurazioneTaskDetailDto
+            var result = new ConfigurazioneTaskDetailDto
             {
-                IdConfigurazione = config.IdConfigurazione,
-                CodiceConfigurazione = config.CodiceConfigurazione,
-                TipoFonte = TipoFonteDataConverter.ConvertFromDatabase(config.TipoFonte),
+                IdConfigurazione = configDto.IdConfigurazione,
+                CodiceConfigurazione = configDto.CodiceConfigurazione,
+                TipoFonte = configDto.TipoFonte,
                 TestoQueryPrincipale = null
             };
 
-            foreach (var mapping in config.ConfigurazioneFaseCentros)
+            // Carica task per ogni mapping (query separata ottimizzata)
+            foreach (var mapping in configDto.Mappings)
             {
                 var mappingDto = new MappingConTaskDto
                 {
                     IdFaseCentro = mapping.IdFaseCentro,
-                    NomeProcedura = mapping.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
-                    NomeFase = mapping.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A",
-                    NomeCentro = mapping.IdCentroNavigation?.Centro ?? "N/A",
+                    NomeProcedura = mapping.NomeProcedura,
+                    NomeFase = mapping.NomeFase,
+                    NomeCentro = mapping.NomeCentro,
                     FlagAttiva = mapping.FlagAttiva,
                     TestoQueryOverride = mapping.TestoQueryTask
                 };
 
+                // Query task ottimizzata (solo campi necessari)
                 var tasks = await context.TaskDaEseguires
                     .Where(t => t.IdLavorazioneFaseDateReading == mapping.IdFaseCentro)
                     .Select(t => new TaskDto
@@ -75,10 +76,17 @@ namespace BlazorDematReports.Services.DataService
                     .ToListAsync();
 
                 mappingDto.Tasks = tasks;
-                dto.Mappings.Add(mappingDto);
+                result.Mappings.Add(mappingDto);
             }
 
-            return dto;
+            _logger.LogDebug(
+                "Configurazione {Id} caricata con {Mappings} mappings e {Tasks} task totali",
+                idConfigurazione,
+                result.Mappings.Count,
+                result.TotaleTasks
+            );
+
+            return result;
         }
 
         /// <summary>
@@ -225,10 +233,8 @@ namespace BlazorDematReports.Services.DataService
                 IdProceduraLavorazione = mapping.IdProceduraLavorazione,
                 IdFaseLavorazione = mapping.IdFaseLavorazione,
                 IdCentro = mapping.IdCentro,
-                TipoTask = mapping.IdConfigurazioneNavigation?.TipoFonte != null 
-                    ? TipoFonteDataConverter.ConvertFromDatabase(mapping.IdConfigurazioneNavigation.TipoFonte)
-                    : TipoFonteData.SQL,
-                CronExpression = mapping.CronExpression ?? "0 5 * * *",
+                TipoTask = mapping.IdConfigurazioneNavigation?.TipoFonte ?? TipoFonteData.SQL,
+                CronExpression = mapping.CronExpression ?? TaskConfigurationDefaults.DefaultCronExpression,
                 TestoQueryTask = mapping.TestoQueryTask,
                 HandlerClassName = mapping.HandlerClassName ?? mapping.IdConfigurazioneNavigation?.HandlerClassName,
                 NomeProcedura = mapping.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
@@ -281,7 +287,7 @@ namespace BlazorDematReports.Services.DataService
                 }
 
                 // Aggiorna mapping con nuova configurazione
-                mapping.TipoTask = TipoFonteDataConverter.ConvertToDatabase(taskDto.TipoTask);
+                mapping.TipoTask = taskDto.TipoTask.ToString(); // ✅ Conversione semplice a string
                 mapping.CronExpression = taskDto.CronExpression;
                 mapping.TestoQueryTask = taskDto.TestoQueryTask;
                 mapping.HandlerClassName = taskDto.HandlerClassName;
@@ -298,7 +304,7 @@ namespace BlazorDematReports.Services.DataService
                     await context.SaveChangesAsync();
 
                     // Aggiorna o ricrea il recurring job in Hangfire
-                    // Nota: Il metodo ExecuteTask sar� implementato dal sistema di esecuzione task
+                    // Nota: Il metodo ExecuteTask sarà implementato dal sistema di esecuzione task
                     RecurringJob.AddOrUpdate(
                         hangfireTask.IdTaskHangFire,
                         () => Console.WriteLine($"Task {taskDto.IdFaseCentro} execution placeholder"),
@@ -351,7 +357,7 @@ namespace BlazorDematReports.Services.DataService
             }
 
             var exists = await query.AnyAsync();
-            return !exists; // True se NON esiste duplicato (� valido)
+            return !exists; // True se NON esiste duplicato (è valido)
         }
     }
 }

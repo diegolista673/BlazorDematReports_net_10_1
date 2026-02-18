@@ -101,11 +101,12 @@ namespace Entities.Models.DbApplication
                 entity.HasNoKey();
             });
 
-            // Configurazione per enum TipoFonte salvato come stringa
+            // ✅ Configurazione Value Converter per TipoFonte (enum → string nel DB)
             modelBuilder.Entity<ConfigurazioneFontiDati>(entity =>
             {
                 entity.Property(e => e.TipoFonte)
-                    .HasConversion<string>();
+                    .HasConversion<Entities.Converters.TipoFonteDataConverter>()
+                    .HasColumnType("nvarchar(50)");
             });
         }
 

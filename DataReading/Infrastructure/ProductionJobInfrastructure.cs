@@ -68,7 +68,7 @@ namespace DataReading.Infrastructure
             if (t.IdConfigurazioneDatabase.HasValue && t.IdConfigurazioneDatabaseNavigation != null)
             {
                 var tipoFonte = t.IdConfigurazioneDatabaseNavigation.TipoFonte;
-                var detail = tipoFonte == nameof(TipoFonteData.HandlerIntegrato)
+                var detail = tipoFonte == TipoFonteData.HandlerIntegrato // ? Type-safe!
                     ? NormalizeToken(t.IdConfigurazioneDatabaseNavigation.HandlerClassName ?? "handler")
                     : faseName;
 
@@ -458,19 +458,13 @@ namespace DataReading.Infrastructure
 
             var config = entity.IdConfigurazioneDatabaseNavigation;
 
-            // Parse TipoFonte da string
-            if (!Enum.TryParse<TipoFonteData>(config.TipoFonte, out var tipoFonte))
-            {
-                throw new InvalidOperationException(
-                    $"TipoFonte '{config.TipoFonte}' non è valido per task {entity.IdTaskDaEseguire}");
-            }
-
-            return tipoFonte switch
+            // ? TipoFonte è già enum, no parsing necessario!
+            return config.TipoFonte switch
             {
                 TipoFonteData.SQL => ("DatabaseQuery", config.ConnectionStringName ?? ""),
                 TipoFonteData.HandlerIntegrato => ("UnifiedHandler", config.HandlerClassName ?? ""),
                 _ => throw new InvalidOperationException(
-                    $"TipoFonte '{tipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
+                    $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
             };
         }
 
@@ -528,7 +522,7 @@ namespace DataReading.Infrastructure
                     $"Configurazione {entity.IdConfigurazioneDatabase.Value} non trovata per task {entity.IdTaskDaEseguire}");
             }
 
-            if (config.TipoFonte != nameof(TipoFonteData.SQL))
+            if (config.TipoFonte != TipoFonteData.SQL) // ? Type-safe!
             {
                 throw new InvalidOperationException(
                     $"Configurazione {config.IdConfigurazione} ha TipoFonte='{config.TipoFonte}' invece di 'SQL'");

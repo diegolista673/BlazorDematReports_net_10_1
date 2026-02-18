@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using BlazorDematReports.Application;
+using BlazorDematReports.Constants;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
 using DataReading.Infrastructure;
@@ -52,52 +53,53 @@ namespace BlazorDematReports.Services.DataService
 
             await using var context = await contextFactory.CreateDbContextAsync();
 
+            // Query ottimizzata con projection diretta
             var configs = await context.ConfigurazioneFontiDatis
-                .Include(c => c.ConfigurazioneFaseCentros)
-                    .ThenInclude(fc => fc.IdFaseLavorazioneNavigation)
-                .Include(c => c.ConfigurazioneFaseCentros)
-                    .ThenInclude(fc => fc.IdProceduraLavorazioneNavigation)
-                .Include(c => c.ConfigurazioneFaseCentros)
-                    .ThenInclude(fc => fc.IdCentroNavigation)
-                .Include(c => c.TaskDaEseguires)
                 .OrderBy(c => c.IdConfigurazione)
+                .Select(c => new ConfigurazioneRiepilogoDto
+                {
+                    IdConfigurazione = c.IdConfigurazione,
+                    CodiceConfigurazione = c.CodiceConfigurazione,
+                    Descrizione = c.DescrizioneConfigurazione!,
+                    TipoFonte = c.TipoFonte.ToString(),
+                    CreatoIl = c.CreatoIl ?? DateTime.MinValue,
+                    NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva == true),
+                    TaskAttivi = c.TaskDaEseguires.Count(t => t.Enabled),
+
+                    // Campi dettaglio denormalizzati
+                    FasiDettaglio = c.ConfigurazioneFaseCentros
+                        .Where(fc => fc.FlagAttiva == true)
+                        .Select(fc => fc.IdFaseLavorazioneNavigation != null 
+                            ? fc.IdFaseLavorazioneNavigation.FaseLavorazione 
+                            : "N/A")
+                        .ToList(),
+
+                    CronExpressions = c.ConfigurazioneFaseCentros
+                        .Where(fc => fc.FlagAttiva == true)
+                        .Select(fc => fc.CronExpression ?? "0 5 * * *")
+                        .ToList(),
+
+                    MappingDettaglio = c.ConfigurazioneFaseCentros
+                        .Where(fc => fc.FlagAttiva == true)
+                        .Select(fc => new MappingDettaglioDto
+                        {
+                            NomeProcedura = fc.IdProceduraLavorazioneNavigation != null 
+                                ? fc.IdProceduraLavorazioneNavigation.NomeProcedura 
+                                : "N/A",
+                            NomeFase = fc.IdFaseLavorazioneNavigation != null
+                                ? fc.IdFaseLavorazioneNavigation.FaseLavorazione
+                                : "N/A",
+                            NomeCentro = fc.IdCentroNavigation != null
+                                ? fc.IdCentroNavigation.Centro
+                                : "N/A",
+                            Cron = fc.CronExpression ?? "0 5 * * *",
+                            ParametriExtra = null
+                        })
+                        .ToList()
+                })
                 .ToListAsync();
 
-            var _configurazioni = configs.Select(c => new ConfigurazioneRiepilogoDto
-            {
-                IdConfigurazione = c.IdConfigurazione,
-                CodiceConfigurazione = c.CodiceConfigurazione,
-                Descrizione = c.DescrizioneConfigurazione!,
-                TipoFonte = c.TipoFonte.ToString(),
-                CreatoIl = (DateTime)c.CreatoIl,
-                NumeroFasi = c.ConfigurazioneFaseCentros.Count(fc => fc.FlagAttiva == true),
-                TaskAttivi = c.TaskDaEseguires.Count(t => t.Enabled),
-
-                // Nuovi campi dettaglio
-                FasiDettaglio = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva == true)
-                    .Select(fc => fc.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A")
-                    .ToList(),
-
-                CronExpressions = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva == true)
-                    .Select(fc => fc.CronExpression ?? "0 5 * * *")
-                    .ToList(),
-
-                MappingDettaglio = c.ConfigurazioneFaseCentros
-                    .Where(fc => fc.FlagAttiva == true)
-                    .Select(fc => new MappingDettaglioDto
-                    {
-                        NomeProcedura = fc.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
-                        NomeFase = fc.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A",
-                        NomeCentro = fc.IdCentroNavigation?.Centro ?? "N/A",
-                        Cron = fc.CronExpression ?? "0 5 * * *",
-                        ParametriExtra = null
-                    })
-                    .ToList()
-            }).ToList();
-
-            return _configurazioni;
+            return configs;
         }
 
 
@@ -298,10 +300,10 @@ namespace BlazorDematReports.Services.DataService
                             m.IdFaseCentro = 0;
                             m.IdConfigurazione = config.IdConfigurazione;
                             m.FlagAttiva = true;
-                            m.TipoTask ??= config.TipoFonte; // TipoFonte è già una stringa nel DB
-                            m.CronExpression ??= "0 5 * * *";
+                            m.TipoTask ??= config.TipoFonte.ToString();
+                            m.CronExpression ??= TaskConfigurationDefaults.DefaultCronExpression;
                             if (m.GiorniPrecedenti is null or <= 0)
-                                m.GiorniPrecedenti = 10;
+                                m.GiorniPrecedenti = TaskConfigurationDefaults.DefaultGiorniPrecedenti;
                             context.ConfigurazioneFaseCentros.Add(m);
                         }
                     }
@@ -329,10 +331,10 @@ namespace BlazorDematReports.Services.DataService
                             m.FlagAttiva = true;
 
                             // Assicura che i campi obbligatori siano valorizzati
-                            m.TipoTask ??= config.TipoFonte; // TipoFonte è già una stringa nel DB
-                            m.CronExpression ??= "0 5 * * *";
+                            m.TipoTask ??= config.TipoFonte.ToString();
+                            m.CronExpression ??= TaskConfigurationDefaults.DefaultCronExpression;
                             if (m.GiorniPrecedenti is null or <= 0)
-                                m.GiorniPrecedenti = 10;
+                                m.GiorniPrecedenti = TaskConfigurationDefaults.DefaultGiorniPrecedenti;
                             context.ConfigurazioneFaseCentros.Add(m);
                         }
                     }
@@ -427,7 +429,7 @@ namespace BlazorDematReports.Services.DataService
 
                     await context.SaveChangesAsync();
 
-                    // **NUOVA LOGICA: Aggiorna FlagDataReading = true per le fasi con cron validi**
+                    // **Aggiorna FlagDataReading = true per le fasi con cron validi**
                     await UpdateFlagDataReadingForMappingsAsync(context, mappingFasi);
                 }
 
