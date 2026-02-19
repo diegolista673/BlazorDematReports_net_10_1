@@ -1,8 +1,8 @@
 using AutoMapper;
 using BlazorDematReports.Application;
 using BlazorDematReports.Interfaces.IDataService;
-using DataReading;
-using DataReading.Infrastructure;
+using BlazorDematReports.Core.DataReading.Dto;
+using BlazorDematReports.Core.DataReading.Infrastructure;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 

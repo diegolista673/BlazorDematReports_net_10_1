@@ -1,5 +1,5 @@
 ﻿@page "/data-manager"
-
+@using BlazorDematReports.Core.DataReading.Infrastructure
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageDataManager,TaskDataReadingAggiornamentoDto,TaskDataReadingAggiornamentoDto,SearchDataDto,SearchDataDto>
 
@@ -293,8 +293,8 @@
                 if (IdTaskDaEseguire == null)
                     throw new NullReferenceException("Errore manca Task/Query da eseguire");
 
-                // NUOVO SISTEMA: Esegui task tramite ProductionJobRunner
-                await DataReading.Infrastructure.ProductionJobRunner.RunAsync((int)IdTaskDaEseguire);
+                // Esegui task tramite ProductionJobRunner (già in Core)
+                await ProductionJobRunner.RunAsync((int)IdTaskDaEseguire);
 
                 IsFormValid = false;
                 IsDisabledLavorazione = false;

@@ -46,8 +46,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\ClassLibraryLavorazioni\LibraryLavorazioni.csproj" />
-		<ProjectReference Include="..\DataReading\DataReading.csproj" />
+		<ProjectReference Include="..\BlazorDematReports.Core\BlazorDematReports.Core.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

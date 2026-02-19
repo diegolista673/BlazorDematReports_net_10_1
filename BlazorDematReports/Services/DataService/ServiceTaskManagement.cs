@@ -1,4 +1,4 @@
-﻿using BlazorDematReports.Constants;
+﻿using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
 using BlazorDematReports.Services.DataService.Queries;

@@ -1,9 +1,9 @@
 @using Entities.Models.DbApplication
-@using DataReading.Infrastructure
+@using BlazorDematReports.Core.DataReading.Infrastructure
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @inject IDbContextFactory<DematReportsContext> DbFactory
-@inject IProductionJobScheduler ProductionScheduler
+@inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
 @inject ISnackbar Snackbar
 @inject ILogger<DialogGestioneTask> Logger
 

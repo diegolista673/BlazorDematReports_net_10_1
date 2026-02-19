@@ -1,9 +1,8 @@
 @page "/procedure-lavorazioni"
-@using DataReading.Dto
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageProcedureLavorazioni,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject NavigationManager NavigationManager
-@inject DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
+@inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Procedure Lavorazioni</MudText>
 <MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>

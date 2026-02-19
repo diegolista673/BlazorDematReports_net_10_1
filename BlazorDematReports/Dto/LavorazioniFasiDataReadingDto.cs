@@ -1,4 +1,4 @@
-﻿using DataReading.Dto;
+﻿using BlazorDematReports.Core.DataReading.Dto;
 
 namespace BlazorDematReports.Dto
 {

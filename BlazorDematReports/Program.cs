@@ -8,29 +8,28 @@ using BlazorDematReports.Services.DataService;
 using BlazorDematReports.Services.ProcedureEdit;
 using BlazorDematReports.Services.UIServices;
 using BlazorDematReports.Services.Validation;
-using DataReading.Infrastructure;
-using DataReading.Interfaces;
-using DataReading.Services;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Hangfire;
-using LibraryLavorazioni.Lavorazioni.Handlers;
-using LibraryLavorazioni.Lavorazioni.Interfaces;
-using LibraryLavorazioni.Shared.Interfaces;
-using LibraryLavorazioni.Shared.Registry;
-using LibraryLavorazioni.Shared.Services;
-using LibraryLavorazioni.Shared.Services.Email;
-using LibraryLavorazioni.Utility;
-using LibraryLavorazioni.Utility.Interfaces;
+using BlazorDematReports.Core.Utility;
+using BlazorDematReports.Core.Utility.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 using MudBlazor.Services;
 using NLog.Web;
 using BlazorDematReports.Services.Authentication;
-using LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Ader4;
-using LibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Hera16;
-using ClassLibraryLavorazioni.Lavorazioni.Handlers.MailHandlers.Ader4;
+using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
+using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
+using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
+using BlazorDematReports.Core.Handlers.Registry;
+using BlazorDematReports.Core.Handlers;
+using BlazorDematReports.Core.Lavorazioni.Interfaces;
+using BlazorDematReports.Core.DataReading.Infrastructure;
+using BlazorDematReports.Core.DataReading.Services;
+using BlazorDematReports.Core.DataReading.Interfaces;
+using BlazorDematReports.Core.Services.Email;
+using BlazorDematReports.Core.Services;
 
 /// <summary>
 /// Classe principale dell'applicazione che gestisce la configurazione e l'avvio del sistema.
@@ -290,7 +289,7 @@ public static class Program
 
 
         // Sistema Unificato Configurazione Fonti Dati
-        builder.Services.AddScoped<LibraryLavorazioni.Shared.Handlers.UnifiedDataSourceHandler>();
+        builder.Services.AddScoped<UnifiedDataSourceHandler>();
     }
 
 
@@ -356,7 +355,7 @@ public static class Program
         using var scope = app.Services.CreateScope();
         try
         {
-            var health = scope.ServiceProvider.GetRequiredService<DataReading.Services.IHangfireHealthService>();
+            var health = scope.ServiceProvider.GetRequiredService<IHangfireHealthService>();
             var ok = await health.CheckHangfireHealthAsync();
             if (!ok)
                 bootstrapLogger.Warn("Hangfire non completamente operativo all'avvio");

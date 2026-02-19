@@ -5,7 +5,7 @@
 @inherits BaseComponentPage<PageEditProcedura,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject ProcedureEditStateService StateService
 @inject ProcedureNavigationService NavigationService
-@inject DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
+@inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
 @inject NavigationManager NavManager
 @inject IDialogService DialogService
 @inject IUnifiedHandlerRegistry HandlerRegistry
@@ -287,7 +287,7 @@
                 return false;
 
             // Verifica se esiste un handler registrato per questa procedura
-            return HandlerRegistry.TryGetHandler(Model.NomeProcedura, out _);
+            return HandlerRegistry.IsRegistered(Model.NomeProcedura);
         }
     }
 

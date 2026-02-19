@@ -1,8 +1,8 @@
 ﻿using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using DataReading.Infrastructure;
-using BlazorDematReports.Constants;
+using BlazorDematReports.Core.DataReading.Infrastructure;
+using BlazorDematReports.Core.Constants;
 
 namespace BlazorDematReports.Services.DataService
 {

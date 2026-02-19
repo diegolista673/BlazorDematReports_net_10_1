@@ -7,7 +7,7 @@ using BlazorDematReports.Interfaces.IDataService;
 using BlazorDematReports.Services.UIServices;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
-using LibraryLavorazioni.Utility.Interfaces;
+using BlazorDematReports.Core.Utility.Interfaces;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Data.SqlClient;
@@ -591,7 +591,6 @@ namespace BlazorDematReports.Components.Shared
                 case NullReferenceException nullRefEx:
                 case InvalidOperationException invalidOpEx:
                 case ArgumentNullException argNullEx:
-                case DataReading.SearchDateException searchDateEx:
                     message = $"Errore applicativo: {ex.Message}";
                     break;
 

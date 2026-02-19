@@ -1,7 +1,7 @@
 using Entities.Models.DbApplication;
 using Entities.Enums;
 using Microsoft.EntityFrameworkCore;
-using BlazorDematReports.Constants;
+using BlazorDematReports.Core.Constants;
 
 namespace BlazorDematReports.Services.DataService.Queries
 {

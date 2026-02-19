@@ -1,9 +1,9 @@
 ﻿using AutoMapper;
 using BlazorDematReports.Application;
-using BlazorDematReports.Constants;
+using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
-using DataReading.Infrastructure;
+using BlazorDematReports.Core.DataReading.Infrastructure;
 using Entities.Converters;
 using Entities.Enums;
 using Entities.Helpers;

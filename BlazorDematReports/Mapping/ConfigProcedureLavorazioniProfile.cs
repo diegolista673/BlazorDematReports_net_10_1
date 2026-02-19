@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using BlazorDematReports.Dto;
-using DataReading.Dto;
+using BlazorDematReports.Core.DataReading.Dto;
 using Entities.Models.DbApplication;
 
 namespace BlazorDematReports.Mapping

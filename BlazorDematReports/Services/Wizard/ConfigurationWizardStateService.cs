@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using BlazorDematReports.Constants;
+using BlazorDematReports.Core.Constants;
 using Entities.Models.DbApplication;
 using Entities.Enums;
 

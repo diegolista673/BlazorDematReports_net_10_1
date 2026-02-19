@@ -29,7 +29,10 @@
 @using Newtonsoft.Json
 @using System.Globalization
 @using System.IO
-@using DataReading
+@using BlazorDematReports.Core.Lavorazioni.Interfaces
+@using BlazorDematReports.Core.Lavorazioni.Models
+@using BlazorDematReports.Core.DataReading.Dto
+@using BlazorDematReports.Core.DataReading.Infrastructure
 @using Helpers
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
@@ -39,14 +42,11 @@
 @using BlazorDematReports.Services.UIServices
 @using Hangfire;
 @using AutoMapper;
-@using DataReading.Dto
 @using BlazorDematReports.Services.ProcedureEdit
 @using BlazorDematReports.Components.Pages.Impostazioni.ProcedureEdit
 @using BlazorDematReports.Components.Pages.Impostazioni
-@using LibraryLavorazioni.Shared.Interfaces
 @using Microsoft.AspNetCore.Components
 @using BlazorDematReports.Interfaces.IDataService
-@using DataReading.Infrastructure
 @using BlazorDematReports.Services.Wizard
 @using BlazorDematReports.Services.Validation
 @using BlazorDematReports.Components.Pages.Impostazioni.ConfigurazioneFonti.Steps
