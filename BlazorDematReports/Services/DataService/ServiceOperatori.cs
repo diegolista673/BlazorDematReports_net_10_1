@@ -14,31 +14,23 @@ namespace BlazorDematReports.Services.DataService
     /// Servizio per la gestione degli operatori nel sistema.
     /// <para>
     /// Questa classe implementa l'interfaccia <see cref="IServiceOperatori"/> e fornisce 
-    /// funzionalità CRUD e query specifiche per l'entità <see cref="Operatori"/>, 
-    /// gestendo anche la conversione tra entità e DTO.
+    /// funzionalit� CRUD e query specifiche per l'entit� <see cref="Operatori"/>, 
+    /// gestendo anche la conversione tra entit� e DTO.
     /// </para>
     /// </summary>
     public class ServiceOperatori : ServiceBase<Operatori>, IServiceOperatori
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceOperatori> logger;
 
         /// <summary>
         /// Inizializza una nuova istanza di <see cref="ServiceOperatori"/>.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entità e DTO.</param>
+        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente, usata per filtrare i dati in base ai permessi.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
         public ServiceOperatori(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceOperatori> logger)
-            : base(contextFactory)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>
@@ -127,9 +119,9 @@ namespace BlazorDematReports.Services.DataService
         }
 
         /// <summary>
-        /// Aggiunge un nuovo operatore al sistema utilizzando l'entità diretta con hash della password.
+        /// Aggiunge un nuovo operatore al sistema utilizzando l'entit� diretta con hash della password.
         /// </summary>
-        /// <param name="oper">Entità operatore da aggiungere.</param>
+        /// <param name="oper">Entit� operatore da aggiungere.</param>
         /// <returns>Task asincrono per l'operazione di inserimento.</returns>
         public async Task AddOperatoreAsync(Operatori oper)
         {

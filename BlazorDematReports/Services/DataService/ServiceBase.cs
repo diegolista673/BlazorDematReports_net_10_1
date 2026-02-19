@@ -1,5 +1,7 @@
-﻿using BlazorDematReports.Interfaces.IDataService;
-using Entities.Helpers; // AGGIORNATO: Usando il QueryLoggingHelper unificato
+﻿using AutoMapper;
+using BlazorDematReports.Application;
+using BlazorDematReports.Interfaces.IDataService;
+using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
@@ -8,38 +10,58 @@ namespace BlazorDematReports.Services.DataService
 {
     /// <summary>
     /// Servizio base generico per la gestione delle entità e delle operazioni CRUD.
+    /// Fornisce campi condivisi (contextFactory, logger, mapper, configUser) a tutti i service figli,
+    /// eliminando la necessità di ridichiarazioni ridondanti nelle sottoclassi.
     /// </summary>
     /// <typeparam name="T">Tipo dell'entità gestita.</typeparam>
     public class ServiceBase<T> : IServiceBase<T> where T : class
     {
-        /// <summary>
-        /// Factory per la creazione del contesto dati.
-        /// </summary>
+        /// <summary>Factory per la creazione del contesto dati.</summary>
         protected readonly IDbContextFactory<DematReportsContext> contextFactory;
 
-        /// <summary>
-        /// Logger per il tracking delle operazioni.
-        /// </summary>
-        protected readonly ILogger<ServiceBase<T>>? logger;
+        /// <summary>Logger per il tracking delle operazioni.</summary>
+        protected readonly ILogger? logger;
+
+        /// <summary>Mapper AutoMapper per la conversione tra entità e DTO.</summary>
+        protected readonly IMapper? mapper;
+
+        /// <summary>Configurazione utente corrente (ruolo, centro di origine).</summary>
+        protected readonly ConfigUser? configUser;
 
         /// <summary>
-        /// Costruttore che inizializza la factory per il contesto dati.
+        /// Costruttore minimale — solo contextFactory.
         /// </summary>
-        /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         public ServiceBase(IDbContextFactory<DematReportsContext> contextFactory)
         {
             this.contextFactory = contextFactory;
         }
 
         /// <summary>
-        /// Costruttore che inizializza la factory per il contesto dati e il logger.
+        /// Costruttore con contextFactory e logger.
         /// </summary>
-        /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
-        /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceBase(IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceBase<T>> logger)
+        public ServiceBase(IDbContextFactory<DematReportsContext> contextFactory, ILogger logger)
         {
             this.contextFactory = contextFactory;
             this.logger = logger;
+        }
+
+        /// <summary>
+        /// Costruttore completo — tutti i campi condivisi.
+        /// </summary>
+        /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
+        /// <param name="logger">Logger per il tracking delle operazioni.</param>
+        /// <param name="mapper">Mapper AutoMapper per la conversione tra entità e DTO.</param>
+        /// <param name="configUser">Configurazione utente corrente.</param>
+        public ServiceBase(
+            IDbContextFactory<DematReportsContext> contextFactory,
+            ILogger logger,
+            IMapper mapper,
+            ConfigUser configUser)
+        {
+            this.contextFactory = contextFactory;
+            this.logger = logger;
+            this.mapper = mapper;
+            this.configUser = configUser;
         }
 
         /// <summary>

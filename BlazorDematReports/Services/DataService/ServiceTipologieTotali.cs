@@ -13,24 +13,16 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceTipologieTotali : ServiceBase<TipologieTotali>, IServiceTipologieTotali
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceTipologieTotali> logger;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione delle tipologie totali.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entità e DTO.</param>
+        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceTipologieTotali(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTipologieTotali> logger) : base(contextFactory)
+        public ServiceTipologieTotali(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTipologieTotali> logger) : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>

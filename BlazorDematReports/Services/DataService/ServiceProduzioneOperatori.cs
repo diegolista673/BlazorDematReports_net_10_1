@@ -20,28 +20,16 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceProduzioneOperatori : ServiceBase<ProduzioneOperatori>, IServiceProduzioneOperatori
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-
         /// <summary>
-        /// Factory per la creazione di contesti database, utilizzata per accedere ai dati di produzione operatori.
+        /// Inizializza una nuova istanza del servizio per la gestione della produzione operatori.
         /// </summary>
-        public IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceProduzioneOperatori> logger;
-
-        /// <summary>
-        /// ServiceProduzioneOperatori per la gestione della produzione operatori e delle relative operazioni sui dati 
-        /// </summary>
-        /// <param name="mapper"></param>
-        /// <param name="configUser"></param>
-        /// <param name="contextFactory"></param>
-        /// <param name="logger"></param>
-        public ServiceProduzioneOperatori(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneOperatori> logger) : base(contextFactory)
+        /// <param name="mapper">Mapper per conversioni tra entità e DTO.</param>
+        /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
+        /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
+        /// <param name="logger">Logger per registrare operazioni e errori.</param>
+        public ServiceProduzioneOperatori(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneOperatori> logger) 
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>
@@ -76,7 +64,7 @@ namespace BlazorDematReports.Services.DataService
         }
 
         /// <summary>
-        /// Verifica se esiste già un record di produzione operatori con i parametri specificati.
+        /// Verifica se esiste gi� un record di produzione operatori con i parametri specificati.
         /// </summary>
         /// <param name="produzioneOperatoriDto">DTO con i criteri di ricerca per la verifica duplicati.</param>
         /// <returns>True se il record esiste, False altrimenti.</returns>
@@ -496,7 +484,7 @@ namespace BlazorDematReports.Services.DataService
                                                                                               reportAnnualeDto.IdCentro!).ToListAsync();
             }
 
-            // Gestione del caso in cui la lista è vuota o nulla
+            // Gestione del caso in cui la lista � vuota o nulla
             if (lstReportAnniSistema == null || !lstReportAnniSistema.Any())
             {
                 return new List<ReportAnniSistema>();
@@ -526,7 +514,7 @@ namespace BlazorDematReports.Services.DataService
                 lstReportAnniSistema = await context.Set<ReportAnniSistema>().FromSqlRaw(sql, IdProceduraLavorazione, IdCentro).ToListAsync();
             }
 
-            // Gestione del caso in cui la lista è vuota o nulla
+            // Gestione del caso in cui la lista � vuota o nulla
             if (lstReportAnniSistema == null || !lstReportAnniSistema.Any())
             {
                 return new List<ReportAnniSistema>();

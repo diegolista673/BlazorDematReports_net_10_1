@@ -13,10 +13,6 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceClienti : ServiceBase<Clienti>, IServiceClienti
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceClienti> logger;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione dei clienti.
@@ -25,12 +21,9 @@ namespace BlazorDematReports.Services.DataService
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceClienti(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceClienti> logger) : base(contextFactory)
+        public ServiceClienti(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceClienti> logger)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>

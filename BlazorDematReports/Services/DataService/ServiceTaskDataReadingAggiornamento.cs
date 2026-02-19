@@ -1,4 +1,4 @@
-using AutoMapper;
+ï»¿using AutoMapper;
 using BlazorDematReports.Application;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
@@ -13,10 +13,6 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceTaskDataReadingAggiornamento : ServiceBase<TaskDataReadingAggiornamento>, IServiceTaskDataReadingAggiornamento
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceTaskDataReadingAggiornamento> logger;
 
         // Compiled query per ultimo aggiornamento (usa MAX su DataAggiornamento)
         private static readonly Func<DematReportsContext, int, int, DateTime?> _getLastAggiornamentoCompiled =
@@ -29,16 +25,12 @@ namespace BlazorDematReports.Services.DataService
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione degli aggiornamenti task data reading.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entità e DTO.</param>
+        /// <param name="mapper">Servizio per la mappatura tra entitï¿½ e DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceTaskDataReadingAggiornamento(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTaskDataReadingAggiornamento> logger) : base(contextFactory, logger)
+        public ServiceTaskDataReadingAggiornamento(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTaskDataReadingAggiornamento> logger) : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>
@@ -90,11 +82,11 @@ namespace BlazorDematReports.Services.DataService
         }
 
         /// <summary>
-        /// Restituisce l'aggiornamento task data reading più recente per procedura e fase specifiche.
+        /// Restituisce l'aggiornamento task data reading piï¿½ recente per procedura e fase specifiche.
         /// </summary>
         /// <param name="IdProceduraLavorazione">Identificativo della procedura di lavorazione.</param>
         /// <param name="IdFase">Identificativo della fase di lavorazione.</param>
-        /// <returns>Oggetto <see cref="TaskDataReadingAggiornamento"/> più recente o null se non trovato.</returns>
+        /// <returns>Oggetto <see cref="TaskDataReadingAggiornamento"/> piï¿½ recente o null se non trovato.</returns>
         public async Task<TaskDataReadingAggiornamento?> GetAggiornamentoLavorazioneAsync(int IdProceduraLavorazione, int IdFase)
         {
             QueryLoggingHelper.LogQueryExecution(logger);

@@ -13,24 +13,16 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceTaskDaEseguire : ServiceBase<TaskDaEseguire>, IServiceTaskDaEseguire
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceTaskDaEseguire> logger;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione dei task da eseguire.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entità e DTO.</param>
+        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceTaskDaEseguire(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTaskDaEseguire> logger) : base(contextFactory)
+        public ServiceTaskDaEseguire(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTaskDaEseguire> logger) : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>

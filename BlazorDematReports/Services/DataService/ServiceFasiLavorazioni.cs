@@ -13,25 +13,17 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceFasiLavorazioni : ServiceBase<FasiLavorazione>, IServiceFasiLavorazioni
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceFasiLavorazioni> logger;
 
         /// <summary>
         /// Inizializza una nuova istanza della classe <see cref="ServiceFasiLavorazioni"/>.
         /// </summary>
-        /// <param name="mapper">Mapper per la conversione tra entità e DTO.</param>
+        /// <param name="mapper">Mapper per la conversione tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per la registrazione delle operazioni.</param>
         public ServiceFasiLavorazioni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceFasiLavorazioni> logger)
-            : base(contextFactory)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>

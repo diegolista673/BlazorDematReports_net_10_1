@@ -15,10 +15,6 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceProduzioneSistema : ServiceBase<ProduzioneSistema>, IServiceProduzioneSistema
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceProduzioneSistema> logger;
 
         // Compiled queries (nessun DefaultIfEmpty per evitare DateTime.Min se assente)
         private static readonly Func<DematReportsContext, int, int, DateTime?> _getMinDateCompiled =
@@ -42,12 +38,8 @@ namespace BlazorDematReports.Services.DataService
         /// <param name="configUser"></param>
         /// <param name="contextFactory"></param>
         /// <param name="logger"></param>
-        public ServiceProduzioneSistema(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneSistema> logger) : base(contextFactory)
+        public ServiceProduzioneSistema(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneSistema> logger) : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <inheritdoc/>

@@ -1,9 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+	<TargetFramework>net10.0</TargetFramework>
+	<ImplicitUsings>enable</ImplicitUsings>
+	<Nullable>enable</Nullable>
+	<!-- NU1701: Microsoft.Exchange.WebServices è solo .NET Framework ma funziona a runtime su .NET 10.
+		 TODO: Migrare a MailKit (IMAP) o Microsoft.Graph (Exchange Online) -->
+	<NoWarn>NU1701</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,21 +15,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Package NuGet necessari -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.1" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.1" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
-    <PackageReference Include="Hangfire.Core" Version="1.8.23" />
-    <PackageReference Include="Microsoft.Exchange.WebServices" Version="2.2.0" />
-    <PackageReference Include="LumenWorksCsvReader" Version="4.0.0" />
-    <PackageReference Include="NLog" Version="6.1.0" />
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
-    <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.100" />
+	<!-- Package NuGet necessari -->
+	<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.1" />
+	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.1" />
+	<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
+	<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+	<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
+	<PackageReference Include="Hangfire.Core" Version="1.8.23" />
+	<!-- TODO: Migrare da EWS (solo .NET Framework) a MailKit per compatibilità .NET 10 -->
+	<PackageReference Include="Microsoft.Exchange.WebServices" Version="2.2.0" />
+	<!-- Fix CVE: sovrascrive la dipendenza transitiva vulnerabile di Microsoft.Exchange.WebServices -->
+	<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+	<PackageReference Include="LumenWorksCsvReader" Version="4.0.0" />
+	<PackageReference Include="NLog" Version="6.1.0" />
+	<PackageReference Include="ClosedXML" Version="0.105.0" />
+	<PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.100" />
 	<PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.128.0" />
 	<PackageReference Include="Cronos" Version="0.11.1" />
+	<PackageReference Include="FastMember" Version="1.5.0" />
+	<PackageReference Include="FluentEmail.Core" Version="3.0.2" />
+	<PackageReference Include="FluentEmail.Razor" Version="3.0.2" />
+	<PackageReference Include="FluentEmail.Smtp" Version="3.0.2" />
   </ItemGroup>
 
 

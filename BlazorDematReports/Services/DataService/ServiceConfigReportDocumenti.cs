@@ -19,10 +19,6 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceConfigReportDocumenti : ServiceBase<ConfigReportDocumenti>, IServiceConfigReportDocumenti
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceConfigReportDocumenti> logger;
 
         /// <summary>
         /// Inizializza una nuova istanza del servizio di configurazione report documenti.
@@ -31,12 +27,9 @@ namespace BlazorDematReports.Services.DataService
         /// <param name="configUser">Configurazione dell'utente corrente con informazioni su permessi e centro di appartenenza.</param>
         /// <param name="contextFactory">Factory per la creazione di istanze del contesto database DematReports.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceConfigReportDocumenti(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigReportDocumenti> logger) : base(contextFactory)
+        public ServiceConfigReportDocumenti(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigReportDocumenti> logger)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <inheritdoc/>

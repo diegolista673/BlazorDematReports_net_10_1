@@ -16,25 +16,17 @@ namespace BlazorDematReports.Services.DataService
     public class ServiceProcedureLavorazioni : ServiceBase<ProcedureLavorazioni>, IServiceProcedureLavorazioni
     {
 
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceProcedureLavorazioni> logger;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione delle procedure di lavorazione.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entità e DTO.</param>
+        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
         public ServiceProcedureLavorazioni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProcedureLavorazioni> logger)
-            : base(contextFactory)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <summary>
@@ -309,11 +301,11 @@ namespace BlazorDematReports.Services.DataService
                 }
                 else
                 {
-                    // Caso 2: LavorazioniFasiDataReadingsDto è null o vuoto - rimuovi tutte le fasi esistenti
+                    // Caso 2: LavorazioniFasiDataReadingsDto � null o vuoto - rimuovi tutte le fasi esistenti
                     await ClearAllFasiDataReadingsAsync(context, lavorazioneOriginal);
                 }
 
-                // AGGIORNA LE PROPRIETÀ PRINCIPALI
+                // AGGIORNA LE PROPRIET� PRINCIPALI
                 UpdateMainProperties(lavorazioneOriginal, procedureLavorazioniDto);
 
                 // Salvataggio finale
@@ -390,10 +382,10 @@ namespace BlazorDematReports.Services.DataService
             foreach (var faseDto in fasiDto)
             {
                 // **CORREZIONE: Salta la validazione per la fase speciale procedura (ID = 0)**
-                // La fase con ID 0 è una fase virtuale per task a livello procedura e non esiste nella tabella FasiLavorazione
+                // La fase con ID 0 � una fase virtuale per task a livello procedura e non esiste nella tabella FasiLavorazione
                 if (faseDto.IdFaseLavorazione != 0)
                 {
-                    // Valida fase solo se non è la fase procedura speciale
+                    // Valida fase solo se non � la fase procedura speciale
                     var faseExists = await context.FasiLavoraziones
                         .AnyAsync(f => f.IdFaseLavorazione == faseDto.IdFaseLavorazione);
 
@@ -450,7 +442,7 @@ namespace BlazorDematReports.Services.DataService
                 .Select(dto => dto.IdlavorazioneFaseDateReading)
                 .ToList();
 
-            // Rimuovi fasi non più presenti
+            // Rimuovi fasi non pi� presenti
             foreach (var existingFase in existingFasi)
             {
                 if (!dtoFasiIds.Contains(existingFase.IdlavorazioneFaseDateReading))
@@ -585,7 +577,7 @@ namespace BlazorDematReports.Services.DataService
         }
 
         /// <summary>
-        /// Aggiorna le proprietà principali dell'entità
+        /// Aggiorna le propriet� principali dell'entit�
         /// </summary>
         private void UpdateMainProperties(ProcedureLavorazioni lavorazione, ProcedureLavorazioniDto dto)
         {
@@ -611,7 +603,7 @@ namespace BlazorDematReports.Services.DataService
                 .Select(dto => dto.IdTaskDaEseguire)
                 .ToList();
 
-            // Rimuovi task non più presenti
+            // Rimuovi task non pi� presenti
             foreach (var existingTask in existingTasks)
             {
                 if (!dtoTaskIds.Contains(existingTask.IdTaskDaEseguire))
@@ -646,7 +638,7 @@ namespace BlazorDematReports.Services.DataService
                             }
                         }
 
-                        // Mapping proprietà
+                        // Mapping propriet�
                         existingTask.IdTaskHangFire = taskDto.IdTaskHangFire ?? string.Empty;
                         existingTask.GiorniPrecedenti = taskDto.GiorniPrecedenti;
                         existingTask.Stato = taskDto.Stato ?? "Attivo";
@@ -672,7 +664,7 @@ namespace BlazorDematReports.Services.DataService
                         logger.LogDebug("Assegnato ID Hangfire temporaneo per nuovo task: {TempId}", newTask.IdTaskHangFire);
                     }
                     
-                    // set proprietà aggiuntive non coperte dal mapping (in caso profilo non aggiornato)
+                    // set propriet� aggiuntive non coperte dal mapping (in caso profilo non aggiornato)
                     newTask.Enabled = taskDto.Enabled;
                     newTask.IdConfigurazioneDatabase = taskDto.IdConfigurazioneDatabase;
                     newTask.CronExpression = taskDto.CronExpression;

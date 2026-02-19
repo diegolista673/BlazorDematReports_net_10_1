@@ -12,25 +12,17 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceCentriVisibili : ServiceBase<CentriVisibili>, IServiceCentriVisibili
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceCentriVisibili> logger;
 
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione dei centri visibili.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entità e DTO.</param>
+        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
         public ServiceCentriVisibili(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceCentriVisibili> logger)
-            : base(contextFactory)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <inheritdoc/>

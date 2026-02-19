@@ -16,26 +16,18 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceQueryProcedureLavorazioni : ServiceBase<QueryProcedureLavorazioni>, IServiceQueryProcedureLavorazioni
     {
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceQueryProcedureLavorazioni> logger;
 
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione delle query delle procedure di lavorazione.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entità e DTO.</param>
+        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="lettoreDati">Servizio per l'elaborazione dati e scheduling.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
         public ServiceQueryProcedureLavorazioni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceQueryProcedureLavorazioni> logger)
-            : base(contextFactory)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
         }
 
         /// <inheritdoc/>

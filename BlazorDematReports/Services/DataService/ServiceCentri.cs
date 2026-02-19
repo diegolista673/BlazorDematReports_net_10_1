@@ -1,4 +1,4 @@
-using AutoMapper;
+ï»¿using AutoMapper;
 using BlazorDematReports.Application;
 using BlazorDematReports.Dto;
 using BlazorDematReports.Interfaces.IDataService;
@@ -13,26 +13,21 @@ namespace BlazorDematReports.Services.DataService
     /// </summary>
     public class ServiceCentri : ServiceBase<CentriLavorazione>, IServiceCentri
     {
-        private readonly IMapper mapper;
+
 
         /// <summary>
         /// Inizializza una nuova istanza della classe <see cref="ServiceCentri"/>.
         /// </summary>
-        /// <param name="mapper">Mapper per la conversione tra entità e DTO.</param>
+        /// <param name="mapper">Mapper per la conversione tra entitï¿½ e DTO.</param>
         /// <param name="configUser">Configurazione utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per la registrazione delle operazioni.</param>
         public ServiceCentri(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceCentri> logger)
-            : base(contextFactory)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
+
         }
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceCentri> logger;
+
 
 
         /// <summary>

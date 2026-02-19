@@ -22,27 +22,19 @@ namespace BlazorDematReports.Services.DataService
     public class ServiceConfigurazioneFontiDati : ServiceBase<ConfigurazioneFontiDati>, IServiceConfigurazioneFontiDati
     {
         
-        private readonly IMapper mapper;
-        private readonly ConfigUser configUser;
-        private readonly IDbContextFactory<DematReportsContext> contextFactory;
-        private readonly ILogger<ServiceConfigurazioneFontiDati> logger;
         private readonly IProductionJobScheduler productionScheduler;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione delle procedure di lavorazione.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entità e DTO.</param>
+        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
         /// <param name="productionScheduler">Scheduler per la gestione dei job Hangfire.</param>
         public ServiceConfigurazioneFontiDati(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigurazioneFontiDati> logger, IProductionJobScheduler productionScheduler)
-            : base(contextFactory)
+            : base(contextFactory, logger, mapper, configUser)
         {
-            this.mapper = mapper;
-            this.configUser = configUser;
-            this.contextFactory = contextFactory;
-            this.logger = logger;
             this.productionScheduler = productionScheduler;
         }
 
@@ -116,7 +108,7 @@ namespace BlazorDematReports.Services.DataService
                 // Usa il CRON dal campo dedicato
                 var cron = mapping.CronExpression;
                 
-                // Se il cron è valido (non è solo il default), aggiorna FlagDataReading
+                // Se il cron � valido (non � solo il default), aggiorna FlagDataReading
                 if (!string.IsNullOrWhiteSpace(cron) && cron != "0 5 * * *")
                 {
                     // Cerca la fase corrispondente in LavorazioniFasiDataReading
@@ -180,7 +172,7 @@ namespace BlazorDematReports.Services.DataService
                     }
                 }
 
-                // FASE 2: Rimuovi le entità dal database
+                // FASE 2: Rimuovi le entit� dal database
                 if (entity.ConfigurazioneFaseCentros != null && entity.ConfigurazioneFaseCentros.Count > 0)
                     context.ConfigurazioneFaseCentros.RemoveRange(entity.ConfigurazioneFaseCentros);
 
@@ -348,8 +340,8 @@ namespace BlazorDematReports.Services.DataService
 
                 await tx.CommitAsync();
                 
-                // ✅ CLEANUP FINALE: Rimuove job Hangfire orfani dopo il commit
-                // Questo è un ulteriore livello di sicurezza che confronta Hangfire con il DB
+                // ? CLEANUP FINALE: Rimuove job Hangfire orfani dopo il commit
+                // Questo � un ulteriore livello di sicurezza che confronta Hangfire con il DB
                 try
                 {
                     var cleanupCount = await productionScheduler.CleanupOrphansAsync();
@@ -384,7 +376,7 @@ namespace BlazorDematReports.Services.DataService
 
             try
             {
-                // Verifica se CodiceConfigurazione esiste già
+                // Verifica se CodiceConfigurazione esiste gi�
                 var codiceEsistente = await context.ConfigurazioneFontiDatis
                     .AnyAsync(c => c.CodiceConfigurazione == configurazioneFontiDati.CodiceConfigurazione);
 
@@ -476,7 +468,7 @@ namespace BlazorDematReports.Services.DataService
             if (conflict != null)
             {
                 var configCode = conflict.IdConfigurazioneNavigation?.CodiceConfigurazione ?? conflict.IdConfigurazione.ToString();
-                throw new InvalidOperationException($"La procedura {conflict.IdProceduraLavorazione} è già utilizzata dalla configurazione {configCode}.");
+                throw new InvalidOperationException($"La procedura {conflict.IdProceduraLavorazione} � gi� utilizzata dalla configurazione {configCode}.");
             }
         }
     }

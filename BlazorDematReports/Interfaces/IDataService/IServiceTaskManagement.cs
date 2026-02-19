@@ -1,4 +1,5 @@
-﻿using BlazorDematReports.Dto;
+﻿using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Dto;
 
 namespace BlazorDematReports.Interfaces.IDataService
 {
