@@ -1,13 +1,13 @@
 ﻿using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Constants;
-using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Interfaces.IDataService;
-using BlazorDematReports.Services.DataService.Queries;
 using Entities.Converters;
 using Entities.Enums;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;
+using Microsoft.Extensions.Logging;
+using BlazorDematReports.Core.Services.DataService.Queries;
 
 namespace BlazorDematReports.Core.Services.DataService
 {

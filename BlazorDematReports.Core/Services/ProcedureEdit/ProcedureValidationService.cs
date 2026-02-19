@@ -1,6 +1,5 @@
-using BlazorDematReports.Core.DataReading.Dto;
-using BlazorDematReports.Dto;
-using System.ComponentModel.DataAnnotations;
+
+using BlazorDematReports.Core.Application.Dto;
 
 namespace BlazorDematReports.Services.ProcedureEdit;
 

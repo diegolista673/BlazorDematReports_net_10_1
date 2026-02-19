@@ -1,7 +1,7 @@
-using BlazorDematReports.Services.Wizard;
+using BlazorDematReports.Core.Services.Wizard;
 using Entities.Enums;
 
-namespace BlazorDematReports.Services.Validation;
+namespace BlazorDematReports.Core.Services.Validation;
 
 /// <summary>
 /// Validatore per gli step del wizard.

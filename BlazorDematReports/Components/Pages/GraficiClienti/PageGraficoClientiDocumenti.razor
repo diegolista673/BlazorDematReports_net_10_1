@@ -1,4 +1,5 @@
 ﻿@page "/grafico-produzione"
+@using BlazorDematReports.Core.Application.Dto
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inject IJSRuntime JSRuntime
 @inherits BaseComponentPage<PageGraficoClientiDocumenti,ReportAnnualeDto,ReportAnnualeDto>

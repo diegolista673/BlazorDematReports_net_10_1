@@ -3,7 +3,7 @@ using BlazorDematReports.Core.Constants;
 using Entities.Models.DbApplication;
 using Entities.Enums;
 
-namespace BlazorDematReports.Services.Wizard;
+namespace BlazorDematReports.Core.Services.Wizard;
 
 /// <summary>
 /// State immutabile per il wizard di configurazione fonti dati.

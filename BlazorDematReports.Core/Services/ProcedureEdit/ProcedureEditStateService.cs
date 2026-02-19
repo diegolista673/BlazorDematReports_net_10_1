@@ -1,8 +1,8 @@
+using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.DataReading.Dto;
-using BlazorDematReports.Dto;
 using System.Text.Json;
 
-namespace BlazorDematReports.Services.ProcedureEdit;
+namespace BlazorDematReports.Core.Services.ProcedureEdit;
 
 /// <summary>
 /// Servizio per la gestione dello stato delle modifiche nelle procedure di lavorazione.

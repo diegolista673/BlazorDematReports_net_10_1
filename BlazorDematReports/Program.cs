@@ -2,12 +2,10 @@ using BlazorDematReports.Application;
 using BlazorDematReports.Components;
 using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Helpers;
-using BlazorDematReports.Interfaces.IDataService;
-using BlazorDematReports.Mapping;
-using BlazorDematReports.Services.DataService;
+using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Application.Mapping;
+using BlazorDematReports.Core.Services.DataService;
 using BlazorDematReports.Services.ProcedureEdit;
-using BlazorDematReports.Services.UIServices;
-using BlazorDematReports.Services.Validation;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Hangfire;
@@ -30,6 +28,12 @@ using BlazorDematReports.Core.DataReading.Services;
 using BlazorDematReports.Core.DataReading.Interfaces;
 using BlazorDematReports.Core.Services.Email;
 using BlazorDematReports.Core.Services;
+using BlazorDematReports.Core.Services.Wizard;
+using BlazorDematReports.Core.Services.Validation;
+using BlazorDematReports.Services;
+using BlazorDematReports.Core.Services.ProcedureEdit;
+
+
 
 /// <summary>
 /// Classe principale dell'applicazione che gestisce la configurazione e l'avvio del sistema.
@@ -261,8 +265,8 @@ public static class Program
         builder.Services.AddScoped<ITaskGenerationService, TaskGenerationService>();
         
         // ? Wizard Multi-Step Configuration Services
-        builder.Services.AddScoped<BlazorDematReports.Services.Wizard.ConfigurationWizardStateService>();
-        builder.Services.AddScoped<BlazorDematReports.Services.Validation.ConfigurationStepValidator>();
+        builder.Services.AddScoped<ConfigurationWizardStateService>();
+        builder.Services.AddScoped<ConfigurationStepValidator>();
         
         // Registra servizi email
         builder.Services.AddScoped<EmailDailyFlagService>();

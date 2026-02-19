@@ -1,10 +1,11 @@
 ﻿using System.Text.RegularExpressions;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Oracle.ManagedDataAccess.Client;
 
-namespace BlazorDematReports.Services.Validation;
+namespace BlazorDematReports.Core.Services.Validation;
 
 /// <summary>
 /// Servizio unificato per validazione query SQL e test connessioni database.

@@ -1,4 +1,4 @@
-﻿using BlazorDematReports.Dto;
+﻿using BlazorDematReports.Core.Application.Dto;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using System.Reflection.Metadata;

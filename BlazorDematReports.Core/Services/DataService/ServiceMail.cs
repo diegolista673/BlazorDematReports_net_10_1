@@ -1,10 +1,12 @@
 ﻿using AutoMapper;
+using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Interfaces.IDataService;
 using Entities.Enums;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using FluentEmail.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BlazorDematReports.Core.Services.DataService
 {

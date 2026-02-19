@@ -1,7 +1,7 @@
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 
-namespace BlazorDematReports.Services.UIServices
+namespace BlazorDematReports.Services
 {
     /// <summary>
     /// Servizio per la generazione di documenti PDF

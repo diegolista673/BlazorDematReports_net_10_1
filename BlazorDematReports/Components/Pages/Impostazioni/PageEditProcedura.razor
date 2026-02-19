@@ -1,5 +1,7 @@
 @page "/procedure-lavorazioni/edit/{IdProcedura:int}"
 @page "/procedure-lavorazioni/edit/{IdProcedura:int}/{ActiveTab}"
+@using BlazorDematReports.Core.Services.ProcedureEdit
+@using BlazorDematReports.Services.ProcedureEdit
 
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageEditProcedura,ProcedureLavorazioniDto,ProcedureLavorazioniDto>

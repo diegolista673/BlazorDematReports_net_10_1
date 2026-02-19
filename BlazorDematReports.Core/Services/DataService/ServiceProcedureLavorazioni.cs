@@ -6,6 +6,8 @@ using BlazorDematReports.Core.DataReading.Dto;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
+using BlazorDematReports.Core.Application;
+using Microsoft.Extensions.Logging;
 
 namespace BlazorDematReports.Core.Services.DataService
 {

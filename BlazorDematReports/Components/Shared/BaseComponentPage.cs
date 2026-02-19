@@ -1,10 +1,7 @@
 ﻿using AutoMapper;
-using BlazorDematReports.Application;
+using BlazorDematReports.Core.Application;       
 using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Components.Layout;
-using BlazorDematReports.Dto;
-using BlazorDematReports.Interfaces.IDataService;
-using BlazorDematReports.Services.UIServices;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using BlazorDematReports.Core.Utility.Interfaces;
@@ -14,6 +11,10 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using MudBlazor;
+using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Services;
+
 
 
 namespace BlazorDematReports.Components.Shared
@@ -943,7 +944,7 @@ namespace BlazorDematReports.Components.Shared
 
             if (uModel == null)
                 return;
-            foreach (var p in typeof(UModel).GetProperties())
+            foreach (var p in typeof(UModel).getProperties())
                 p.SetValue(uModel, null);
         }
 

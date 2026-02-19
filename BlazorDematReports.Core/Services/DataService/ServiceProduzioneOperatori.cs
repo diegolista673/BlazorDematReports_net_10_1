@@ -1,11 +1,13 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Interfaces.IDataService;
 using ClosedXML.Excel;
 using Entities.Helpers;
 using Entities.Models;
 using Entities.Models.DbApplication;
+using Microsoft.Extensions.Logging;
 using FastMember;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;

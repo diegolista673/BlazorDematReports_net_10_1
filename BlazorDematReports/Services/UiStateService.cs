@@ -1,6 +1,6 @@
 ﻿using MudBlazor;
 
-namespace BlazorDematReports.Services.UIServices
+namespace BlazorDematReports.Services
 {
     /// <summary>
     /// Servizio per la gestione dello stato UI globale, come overlay, menu e snackbar.
