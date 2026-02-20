@@ -14,9 +14,10 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 {
     /// <summary>
     /// Scheduler unificato per task di produzione e task di import mail basati sulla tabella TaskDaEseguire.
-    /// Genera chiavi Hangfire con prefissi distinti:
-    ///  - Produzione: prod:{IdTaskDaEseguire}-{IdProceduraLavorazione}:{nomeprocedura-normal}-{fase-normal}
-    ///  - Mail:       mail:{IdTaskDaEseguire}-{IdProceduraLavorazione}:{nomeprocedura-normal}-{mail-service-normalizzato}
+    /// Costruisce la chiave Hangfire in base al tipo di task.
+    /// Formato: {tipoAbbreviato}:{IdTaskDaEseguire}-{nomeprocedura}:{dettaglio}
+    ///   - sql:{id}-{proc}:{fase}         per TipoFonte.SQL
+    ///   - hdl:{id}-{proc}:{handlercode}  per TipoFonte.HandlerIntegrato
     /// </summary>
     public sealed class ProductionJobScheduler : IProductionJobScheduler
     {
@@ -55,27 +56,32 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
         /// <summary>
         /// Costruisce la chiave Hangfire in base al tipo di task.
-        /// Formato unificato: prod:{IdTaskDaEseguire}-{IdProceduraLavorazione}:{nomeprocedura-normal}-{detail}
+        /// Formato: {tipoAbbreviato}:{IdTaskDaEseguire}-{nomeprocedura}:{dettaglio}
+        ///   - sql:{id}-{proc}:{fase}         per TipoFonte.SQL
+        ///   - hdl:{id}-{proc}:{handlercode}  per TipoFonte.HandlerIntegrato
         /// </summary>
         private static string BuildHangfireKey(TaskDaEseguire t)
         {
-            var idProc = t.IdLavorazioneFaseDateReadingNavigation?.IdProceduraLavorazione;
+            var idProc   = t.IdLavorazioneFaseDateReadingNavigation?.IdProceduraLavorazione;
             var procName = NormalizeToken(t.IdLavorazioneFaseDateReadingNavigation?.IdProceduraLavorazioneNavigation?.NomeProcedura);
             var faseName = NormalizeToken(t.IdLavorazioneFaseDateReadingNavigation?.IdFaseLavorazioneNavigation?.FaseLavorazione);
 
-            // usa ConfigurazioneFontiDati per determinare il dettaglio
             if (t.IdConfigurazioneDatabase.HasValue && t.IdConfigurazioneDatabaseNavigation != null)
             {
-                var tipoFonte = t.IdConfigurazioneDatabaseNavigation.TipoFonte;
-                var detail = tipoFonte == TipoFonteData.HandlerIntegrato // ? Type-safe!
-                    ? NormalizeToken(t.IdConfigurazioneDatabaseNavigation.HandlerClassName ?? "handler")
-                    : faseName;
+                var config = t.IdConfigurazioneDatabaseNavigation;
 
-                return $"prod:{t.IdTaskDaEseguire}-{idProc}-{procName}:{detail}";
+                var (prefix, detail) = config.TipoFonte switch
+                {
+                    TipoFonteData.SQL             => ("sql", faseName),
+                    TipoFonteData.HandlerIntegrato => ("hdl", NormalizeToken(config.HandlerClassName ?? "handler")),
+                    _                              => ("job", faseName)   // fallback future-proof
+                };
+
+                return $"{prefix}:{t.IdTaskDaEseguire}-{idProc}-{procName}:{detail}";
             }
 
             // FALLBACK (non dovrebbe mai succedere con nuovo sistema)
-            return $"prod:{t.IdTaskDaEseguire}-{idProc}-{procName}-{faseName}";
+            return $"job:{t.IdTaskDaEseguire}-{idProc}-{procName}-{faseName}";
         }
 
 

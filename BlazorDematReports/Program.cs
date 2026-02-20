@@ -237,9 +237,12 @@ public static class Program
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IPdfExportService, PdfExportService>();
         builder.Services.AddScoped<NotificationDialog>();
+
         builder.Services.AddScoped<IQueryService, QueryService>();
+        builder.Services.AddScoped<IServiceWrapper, ServiceWrapper>();
         builder.Services.AddScoped<IProductionJobScheduler, ProductionJobScheduler>();
         builder.Services.AddScoped<IRecurringJobManagerAdapter, HangfireRecurringJobManagerAdapter>();
+
         builder.Services.AddScoped<ProcedureEditStateService>();
         builder.Services.AddScoped<ProcedureValidationService>();
 

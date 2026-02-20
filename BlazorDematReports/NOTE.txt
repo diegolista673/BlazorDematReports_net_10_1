@@ -14,7 +14,6 @@ with (firstrow = 170,
       per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
       esempio :
 
-gestione configurazione, escludere handler di default e gestire solo quelli personalizzati
 scrivere documentazione per la crazione dei task e di tutte le operazioni 
 spiegare funzionamento degli handler e le inrterfacce
 spiegare come recupera tutti gli handles in registry e come funziona il patern registry
