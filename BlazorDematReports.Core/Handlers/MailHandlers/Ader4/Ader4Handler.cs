@@ -3,7 +3,6 @@ using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Services.Email;
 using BlazorDematReports.Core.Utility.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 
@@ -16,6 +15,20 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
     [Description("Import dati ADER4/Equitalia da allegati email CSV (Verona + Genova)")]
     public sealed class Ader4Handler : ILavorazioneHandler
     {
+        private readonly ILogger<Ader4Handler> _logger;
+        private readonly EmailDailyFlagService _flagService;
+        private readonly Ader4EmailService _emailService;
+
+        public Ader4Handler(
+            ILogger<Ader4Handler> logger,
+            EmailDailyFlagService flagService,
+            Ader4EmailService emailService)
+        {
+            _logger       = logger;
+            _flagService  = flagService;
+            _emailService = emailService;
+        }
+
         /// <inheritdoc />
         public string LavorazioneCode => LavorazioniCodes.ADER4;
 
@@ -35,20 +48,16 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             LavorazioneExecutionContext context,
             CancellationToken ct = default)
         {
-            var logger = context.ServiceProvider.GetRequiredService<ILogger<Ader4Handler>>();
-            var flagService = context.ServiceProvider.GetRequiredService<EmailDailyFlagService>();
-
             string taskName = $"ADER4_P{context.IDProceduraLavorazione}_F{context.IDFaseLavorazione}";
 
-            logger.LogInformation(
+            _logger.LogInformation(
                 "Inizio elaborazione {TaskName} per Periodo={Start}-{End}",
                 taskName,
                 context.StartDataLavorazione,
                 context.EndDataLavorazione
             );
 
-            // CHECK FLAG: Primo task oggi?
-            bool isFirstToday = await flagService.TryMarkAsProcessingAsync(
+            bool isFirstToday = await _flagService.TryMarkAsProcessingAsync(
                 LavorazioniCodes.ADER4,
                 taskName,
                 ct
@@ -56,13 +65,13 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 
             if (isFirstToday)
             {
-                logger.LogInformation("Primo task oggi. Elaborazione email completa per TUTTE le fasi...");
-                return await ProcessEmailAndInsertAllDataAsync(context, logger, ct);
+                _logger.LogInformation("Primo task oggi. Elaborazione email completa per TUTTE le fasi...");
+                return await ProcessEmailAndInsertAllDataAsync(context, ct);
             }
             else
             {
-                logger.LogInformation("Email già elaborata oggi da altro task. Skip elaborazione.");
-                return new List<DatiLavorazione>(); // Dati già inseriti dal primo task
+                _logger.LogInformation("Email gia elaborata oggi da altro task. Skip elaborazione.");
+                return new List<DatiLavorazione>();
             }
         }
 
@@ -72,25 +81,20 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         /// </summary>
         private async Task<List<DatiLavorazione>> ProcessEmailAndInsertAllDataAsync(
             LavorazioneExecutionContext context,
-            ILogger logger,
             CancellationToken ct)
         {
-            var emailService = context.ServiceProvider.GetRequiredService<Ader4EmailService>();
+            var emailResults = await _emailService.ProcessEmailsAsync(ct);
 
-            // Processa email con allegati CSV
-            var emailResults = await emailService.ProcessEmailsAsync(ct);
-
-            logger.LogInformation(
+            _logger.LogInformation(
                 "Email processate: Totali={Total}, Successi={Success}, Allegati={Attachments}",
                 emailResults.TotalEmailsFound,
                 emailResults.SuccessfulEmails.Count,
                 emailResults.TotalAttachmentsDownloaded
             );
 
-            // Converti risultati email in DatiLavorazione per TUTTE le fasi
             var datiLavorazione = ConvertEmailResultsToDatiLavorazione(emailResults, context);
 
-            logger.LogInformation(
+            _logger.LogInformation(
                 "Dati estratti per TUTTE le fasi: {Count} record totali",
                 datiLavorazione.Count
             );

@@ -6,7 +6,6 @@ using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
 using Entities.Helpers;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.DependencyInjection;
 using NLog;
 
 namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
@@ -18,37 +17,36 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     public sealed class Z0072370_28AutHandler : ILavorazioneHandler
     {
-        /// <summary>
-        /// Codice identificativo univoco della lavorazione.
-        /// </summary>
+        private readonly INormalizzatoreOperatori _normalizzatore;
+        private readonly IGestoreOperatoriDatiLavorazione _gestoreOperatori;
+        private readonly IElaboratoreDatiLavorazione _elaboratore;
+        private readonly ILavorazioniConfigManager _configManager;
+
+        public Z0072370_28AutHandler(
+            INormalizzatoreOperatori normalizzatore,
+            IGestoreOperatoriDatiLavorazione gestoreOperatori,
+            IElaboratoreDatiLavorazione elaboratore,
+            ILavorazioniConfigManager configManager)
+        {
+            _normalizzatore   = normalizzatore;
+            _gestoreOperatori = gestoreOperatori;
+            _elaboratore      = elaboratore;
+            _configManager    = configManager;
+        }
+
+        /// <summary>Codice identificativo univoco della lavorazione.</summary>
         public string LavorazioneCode => LavorazioniCodes.Z0072370_28AUT;
 
-        /// <summary>
-        /// Esegue la lavorazione Z0072370_28AUT utilizzando il pattern registry e dependency injection.
-        /// </summary>
-        /// <param name="context">Contesto di esecuzione contenente parametri e service provider.</param>
-        /// <param name="ct">Token di cancellazione per gestire l'interruzione dell'operazione.</param>
-        /// <returns>Lista dei dati di lavorazione elaborati.</returns>
+        /// <summary>Esegue la lavorazione Z0072370_28AUT.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
         {
-            // Risolve le dipendenze tramite service provider
-            var normalizzatore = context.ServiceProvider.GetRequiredService<INormalizzatoreOperatori>();
-            var gestoreOperatori = context.ServiceProvider.GetRequiredService<IGestoreOperatoriDatiLavorazione>();
-            var elaboratore = context.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
-            var configManager = context.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
-
-            // Crea l'istanza della lavorazione specifica
-            var lavorazione = new Z0072370_28AUTProcessor(normalizzatore, gestoreOperatori, elaboratore, configManager);
-
-            // Imposta il contesto della lavorazione
-            lavorazione.NomeProcedura = context.NomeProcedura;
-            lavorazione.IDFaseLavorazione = context.IDFaseLavorazione;
+            var lavorazione = new Z0072370_28AUTProcessor(_normalizzatore, _gestoreOperatori, _elaboratore, _configManager);
+            lavorazione.NomeProcedura          = context.NomeProcedura;
+            lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
-            lavorazione.IDCentro = context.IDCentro;
-            lavorazione.StartDataLavorazione = context.StartDataLavorazione;
-            lavorazione.EndDataLavorazione = context.EndDataLavorazione;
-
-            // Esegue la lavorazione
+            lavorazione.IDCentro               = context.IDCentro;
+            lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
+            lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
             return await lavorazione.SetDatiDematAsync();
         }
     }

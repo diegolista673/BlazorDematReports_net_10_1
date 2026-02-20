@@ -65,10 +65,10 @@ namespace BlazorDematReports.Core.Utility
                 }
 
                 SqlCommand command = new SqlCommand(queryDaEseguire, connection);
-                command.CommandTimeout = 0;
+                command.CommandTimeout = 60;
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("@startDate", startDate);
-                command.Parameters.AddWithValue(@"endDate", endDate);
+                command.Parameters.AddWithValue("@endDate", endDate);
                 SqlDataAdapter adapter = new SqlDataAdapter();
                 adapter.SelectCommand = command;
                 adapter.Fill(tableData);

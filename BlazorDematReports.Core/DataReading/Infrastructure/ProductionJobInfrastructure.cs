@@ -1,12 +1,15 @@
+Ôªøusing BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.DataReading.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Utility.Interfaces;
+using BlazorDematReports.Core.Utility.Models;
 using Entities.Enums;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Data;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
@@ -88,11 +91,11 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
         /// <summary>
         /// Risolve l'espressione cron per un task.
-        /// Priorit‡: CronExpression del task > default
+        /// Priorit√†: CronExpression del task > default
         /// </summary>
         private static string ResolveCron(TaskDaEseguire t)
         {
-            // Se il task ha gi‡ una CronExpression valorizzata, usala
+            // Se il task ha gi√† una CronExpression valorizzata, usala
             if (!string.IsNullOrWhiteSpace(t.CronExpression))
                 return t.CronExpression;
 
@@ -187,7 +190,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         {
             var changes = new List<string>();
 
-            // Controlla e aggiorna IdTaskHangFire - FORZA l'aggiornamento se Ë un ID temporaneo
+            // Controlla e aggiorna IdTaskHangFire - FORZA l'aggiornamento se √® un ID temporaneo
             if (task.IdTaskHangFire != hangfireKey ||
                 (!string.IsNullOrWhiteSpace(task.IdTaskHangFire) && task.IdTaskHangFire.StartsWith("temp-")))
             {
@@ -219,7 +222,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             }
             else
             {
-                _logger?.LogDebug("Task {TaskId} gi‡ aggiornato, nessuna modifica necessaria", task.IdTaskDaEseguire);
+                _logger?.LogDebug("Task {TaskId} gi√† aggiornato, nessuna modifica necessaria", task.IdTaskDaEseguire);
             }
         }
 
@@ -247,8 +250,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         }
 
         /// <summary>
-        /// Riesegue la sincronizzazione di tutti i task Enabled generando chiavi e cron coerenti.
-        /// Utile dopo refactor naming o introduzione nuovi handler.
+        /// Sincronizza tutti i task abilitati: ricalcola chiavi e cron, rimuove le chiavi
+        /// Hangfire obsolete e registra quelle nuove. Utile dopo refactor del naming.
         /// </summary>
         public async Task SyncAllAsync()
         {
@@ -261,14 +264,20 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
             foreach (var t in enabled)
             {
-                var key = BuildHangfireKey(t);
-                var cron = ResolveCron(t);
+                var expectedKey = BuildHangfireKey(t);
+                var cron        = ResolveCron(t);
+                var oldKey      = t.IdTaskHangFire;
 
-                // Aggiorna se la chiave Ë diversa OPPURE se Ë un ID temporaneo
-                if (t.IdTaskHangFire != key ||
-                    (!string.IsNullOrWhiteSpace(t.IdTaskHangFire) && t.IdTaskHangFire.StartsWith("temp-")))
+                bool keyChanged = oldKey != expectedKey
+                    || (!string.IsNullOrWhiteSpace(oldKey) && oldKey.StartsWith("temp-"));
+
+                if (keyChanged)
                 {
-                    t.IdTaskHangFire = key;
+                    // Rimuove la vecchia chiave PRIMA di registrarne una nuova
+                    if (!string.IsNullOrWhiteSpace(oldKey))
+                        _adapter.RemoveIfExists(oldKey);
+
+                    t.IdTaskHangFire = expectedKey;
                 }
 
                 if (string.IsNullOrWhiteSpace(t.CronExpression))
@@ -277,18 +286,12 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 _adapter.AddOrUpdate(t.IdTaskHangFire, t.IdTaskDaEseguire, cron);
             }
 
-            // Ora riattacca le entit‡ modificate al contesto per il salvataggio
-            foreach (var t in enabled)
-            {
-                _db.TaskDaEseguires.Attach(t);
-                _db.Entry(t).State = EntityState.Modified;
-            }
-
+            // Le entit√† sono gi√† tracciate dalla query: SaveChanges persiste tutte le modifiche
             await _db.SaveChangesAsync();
         }
 
         /// <summary>
-        /// Rimuove i recurring job orfani (presenti in Hangfire ma non pi˘ associati a task abilitati) e aggiunge quelli mancanti.
+        /// Rimuove i recurring job orfani (presenti in Hangfire ma non pi√π associati a task abilitati) e aggiunge quelli mancanti.
         /// Sincronizza le chiavi e le espressioni cron dei task abilitati.
         /// Restituisce il numero totale di job rimossi o aggiunti.
         /// </summary>
@@ -311,7 +314,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 var expected = BuildHangfireKey(t);
                 validKeys.Add(expected);
 
-                // Aggiunge anche la chiave corrente se non Ë temporanea, per evitare rimozioni errate durante la transizione
+                // Aggiunge anche la chiave corrente se non √® temporanea, per evitare rimozioni errate durante la transizione
                 if (!string.IsNullOrWhiteSpace(t.IdTaskHangFire) && !t.IdTaskHangFire.StartsWith("temp-"))
                 {
                     validKeys.Add(t.IdTaskHangFire!);
@@ -339,7 +342,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 var expected = BuildHangfireKey(task);
                 var cron = ResolveCron(task);
 
-                // Aggiorna se la chiave Ë diversa OPPURE se Ë un ID temporaneo
+                // Aggiorna se la chiave √® diversa OPPURE se √® un ID temporaneo
                 if (task.IdTaskHangFire != expected ||
                     (!string.IsNullOrWhiteSpace(task.IdTaskHangFire) && task.IdTaskHangFire.StartsWith("temp-")))
                 {
@@ -363,87 +366,51 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         }
     }
 
-    /// <summary>
-    /// Aggiorna sempre audit (LastRunUtc, errori, contatore failure).
-    /// </summary>
-    /// 
-
+    /// <summary>Esegue i task schedulati da Hangfire leggendo dati dalla sorgente e salvandoli in ProduzioneSistema.</summary>
     public static class ProductionJobRunner
     {
-        /// <summary>
-        /// Factory per la creazione di scope DI nei job Hangfire.
-        /// </summary>
+        /// <summary>Factory DI per la creazione di scope per ogni job Hangfire.</summary>
         public static IServiceScopeFactory ScopeFactory { get; set; } = default!;
 
-        /// <summary>
-        /// Esecuzione runtime (richiamata da Hangfire) di un task schedulato.
-        /// Versione unificata che usa il sistema unificato per tutti i tipi di job.
-        /// </summary>
-        /// <param name="idTaskDaEseguire">ID del task da eseguire.</param>
-        /// <param name="cancellationToken">Token per la cancellazione cooperativa (utile per esecuzioni manuali dall'UI).</param>
+        /// <summary>Entry point Hangfire: carica il task, verifica lo stato e delega l'esecuzione.</summary>
         public static async Task RunAsync(int idTaskDaEseguire, CancellationToken cancellationToken = default)
-        {    
+        {
             // Crea un nuovo scope DI per ogni esecuzione del job
             using var scope = ScopeFactory.CreateScope();
-
-            var db = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
-            var logger = scope.ServiceProvider
-                .GetRequiredService<ILoggerFactory>()
-                .CreateLogger("DataReading.Infrastructure.ProductionJobRunner");
+            var db     = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                             .CreateLogger("ProductionJobRunner");
 
             var entity = await db.TaskDaEseguires
-                    .AsSplitQuery()
-                    .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                    .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                    .Include(x => x.IdConfigurazioneDatabaseNavigation)
-                    .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire, cancellationToken);
+                .AsSplitQuery()
+                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
+                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
+                .Include(x => x.IdConfigurazioneDatabaseNavigation)
+                .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire, cancellationToken);
 
             if (entity == null)
             {
-                logger?.LogWarning("Task {TaskId} non trovato", idTaskDaEseguire);
+                logger.LogWarning("Task {TaskId} non trovato", idTaskDaEseguire);
                 return;
             }
 
-            // Guard Clause: Verifica se il task Ë abilitato prima di eseguire
+            // Guard Clause: Verifica se il task √® abilitato prima di eseguire
             if (!entity.Enabled)
             {
-                logger?.LogInformation("Task {TaskId} disabilitato - esecuzione saltata", idTaskDaEseguire);
+                logger.LogInformation("Task {TaskId} disabilitato, esecuzione saltata", idTaskDaEseguire);
                 return;
             }
 
             try
             {
-                logger?.LogInformation("Avvio esecuzione task unificato {TaskId}", idTaskDaEseguire);
-
-                // Determina il tipo di job e il codice per il registry
-                var (jobType, handlerCode) = DetermineJobTypeAndCode(entity);
-                logger?.LogDebug("Tipo job rilevato: {JobType}, Handler: {HandlerCode} per task {TaskId}",
-                    jobType, handlerCode, idTaskDaEseguire);
-
-                // Esegui in base al tipo usando il sistema unificato
-                switch (jobType)
-                {
-                    case "UnifiedHandler":
-                        await ExecuteUnifiedHandlerAsync(scope, entity, handlerCode, cancellationToken);
-                        break;
-
-                    case "DatabaseQuery":
-                        // NUOVO: Tutti i task SQL usano il sistema unificato tramite UnifiedDataSourceHandler
-                        await ExecuteUnifiedDataSourceAsync(scope, entity, cancellationToken);
-                        break;
-
-                    default:
-                        throw new InvalidOperationException($"Tipo job non supportato: {jobType}");
-                }
-
+                await DispatchAsync(scope, entity, cancellationToken);
                 MarkSuccess(entity);
-                logger?.LogInformation("Task {TaskId} completato con successo: {JobType}",
-                    idTaskDaEseguire, jobType);
+                logger.LogInformation("Task {TaskId} completato", idTaskDaEseguire);
             }
             catch (Exception ex)
             {
                 MarkFailure(entity, ex);
-                logger?.LogError(ex, "Errore durante l'esecuzione del task {TaskId}", idTaskDaEseguire);
+                logger.LogError(ex, "Errore task {TaskId}", idTaskDaEseguire);
                 throw;
             }
             finally
@@ -452,72 +419,58 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             }
         }
 
-        #region Job Type Detection and Execution
+
+        #region Dispatch e Execution
 
         /// <summary>
-        /// Determina il tipo di job basandosi su IdConfigurazioneDatabase.
-        /// Tutti i task DEVONO avere IdConfigurazioneDatabase configurato.
+        /// Smista l'esecuzione in base a <see cref="TipoFonteData"/> eliminando magic strings.
         /// </summary>
-        /// 
-        private static (string jobType, string handlerCode) DetermineJobTypeAndCode(TaskDaEseguire entity)
+        private static Task DispatchAsync(IServiceScope scope, TaskDaEseguire entity, CancellationToken ct)
         {
-            if (!entity.IdConfigurazioneDatabase.HasValue || entity.IdConfigurazioneDatabaseNavigation == null)
-            {
-                throw new InvalidOperationException(
-                    $"Task {entity.IdTaskDaEseguire} non ha IdConfigurazioneDatabase. " +
-                    "Tutti i task devono essere configurati tramite /admin/fonti-dati");
-            }
+            var config = entity.IdConfigurazioneDatabaseNavigation
+                ?? throw new InvalidOperationException(
+                    $"Task {entity.IdTaskDaEseguire}: IdConfigurazioneDatabase mancante. " +
+                    "Configurare tramite /admin/fonti-dati.");
 
-            var config = entity.IdConfigurazioneDatabaseNavigation;
-
-            // ? TipoFonte Ë gi‡ enum, no parsing necessario!
             return config.TipoFonte switch
             {
-                TipoFonteData.SQL => ("DatabaseQuery", config.ConnectionStringName ?? ""),
-                TipoFonteData.HandlerIntegrato => ("UnifiedHandler", config.HandlerClassName ?? ""),
+                TipoFonteData.SQL              => ExecuteUnifiedDataSourceAsync(scope, entity, ct),
+                TipoFonteData.HandlerIntegrato => ExecuteUnifiedHandlerAsync(scope, entity, config.HandlerClassName ?? "", ct),
                 _ => throw new InvalidOperationException(
-                    $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
+                    $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}.")
             };
         }
 
-        /// <summary>
-        /// Esegue un job usando il sistema unificato degli handler.
-        /// </summary>
-        /// <param name="scope">Scope DI per la risoluzione dei servizi.</param>
-        /// <param name="entity">Task da eseguire.</param>
-        /// <param name="handlerCode">Codice identificativo dell'handler da eseguire.</param>
-        /// <param name="cancellationToken">Token per la cancellazione cooperativa.</param>
-        private static async Task ExecuteUnifiedHandlerAsync(IServiceScope scope, TaskDaEseguire entity, string handlerCode, CancellationToken cancellationToken = default)
+
+
+        /// <summary>Esegue un handler tramite <see cref="IUnifiedHandlerService"/>.</summary>
+        private static async Task ExecuteUnifiedHandlerAsync(
+            IServiceScope scope, TaskDaEseguire entity, string handlerCode, CancellationToken ct)
         {
             var unifiedService = scope.ServiceProvider.GetRequiredService<IUnifiedHandlerService>();
+            var fase           = entity.IdLavorazioneFaseDateReadingNavigation;
 
             var context = new UnifiedExecutionContext
             {
-                IDProceduraLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione,
-                ServiceProvider = scope.ServiceProvider,
-                HandlerCode = handlerCode,
+                IDProceduraLavorazione = fase.IdProceduraLavorazione,
+                HandlerCode            = handlerCode,
                 Parameters = new Dictionary<string, object>
                 {
-                    { "IDFaseLavorazione", entity.IdLavorazioneFaseDateReadingNavigation.IdFaseLavorazione },
-                    { "NomeProcedura", entity.IdLavorazioneFaseDateReadingNavigation?.IdProceduraLavorazioneNavigation?.NomeProceduraProgramma ?? "UNKNOWN" },
-                    { "StartDataLavorazione", DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? 1)) },
-                    { "EndDataLavorazione", DateTime.Now },
-                    { "TaskId", entity.IdTaskDaEseguire },
+                    { "IDFaseLavorazione",    fase.IdFaseLavorazione },
+                    { "NomeProcedura",        fase.IdProceduraLavorazioneNavigation?.NomeProceduraProgramma ?? "UNKNOWN" },
+                    { "StartDataLavorazione", DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti)) },
+                    { "EndDataLavorazione",   DateTime.Now },
+                    { "TaskId",               entity.IdTaskDaEseguire },
                     { "IdConfigurazioneDatabase", entity.IdConfigurazioneDatabase ?? 0 }
                 }
             };
 
-            await unifiedService.ExecuteHandlerAsync(handlerCode, context, cancellationToken);
+            await unifiedService.ExecuteHandlerAsync(handlerCode, context, ct);
         }
 
-        /// <summary>
-        /// Esegue un job di tipo produzione/SQL usando il sistema unificato.
-        /// Tutti i task SQL devono avere IdConfigurazioneDatabase configurato.
-        /// </summary>
-        /// <param name="scope">Scope DI per la risoluzione dei servizi.</param>
-        /// <param name="entity">Task da eseguire.</param>
-        /// <param name="cancellationToken">Token per la cancellazione cooperativa.</param>
-        private static async Task ExecuteUnifiedDataSourceAsync(IServiceScope scope, TaskDaEseguire entity, CancellationToken cancellationToken = default)
+        /// <summary>Esegue una query SQL, elabora i dati e li persiste in ProduzioneSistema.</summary>
+        private static async Task ExecuteUnifiedDataSourceAsync(
+            IServiceScope scope, TaskDaEseguire entity, CancellationToken cancellationToken = default)
         {
             if (!entity.IdConfigurazioneDatabase.HasValue)
             {
@@ -529,11 +482,14 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             var db = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
             var queryService = scope.ServiceProvider.GetRequiredService<IQueryService>();
             var lavorazioniConfig = scope.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
+            var elaboratore = scope.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("DataReading.Infrastructure.ProductionJobRunner");
 
             // Carica configurazione con mappings
             var config = await db.ConfigurazioneFontiDatis
                 .Include(c => c.ConfigurazioneFaseCentros)
-                .FirstOrDefaultAsync(c => c.IdConfigurazione == entity.IdConfigurazioneDatabase.Value);
+                .FirstOrDefaultAsync(c => c.IdConfigurazione == entity.IdConfigurazioneDatabase.Value, cancellationToken);
 
             if (config == null)
             {
@@ -541,23 +497,28 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     $"Configurazione {entity.IdConfigurazioneDatabase.Value} non trovata per task {entity.IdTaskDaEseguire}");
             }
 
-            if (config.TipoFonte != TipoFonteData.SQL) 
+            if (config.TipoFonte != TipoFonteData.SQL)
             {
                 throw new InvalidOperationException(
                     $"Configurazione {config.IdConfigurazione} ha TipoFonte='{config.TipoFonte}' invece di 'SQL'");
             }
 
-            // Trova il mapping corretto per questa fase
-            // Nota: ConfigurazioneFaseCentro contiene IdCentro, LavorazioniFasiDataReading no
             var idFaseLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdFaseLavorazione;
+            var idProceduraLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione;
 
+            // Trova il mapping per questa fase (include IdCentro necessario per ElaboraDatiLavorazione)
             var mapping = config.ConfigurazioneFaseCentros.FirstOrDefault(fc =>
                 fc.IdFaseLavorazione == idFaseLavorazione &&
                 fc.FlagAttiva == true);
 
-            // Usa query specifica del mapping se presente
-            var query = mapping?.TestoQueryTask;
+            if (mapping == null)
+            {
+                throw new InvalidOperationException(
+                    $"Nessun mapping attivo per fase {idFaseLavorazione} nella configurazione {config.IdConfigurazione}. " +
+                    "Verificare i mapping Fase/Centro in /admin/fonti-dati.");
+            }
 
+            var query = mapping.TestoQueryTask;
             if (string.IsNullOrWhiteSpace(query))
             {
                 throw new InvalidOperationException(
@@ -565,24 +526,165 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     "Configurare TestoQueryTask nel mapping Fase/Centro.");
             }
 
-            // Esegui query SQL
-            var connectionStringProperty = lavorazioniConfig.GetType().GetProperty(config.ConnectionStringName);
-            if (connectionStringProperty?.GetValue(lavorazioniConfig)?.ToString() is not string connectionString)
+            var connectionString = lavorazioniConfig.GetConnectionString(config.ConnectionStringName);
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new InvalidOperationException(
-                    $"Connection string '{config.ConnectionStringName}' non trovata");
+                    $"Connection string '{config.ConnectionStringName}' non trovata in appsettings.");
             }
 
-            var startDate = DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? 1));
+            var startDate = DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti));
             var endDate = DateTime.Now;
 
-            // Esegui query - i risultati vengono salvati automaticamente da ExecuteQueryAsync
-            await queryService.ExecuteQueryAsync(
-                connectionString,
-                query,
-                startDate,
-                endDate,
-                cancellationToken);
+            // Esegue la query SQL
+            var dataTable = await queryService.ExecuteQueryAsync(connectionString, query, startDate, endDate, cancellationToken);
+
+            if (dataTable.Rows.Count == 0)
+            {
+                logger.LogInformation(
+                    "Task {TaskId}: nessun dato restituito dalla query SQL per il periodo {Start:d}-{End:d}",
+                    entity.IdTaskDaEseguire, startDate, endDate);
+                return;
+            }
+
+            // Converte DataTable ‚Üí List<DatiLavorazione> verificando le colonne obbligatorie
+            var datiLavorazione = DataTableToDatiLavorazione(dataTable);
+
+            // Normalizza operatori e raggruppa via ElaboratoreDatiLavorazione
+            var datiElaborati = await elaboratore.ElaboraDatiLavorazioneAsync(
+                datiLavorazione,
+                mapping.IdCentro,
+                idProceduraLavorazione,
+                idFaseLavorazione);
+
+            // Persiste i risultati in ProduzioneSistema
+            int saved = await PersistProduzioneSistemaAsync(db, datiElaborati, cancellationToken);
+
+            logger.LogInformation(
+                "Task {TaskId}: {Saved} record salvati in ProduzioneSistema su {Total} elaborati",
+                entity.IdTaskDaEseguire, saved, datiElaborati.Count);
+        }
+
+
+
+        /// <summary>
+        /// Converte un DataTable con le colonne standard in una lista di DatiLavorazione.
+        /// Le colonne sono cercate in modo case-insensitive.
+        /// Colonne obbligatorie: Operatore, DataLavorazione, Documenti, Fogli, Pagine.
+        /// </summary>
+        private static List<DatiLavorazione> DataTableToDatiLavorazione(DataTable table)
+        {
+            string ColName(string name) =>
+                table.Columns.Cast<DataColumn>()
+                     .FirstOrDefault(c => c.ColumnName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                     ?.ColumnName
+                ?? throw new InvalidOperationException(
+                    $"Colonna '{name}' mancante nel risultato della query. " +
+                    "Le query devono restituire: Operatore, DataLavorazione, Documenti, Fogli, Pagine.");
+
+            var colOp   = ColName("Operatore");
+            var colData = ColName("DataLavorazione");
+            var colDoc  = ColName("Documenti");
+            var colFog  = ColName("Fogli");
+            var colPag  = ColName("Pagine");
+
+            var result = new List<DatiLavorazione>(table.Rows.Count);
+            foreach (DataRow row in table.Rows)
+            {
+                result.Add(new DatiLavorazione
+                {
+                    Operatore                  = row[colOp]?.ToString()?.Trim(),
+                    DataLavorazione            = Convert.ToDateTime(row[colData]),
+                    Documenti                  = row[colDoc] == DBNull.Value ? 0 : Convert.ToInt32(row[colDoc]),
+                    Fogli                      = row[colFog] == DBNull.Value ? 0 : Convert.ToInt32(row[colFog]),
+                    Pagine                     = row[colPag] == DBNull.Value ? 0 : Convert.ToInt32(row[colPag]),
+                    AppartieneAlCentroSelezionato = true
+                });
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Persiste i dati elaborati in ProduzioneSistema con strategia delete-then-reinsert:
+        /// 1. Elimina i record auto-inseriti nel range di date per proc+fase (dati stale rimossi).
+        /// 2. Inserisce tutti i record nuovi restituiti dalla query.
+        /// I record con FlagInserimentoManuale=true non vengono mai toccati.
+        /// Salta i record con IdOperatore=0 (operatori non riconosciuti ‚Äî FK non valida).
+        /// </summary>
+        /// <returns>Numero di record inseriti.</returns>
+        private static async Task<int> PersistProduzioneSistemaAsync(
+            DematReportsContext db,
+            List<DatiElaborati> datiElaborati,
+            CancellationToken ct)
+        {
+            if (datiElaborati.Count == 0) return 0;
+
+            var dates  = datiElaborati.Select(d => d.DataLavorazione.Date).Distinct().ToList();
+            var idProc = datiElaborati[0].IdProceduraLavorazione;
+            var idFase = datiElaborati[0].IdFaseLavorazione;
+
+            // 1. Elimina i record auto-inseriti nel range ‚Äî i dati vecchi/scaduti vengono rimossi
+            var toDelete = await db.ProduzioneSistemas
+                .Where(p => p.IdProceduraLavorazione == idProc &&
+                            p.IdFaseLavorazione      == idFase &&
+                            dates.Contains(p.DataLavorazione.Date) &&
+                            p.FlagInserimentoAuto    == true &&
+                            p.FlagInserimentoManuale != true)
+                .ToListAsync(ct);
+
+            if (toDelete.Count > 0)
+                db.ProduzioneSistemas.RemoveRange(toDelete);
+
+            // 2. Recupera le chiavi con inserimento manuale per evitare duplicati
+            var manualKeys = await db.ProduzioneSistemas
+                .Where(p => p.IdProceduraLavorazione == idProc &&
+                            p.IdFaseLavorazione      == idFase &&
+                            dates.Contains(p.DataLavorazione.Date) &&
+                            p.FlagInserimentoManuale == true)
+                .Select(p => new { p.IdOperatore, Data = p.DataLavorazione.Date })
+                .ToListAsync(ct);
+
+            var manualSet = manualKeys
+                .Select(k => (k.IdOperatore, k.Data))
+                .ToHashSet();
+
+            // 3. Inserisce i record aggiornati dalla query sorgente
+            var now = DateTime.UtcNow;
+            int inserted = 0;
+
+            foreach (var dato in datiElaborati)
+            {
+                // FK non valida
+                if (dato.IdOperatore == 0)
+                    continue;
+
+                // Non sovrascrivere inserimenti manuali dell'utente
+                if (manualSet.Contains((dato.IdOperatore, dato.DataLavorazione.Date)))
+                    continue;
+
+                db.ProduzioneSistemas.Add(new ProduzioneSistema
+                {
+                    IdOperatore              = dato.IdOperatore,
+                    Operatore                = dato.Operatore,
+                    OperatoreNonRiconosciuto = dato.OperatoreNonRiconosciuto,
+                    IdProceduraLavorazione   = dato.IdProceduraLavorazione,
+                    IdFaseLavorazione        = dato.IdFaseLavorazione,
+                    IdCentro                 = dato.IdCentro,
+                    DataLavorazione          = dato.DataLavorazione.Date,
+                    DataAggiornamento        = now,
+                    Documenti                = dato.Documenti,
+                    Fogli                    = dato.Fogli,
+                    Pagine                   = dato.Pagine,
+                    FlagInserimentoAuto      = true,
+                    FlagInserimentoManuale   = false
+                });
+                inserted++;
+            }
+
+            // Salva delete + insert in una transazione atomica
+            await db.SaveChangesAsync(ct);
+
+            return inserted;
         }
 
         /// <summary>

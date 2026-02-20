@@ -2,6 +2,7 @@ namespace BlazorDematReports.Core.Lavorazioni.Models
 {
     /// <summary>
     /// Contesto di esecuzione per le lavorazioni.
+    /// Trasporta i parametri temporali e gli ID necessari agli handler.
     /// </summary>
     public sealed class LavorazioneExecutionContext
     {
@@ -12,7 +13,6 @@ namespace BlazorDematReports.Core.Lavorazioni.Models
         public DateTime StartDataLavorazione { get; init; }
         public DateTime? EndDataLavorazione { get; init; }
         public int? IdConfigurazioneDatabase { get; init; }
-        public required IServiceProvider ServiceProvider { get; init; }
     }
 
     /// <summary>
@@ -21,7 +21,6 @@ namespace BlazorDematReports.Core.Lavorazioni.Models
     public sealed class UnifiedExecutionContext
     {
         public int IDProceduraLavorazione { get; init; }
-        public required IServiceProvider ServiceProvider { get; init; }
         public string HandlerCode { get; init; } = string.Empty;
         public Dictionary<string, object> Parameters { get; init; } = new();
 
@@ -38,8 +37,7 @@ namespace BlazorDematReports.Core.Lavorazioni.Models
                 NomeProcedura = Parameters.GetValueOrDefault("NomeProcedura") as string,
                 StartDataLavorazione = Parameters.GetValueOrDefault("StartDataLavorazione", DateTime.Now) as DateTime? ?? DateTime.Now,
                 EndDataLavorazione = Parameters.GetValueOrDefault("EndDataLavorazione") as DateTime?,
-                IdConfigurazioneDatabase = Parameters.GetValueOrDefault("IdConfigurazioneDatabase") as int?,
-                ServiceProvider = ServiceProvider
+                IdConfigurazioneDatabase = Parameters.GetValueOrDefault("IdConfigurazioneDatabase") as int?
             };
         }
     }

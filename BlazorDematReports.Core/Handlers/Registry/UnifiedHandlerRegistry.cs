@@ -49,7 +49,8 @@ namespace BlazorDematReports.Core.Handlers.Registry
         public IEnumerable<string> GetAllCodes()
             => _handlersMap.Keys;
 
-        public IReadOnlyCollection<HandlerType> GetHandlersByType(HandlerType type)
-            => _handlersMap.Values.Where(h => h.Type == type).Select(h => h.Type).ToList();
+        /// <summary>Restituisce tutti gli handler registrati del tipo specificato.</summary>
+        public IReadOnlyCollection<IUnifiedHandler> GetHandlersByType(HandlerType type)
+            => _handlersMap.Values.Where(h => h.Type == type).ToList();
     }
 }

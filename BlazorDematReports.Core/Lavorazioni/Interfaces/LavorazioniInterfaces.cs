@@ -56,5 +56,7 @@ namespace BlazorDematReports.Core.Lavorazioni.Interfaces
         bool IsRegistered(string code);
         Task<object> ExecuteAsync(string code, UnifiedExecutionContext context, CancellationToken ct = default);
         IEnumerable<string> GetAllCodes();
+        /// <summary>Restituisce tutti gli handler registrati di un determinato tipo.</summary>
+        IReadOnlyCollection<IUnifiedHandler> GetHandlersByType(HandlerType type);
     }
 }

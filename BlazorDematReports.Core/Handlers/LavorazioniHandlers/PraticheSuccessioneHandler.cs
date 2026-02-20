@@ -5,7 +5,6 @@ using BlazorDematReports.Core.Utility;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
 using Entities.Helpers;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Oracle.ManagedDataAccess.Client;
 
@@ -18,38 +17,43 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     public sealed class PraticheSuccessioneHandler : ILavorazioneHandler
     {
-        /// <summary>
-        /// Codice identificativo univoco della lavorazione.
-        /// </summary>
+        private readonly INormalizzatoreOperatori _normalizzatore;
+        private readonly IGestoreOperatoriDatiLavorazione _gestoreOperatori;
+        private readonly IElaboratoreDatiLavorazione _elaboratore;
+        private readonly ILavorazioniConfigManager _configManager;
+        private readonly ILoggerFactory _loggerFactory;
+
+        public PraticheSuccessioneHandler(
+            INormalizzatoreOperatori normalizzatore,
+            IGestoreOperatoriDatiLavorazione gestoreOperatori,
+            IElaboratoreDatiLavorazione elaboratore,
+            ILavorazioniConfigManager configManager,
+            ILoggerFactory loggerFactory)
+        {
+            _normalizzatore   = normalizzatore;
+            _gestoreOperatori = gestoreOperatori;
+            _elaboratore      = elaboratore;
+            _configManager    = configManager;
+            _loggerFactory    = loggerFactory;
+        }
+
+        /// <summary>Codice identificativo univoco della lavorazione.</summary>
         public string LavorazioneCode => LavorazioniCodes.PRATICHE_SUCCESSIONE;
 
-        /// <summary>
-        /// Esegue la lavorazione PRATICHE_SUCCESSIONE utilizzando il pattern registry e dependency injection.
-        /// </summary>
-        /// <param name="context">Contesto di esecuzione contenente parametri e service provider.</param>
-        /// <param name="ct">Token di cancellazione per gestire l'interruzione dell'operazione.</param>
-        /// <returns>Lista dei dati di lavorazione elaborati.</returns>
+        /// <summary>Esegue la lavorazione PRATICHE_SUCCESSIONE.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
         {
-            // Risolve le dipendenze tramite service provider
-            var normalizzatore = context.ServiceProvider.GetRequiredService<INormalizzatoreOperatori>();
-            var gestoreOperatori = context.ServiceProvider.GetRequiredService<IGestoreOperatoriDatiLavorazione>();
-            var elaboratore = context.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
-            var configManager = context.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
-            var loggerFactory = context.ServiceProvider.GetRequiredService<ILoggerFactory>();
+            var lavorazione = new PRATICHE_SUCCESSIONEProcessor(
+                _normalizzatore, _gestoreOperatori, _elaboratore, _configManager,
+                _loggerFactory.CreateLogger<PRATICHE_SUCCESSIONEProcessor>());
 
-            // Crea l'istanza della lavorazione specifica
-            var lavorazione = new PRATICHE_SUCCESSIONEProcessor(normalizzatore, gestoreOperatori, elaboratore, configManager, loggerFactory.CreateLogger<PRATICHE_SUCCESSIONEProcessor>());
-
-            // Imposta il contesto della lavorazione
-            lavorazione.NomeProcedura = context.NomeProcedura;
-            lavorazione.IDFaseLavorazione = context.IDFaseLavorazione;
+            lavorazione.NomeProcedura          = context.NomeProcedura;
+            lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
-            lavorazione.IDCentro = context.IDCentro;
-            lavorazione.StartDataLavorazione = context.StartDataLavorazione;
-            lavorazione.EndDataLavorazione = context.EndDataLavorazione;
+            lavorazione.IDCentro               = context.IDCentro;
+            lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
+            lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
 
-            // Esegue la lavorazione
             return await lavorazione.SetDatiDematAsync();
         }
     }
