@@ -32,7 +32,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 
         /// <inheritdoc />
         public async Task<List<DatiLavorazione>> ExecuteAsync(
-            LavorazioneExecutionContext context, 
+            LavorazioneExecutionContext context,
             CancellationToken ct = default)
         {
             var logger = context.ServiceProvider.GetRequiredService<ILogger<Ader4Handler>>();
@@ -49,8 +49,8 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 
             // CHECK FLAG: Primo task oggi?
             bool isFirstToday = await flagService.TryMarkAsProcessingAsync(
-                LavorazioniCodes.ADER4, 
-                taskName, 
+                LavorazioniCodes.ADER4,
+                taskName,
                 ct
             );
 

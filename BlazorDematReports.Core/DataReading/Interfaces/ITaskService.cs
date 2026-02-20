@@ -1,4 +1,4 @@
-using  BlazorDematReports.Core.DataReading.Dto;
+using BlazorDematReports.Core.DataReading.Dto;
 using BlazorDematReports.Core.DataReading.Models;
 using Entities.Models.DbApplication;
 

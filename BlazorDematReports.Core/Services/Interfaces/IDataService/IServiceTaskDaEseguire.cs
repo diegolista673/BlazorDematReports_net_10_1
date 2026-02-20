@@ -20,12 +20,12 @@ namespace BlazorDematReports.Core.Interfaces.IDataService
         /// <param name="IdProceduraLavorazione">ID della procedura di lavorazione.</param>
         /// <returns>Lista di task da eseguire filtrati.</returns>
         Task<List<TaskDaEseguire>> GetTabellaTaskDaEseguireAsync(int IdProceduraLavorazione);
-        
 
-        
+
+
         /// <summary>Restituisce i task mail import per una procedura.</summary>
         Task<List<TaskDaEseguire>> GetMailImportTasksAsync(int idProceduraLavorazione);
-        
+
         // REMOVED: UpsertMailTaskAsync - deprecated (use /admin/fonti-dati to create EmailCSV configurations)
 
         /// <summary>

@@ -89,7 +89,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                .Where(t => t.IdConfigurazioneDatabase.HasValue )
+                .Where(t => t.IdConfigurazioneDatabase.HasValue)
                 .AsNoTracking()
                 .ToListAsync();
         }
@@ -131,7 +131,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
             using var ctx = contextFactory.CreateDbContext();
             var task = await ctx.TaskDaEseguires.FindAsync(taskId);
-            
+
             if (task != null)
             {
                 ctx.TaskDaEseguires.Remove(task);

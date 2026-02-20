@@ -1,12 +1,12 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
+using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
-using BlazorDematReports.Core.Interfaces.IDataService;
 using BlazorDematReports.Core.DataReading.Dto;
+using BlazorDematReports.Core.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
-using BlazorDematReports.Core.Application;
 using Microsoft.Extensions.Logging;
 
 namespace BlazorDematReports.Core.Services.DataService
@@ -414,7 +414,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
                             if (!configExists)
                             {
-                                logger.LogError("Task con IdConfigurazioneDatabase non valido: TaskId={TaskId}, IdConfig={IdConfig}", 
+                                logger.LogError("Task con IdConfigurazioneDatabase non valido: TaskId={TaskId}, IdConfig={IdConfig}",
                                     taskDto.IdTaskDaEseguire, taskDto.IdConfigurazioneDatabase.Value);
                                 throw new InvalidOperationException(
                                     $"Configurazione con ID {taskDto.IdConfigurazioneDatabase.Value} non esiste. " +
@@ -508,7 +508,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
                                 if (!configExists)
                                 {
-                                    logger.LogError("Tentativo di creare task con IdConfigurazioneDatabase non valido: IdConfig={IdConfig}", 
+                                    logger.LogError("Tentativo di creare task con IdConfigurazioneDatabase non valido: IdConfig={IdConfig}",
                                         taskDto.IdConfigurazioneDatabase.Value);
                                     throw new InvalidOperationException(
                                         $"Configurazione con ID {taskDto.IdConfigurazioneDatabase.Value} non esiste");
@@ -535,14 +535,14 @@ namespace BlazorDematReports.Core.Services.DataService
                             };
 
                             var newTask = mapper.Map<TaskDaEseguire>(correctedTaskDto);
-                            
+
                             // **CORREZIONE: Assicurati che IdTaskHangFire non sia null per task nuovi**
                             if (string.IsNullOrWhiteSpace(newTask.IdTaskHangFire))
                             {
                                 newTask.IdTaskHangFire = correctedTaskDto.IdTaskHangFire ?? $"temp-{Guid.NewGuid():N}";
                                 logger.LogDebug("Assegnato ID Hangfire temporaneo per nuovo task in nuova fase: {TempId}", newTask.IdTaskHangFire);
                             }
-                            
+
                             newFase.TaskDaEseguires.Add(newTask);
                         }
                     }
@@ -632,7 +632,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
                             if (!configExists)
                             {
-                                logger.LogError("Tentativo di aggiornare task con IdConfigurazioneDatabase non valido: TaskId={TaskId}, IdConfig={IdConfig}", 
+                                logger.LogError("Tentativo di aggiornare task con IdConfigurazioneDatabase non valido: TaskId={TaskId}, IdConfig={IdConfig}",
                                     taskDto.IdTaskDaEseguire, taskDto.IdConfigurazioneDatabase.Value);
                                 throw new InvalidOperationException(
                                     $"Configurazione con ID {taskDto.IdConfigurazioneDatabase.Value} non esiste");
@@ -657,14 +657,14 @@ namespace BlazorDematReports.Core.Services.DataService
                 {
                     // Aggiungi nuovo task
                     var newTask = mapper.Map<TaskDaEseguire>(taskDto);
-                    
+
                     // **CORREZIONE: Assicurati che IdTaskHangFire non sia null per task nuovi**
                     if (string.IsNullOrWhiteSpace(newTask.IdTaskHangFire))
                     {
                         newTask.IdTaskHangFire = taskDto.IdTaskHangFire ?? $"temp-{Guid.NewGuid():N}";
                         logger.LogDebug("Assegnato ID Hangfire temporaneo per nuovo task: {TempId}", newTask.IdTaskHangFire);
                     }
-                    
+
                     // set propriet� aggiuntive non coperte dal mapping (in caso profilo non aggiornato)
                     newTask.Enabled = taskDto.Enabled;
                     newTask.IdConfigurazioneDatabase = taskDto.IdConfigurazioneDatabase;

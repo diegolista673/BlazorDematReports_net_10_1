@@ -3,7 +3,6 @@ using AutoMapper.QueryableExtensions;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Interfaces.IDataService;
-using BlazorDematReports.Core.DataReading.Dto;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;

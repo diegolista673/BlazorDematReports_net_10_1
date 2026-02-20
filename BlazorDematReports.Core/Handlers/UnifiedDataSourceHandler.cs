@@ -1,9 +1,9 @@
-using Entities.Models.DbApplication;
-using Entities.Enums;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Utility.Models;
+using Entities.Enums;
+using Entities.Models.DbApplication;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -83,7 +83,7 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
             fc.FlagAttiva == true);
 
         // Usa query specifica del task se presente, altrimenti query base
-        var query = mapping?.TestoQueryTask ;
+        var query = mapping?.TestoQueryTask;
 
         if (string.IsNullOrWhiteSpace(query))
         {
@@ -214,7 +214,7 @@ public class UnifiedDataSourceHandler : ILavorazioneHandler
 
     #endregion
 
-  
+
 
     #region Helpers
 

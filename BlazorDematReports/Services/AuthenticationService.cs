@@ -41,7 +41,7 @@ public class AuthenticationService : IAuthenticationService
             if (_loginSettings.IsDevelopment)
             {
                 _logger.LogDebug("Development mode: simplified authentication for {Username}", user.Operatore);
-                
+
                 if (_loginSettings.AllowAutoLogin)
                 {
                     // In Development con AllowAutoLogin, accetta qualsiasi password

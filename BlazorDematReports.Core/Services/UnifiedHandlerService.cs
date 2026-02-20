@@ -108,15 +108,15 @@ namespace BlazorDematReports.Core.Services
 
             // 2. Se non trovato, cerca pattern parziali
             var availableCodes = _registry.GetAllCodes().ToList();
-            
+
             // Cerca handler che terminano con il codice fornito (es: "28_AUT" -> "Z0072370_28AUT")
-            var partialMatch = availableCodes.FirstOrDefault(code => 
+            var partialMatch = availableCodes.FirstOrDefault(code =>
                 code.EndsWith("_" + inputCode, StringComparison.OrdinalIgnoreCase) ||
                 code.EndsWith(inputCode, StringComparison.OrdinalIgnoreCase));
 
             if (partialMatch != null)
             {
-                _logger.LogInformation("Codice handler risolto tramite corrispondenza parziale: {InputCode} -> {ResolvedCode}", 
+                _logger.LogInformation("Codice handler risolto tramite corrispondenza parziale: {InputCode} -> {ResolvedCode}",
                     inputCode, partialMatch);
                 return partialMatch;
             }
@@ -124,7 +124,7 @@ namespace BlazorDematReports.Core.Services
             // 3. Se ancora non trovato, lancia eccezione
             var errorMessage = $"Handler non trovato per il codice '{inputCode}'. " +
                               $"Codici disponibili: {string.Join(", ", availableCodes)}";
-            
+
             _logger.LogError(errorMessage);
             throw new InvalidOperationException(errorMessage);
         }

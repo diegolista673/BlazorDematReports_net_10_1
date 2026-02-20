@@ -18,7 +18,7 @@ public class MockActiveDirectoryService : IActiveDirectoryService
     public Task<bool> AuthenticateAsync(string username, string password)
     {
         _logger.LogInformation("Mock AD authentication for user: {Username} - Always returns FALSE (use database fallback)", username);
-        
+
         // Ritorna false per forzare il fallback su autenticazione database/semplificata
         return Task.FromResult(false);
     }

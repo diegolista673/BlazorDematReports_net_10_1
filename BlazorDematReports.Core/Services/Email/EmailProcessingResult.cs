@@ -1,5 +1,3 @@
-using Microsoft.Exchange.WebServices.Data;
-
 namespace BlazorDematReports.Core.Services.Email
 {
     /// <summary>

@@ -1,19 +1,19 @@
 ﻿using AutoMapper;
-using BlazorDematReports.Core.Application;       
 using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Components.Layout;
+using BlazorDematReports.Core.Application;
+using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Utility.Interfaces;
+using BlazorDematReports.Services;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
-using BlazorDematReports.Core.Utility.Interfaces;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using MudBlazor;
-using BlazorDematReports.Core.Interfaces.IDataService;
-using BlazorDematReports.Core.Application.Dto;
-using BlazorDematReports.Services;
 
 
 
@@ -147,7 +147,7 @@ namespace BlazorDematReports.Components.Shared
             }
             catch (Exception ex)
             {
-                Logger?.LogError(ex, ex.Message);
+                Logger?.LogError(ex, "{Message}", ex.Message);
                 ErrorMessage = ex.Message;
                 await NotificationDialog!.ShowNotification("Errore", "OK", Color.Error, "Error");
             }
@@ -563,7 +563,7 @@ namespace BlazorDematReports.Components.Shared
             UiState?.HideOverlay();
             UiState?.SetMenuDisabled(false);
 
-            string message = customMessage;
+            string message = customMessage ?? string.Empty;
 
             switch (ex)
             {
@@ -589,9 +589,9 @@ namespace BlazorDematReports.Components.Shared
                     message = $"Errore di configurazione AutoMapper: {autoEx.Message}";
                     break;
 
-                case NullReferenceException nullRefEx:
-                case InvalidOperationException invalidOpEx:
-                case ArgumentNullException argNullEx:
+                case NullReferenceException:
+                case InvalidOperationException:
+                case ArgumentNullException:
                     message = $"Errore applicativo: {ex.Message}";
                     break;
 
@@ -602,7 +602,7 @@ namespace BlazorDematReports.Components.Shared
             }
 
             ErrorMessage = message;
-            Logger?.LogError(ex, message);
+            Logger?.LogError(ex, "{ErrorMessage}", message);
 
             if (NotificationDialog != null)
                 await NotificationDialog.ShowNotification(message, "OK", Color.Error, "Error");
@@ -744,11 +744,10 @@ namespace BlazorDematReports.Components.Shared
             try
             {
                 ValueBeforeEdit = Mapper!.Map<TValueBeforeEdit>(item);
-
             }
             catch (Exception ex)
             {
-                Logger?.LogError(ex.Message);
+                Logger?.LogError(ex, "{Message}", ex.Message);
                 if (NotificationDialog != null)
                     await NotificationDialog.ShowNotification("Error on StartedEditingItem", "OK", Color.Error, "Error");
             }
@@ -860,10 +859,9 @@ namespace BlazorDematReports.Components.Shared
             }
             catch (Exception ex)
             {
-                Logger?.LogError(ex.Message);
+                Logger?.LogError(ex, "{Message}", ex.Message);
                 if (NotificationDialog != null)
                     await NotificationDialog.ShowNotification("Error on StartedEditingItem", "OK", Color.Error, "Error");
-
             }
         }
 
@@ -919,7 +917,7 @@ namespace BlazorDematReports.Components.Shared
             }
             catch (Exception ex)
             {
-                Logger?.LogError(ex.Message);
+                Logger?.LogError(ex, "{Message}", ex.Message);
                 if (NotificationDialog != null)
                     await NotificationDialog.ShowNotification("Error on StartedEditingItem", "OK", Color.Error, "Error");
             }
@@ -944,7 +942,7 @@ namespace BlazorDematReports.Components.Shared
 
             if (uModel == null)
                 return;
-            foreach (var p in typeof(UModel).getProperties())
+            foreach (var p in typeof(UModel).GetProperties())
                 p.SetValue(uModel, null);
         }
 

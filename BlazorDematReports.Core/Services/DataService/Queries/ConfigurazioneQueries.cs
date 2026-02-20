@@ -1,7 +1,7 @@
-using Entities.Models.DbApplication;
-using Entities.Enums;
-using Microsoft.EntityFrameworkCore;
 using BlazorDematReports.Core.Constants;
+using Entities.Enums;
+using Entities.Models.DbApplication;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorDematReports.Core.Services.DataService.Queries
 {
@@ -27,7 +27,7 @@ namespace BlazorDematReports.Core.Services.DataService.Queries
                     TipoFonte = c.TipoFonte,
                     ConnectionStringName = c.ConnectionStringName,
                     HandlerClassName = c.HandlerClassName,
-                    
+
                     // Projection diretta senza Include espliciti
                     Mappings = c.ConfigurazioneFaseCentros
                         .Where(fc => fc.FlagAttiva)
@@ -37,10 +37,10 @@ namespace BlazorDematReports.Core.Services.DataService.Queries
                             IdProceduraLavorazione = fc.IdProceduraLavorazione,
                             IdFaseLavorazione = fc.IdFaseLavorazione,
                             IdCentro = fc.IdCentro,
-                            
+
                             // Campi denormalizzati (no navigation properties)
-                            NomeProcedura = fc.IdProceduraLavorazioneNavigation != null 
-                                ? fc.IdProceduraLavorazioneNavigation.NomeProcedura 
+                            NomeProcedura = fc.IdProceduraLavorazioneNavigation != null
+                                ? fc.IdProceduraLavorazioneNavigation.NomeProcedura
                                 : "N/A",
                             NomeFase = fc.IdFaseLavorazioneNavigation != null
                                 ? fc.IdFaseLavorazioneNavigation.FaseLavorazione
@@ -105,12 +105,12 @@ namespace BlazorDematReports.Core.Services.DataService.Queries
         public int IdProceduraLavorazione { get; set; }
         public int IdFaseLavorazione { get; set; }
         public int IdCentro { get; set; }
-        
+
         // Campi denormalizzati (no lazy loading)
         public string NomeProcedura { get; set; } = null!;
         public string NomeFase { get; set; } = null!;
         public string NomeCentro { get; set; } = null!;
-        
+
         public string CronExpression { get; set; } = null!;
         public string? TestoQueryTask { get; set; }
         public string? HandlerClassName { get; set; }

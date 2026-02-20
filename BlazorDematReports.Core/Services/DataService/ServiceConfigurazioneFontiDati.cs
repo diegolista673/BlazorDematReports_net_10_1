@@ -1,13 +1,14 @@
 ﻿using AutoMapper;
+using BlazorDematReports.Core.Application;
+using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Constants;
-using BlazorDematReports.Core.Interfaces.IDataService;
 using BlazorDematReports.Core.DataReading.Infrastructure;
+using BlazorDematReports.Core.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
-using BlazorDematReports.Core.Application;
-using BlazorDematReports.Core.Application.Dto;
 using Microsoft.Extensions.Logging;
+using NLog;
 
 namespace BlazorDematReports.Core.Services.DataService
 {
@@ -17,7 +18,7 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceConfigurazioneFontiDati : ServiceBase<ConfigurazioneFontiDati>, IServiceConfigurazioneFontiDati
     {
-        
+
         private readonly IProductionJobScheduler productionScheduler;
 
         /// <summary>
@@ -57,8 +58,8 @@ namespace BlazorDematReports.Core.Services.DataService
                     // Campi dettaglio denormalizzati
                     FasiDettaglio = c.ConfigurazioneFaseCentros
                         .Where(fc => fc.FlagAttiva == true)
-                        .Select(fc => fc.IdFaseLavorazioneNavigation != null 
-                            ? fc.IdFaseLavorazioneNavigation.FaseLavorazione 
+                        .Select(fc => fc.IdFaseLavorazioneNavigation != null
+                            ? fc.IdFaseLavorazioneNavigation.FaseLavorazione
                             : "N/A")
                         .ToList(),
 
@@ -71,8 +72,8 @@ namespace BlazorDematReports.Core.Services.DataService
                         .Where(fc => fc.FlagAttiva == true)
                         .Select(fc => new MappingDettaglioDto
                         {
-                            NomeProcedura = fc.IdProceduraLavorazioneNavigation != null 
-                                ? fc.IdProceduraLavorazioneNavigation.NomeProcedura 
+                            NomeProcedura = fc.IdProceduraLavorazioneNavigation != null
+                                ? fc.IdProceduraLavorazioneNavigation.NomeProcedura
                                 : "N/A",
                             NomeFase = fc.IdFaseLavorazioneNavigation != null
                                 ? fc.IdFaseLavorazioneNavigation.FaseLavorazione
@@ -103,14 +104,14 @@ namespace BlazorDematReports.Core.Services.DataService
             {
                 // Usa il CRON dal campo dedicato
                 var cron = mapping.CronExpression;
-                
+
                 // Se il cron � valido (non � solo il default), aggiorna FlagDataReading
                 if (!string.IsNullOrWhiteSpace(cron) && cron != "0 5 * * *")
                 {
                     // Cerca la fase corrispondente in LavorazioniFasiDataReading
                     var faseDataReading = await context.LavorazioniFasiDataReadings
-                        .FirstOrDefaultAsync(l => 
-                            l.IdProceduraLavorazione == mapping.IdProceduraLavorazione && 
+                        .FirstOrDefaultAsync(l =>
+                            l.IdProceduraLavorazione == mapping.IdProceduraLavorazione &&
                             l.IdFaseLavorazione == mapping.IdFaseLavorazione);
 
                     if (faseDataReading != null)
@@ -119,14 +120,14 @@ namespace BlazorDematReports.Core.Services.DataService
                         faseDataReading.FlagDataReading = true;
                         logger.LogInformation(
                             "Impostato FlagDataReading = true per Procedura {IdProc} Fase {IdFase}",
-                            mapping.IdProceduraLavorazione, 
+                            mapping.IdProceduraLavorazione,
                             mapping.IdFaseLavorazione);
                     }
                     else
                     {
                         logger.LogWarning(
                             "Fase non trovata in LavorazioniFasiDataReading: Procedura {IdProc} Fase {IdFase}",
-                            mapping.IdProceduraLavorazione, 
+                            mapping.IdProceduraLavorazione,
                             mapping.IdFaseLavorazione);
                     }
                 }
@@ -140,7 +141,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = await contextFactory.CreateDbContextAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.ConfigurazioneFontiDatis
                 .Include(c => c.ConfigurazioneFaseCentros)
                 .Include(c => c.TaskDaEseguires)
@@ -157,7 +158,7 @@ namespace BlazorDematReports.Core.Services.DataService
                             try
                             {
                                 await productionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
-                                logger.LogInformation("Rimosso job Hangfire: {HangfireKey} per task {TaskId}", 
+                                logger.LogInformation("Rimosso job Hangfire: {HangfireKey} per task {TaskId}",
                                     task.IdTaskHangFire, task.IdTaskDaEseguire);
                             }
                             catch (Exception ex)
@@ -178,7 +179,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 context.ConfigurazioneFontiDatis.Remove(entity);
                 await context.SaveChangesAsync();
 
-                logger.LogInformation("Configurazione {IdConfigurazione} eliminata definitivamente con {NumTask} task e {NumMapping} mapping", 
+                logger.LogInformation("Configurazione {IdConfigurazione} eliminata definitivamente con {NumTask} task e {NumMapping} mapping",
                     idConf, entity.TaskDaEseguires?.Count ?? 0, entity.ConfigurazioneFaseCentros?.Count ?? 0);
             }
 
@@ -197,7 +198,8 @@ namespace BlazorDematReports.Core.Services.DataService
                     .Include(c => c.ConfigurazioneFaseCentros)
                     .FirstOrDefaultAsync(c => c.IdConfigurazione == config.IdConfigurazione);
 
-                if (dbConfig == null) throw new InvalidOperationException($"Config {config.IdConfigurazione} non trovata");
+                if (dbConfig == null)
+                    throw new InvalidOperationException($"Config {config.IdConfigurazione} non trovata");
 
                 context.Entry(dbConfig).CurrentValues.SetValues(config);
                 var incoming = mappings ?? new();
@@ -207,7 +209,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
                 var incomingIds = incoming.Where(m => m.IdFaseCentro > 0).Select(m => m.IdFaseCentro).ToHashSet();
                 var mappingsToRemove = existing.Where(e => !incomingIds.Contains(e.IdFaseCentro)).ToList();
-                
+
                 // FASE 1: Trova e rimuovi i task associati ai mapping che verranno eliminati
                 if (mappingsToRemove.Any())
                 {
@@ -215,30 +217,30 @@ namespace BlazorDematReports.Core.Services.DataService
                     {
                         // STEP 1: Trova prima il LavorazioniFasiDataReading corrispondente al mapping
                         var lavorazioneFase = await context.LavorazioniFasiDataReadings
-                            .FirstOrDefaultAsync(lf => 
+                            .FirstOrDefaultAsync(lf =>
                                 lf.IdProceduraLavorazione == mappingToRemove.IdProceduraLavorazione &&
                                 lf.IdFaseLavorazione == mappingToRemove.IdFaseLavorazione);
-                        
+
                         if (lavorazioneFase == null)
                         {
-                            logger.LogWarning("LavorazioneFase non trovata per mapping Proc={IdProc} Fase={IdFase}", 
+                            logger.LogWarning("LavorazioneFase non trovata per mapping Proc={IdProc} Fase={IdFase}",
                                 mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
                             continue;
                         }
-                        
+
                         // STEP 2: Trova tutti i task associati a questo LavorazioneFase E a questa configurazione
                         var tasksToRemove = await context.TaskDaEseguires
                             .Where(t => t.IdConfigurazioneDatabase == config.IdConfigurazione &&
                                        t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading)
                             .ToListAsync();
-                        
+
                         if (!tasksToRemove.Any())
                         {
-                            logger.LogDebug("Nessun task trovato per mapping Proc={IdProc} Fase={IdFase}", 
+                            logger.LogDebug("Nessun task trovato per mapping Proc={IdProc} Fase={IdFase}",
                                 mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
                             continue;
                         }
-                        
+
                         // STEP 3: Rimuovi prima i job da Hangfire
                         foreach (var task in tasksToRemove)
                         {
@@ -248,7 +250,7 @@ namespace BlazorDematReports.Core.Services.DataService
                                 {
                                     await productionScheduler.RemoveByKeyAsync(task.IdTaskHangFire);
                                     logger.LogInformation("Rimosso job Hangfire {HangfireKey} per task {TaskId} (Proc={IdProc}, Fase={IdFase})",
-                                        task.IdTaskHangFire, task.IdTaskDaEseguire, 
+                                        task.IdTaskHangFire, task.IdTaskDaEseguire,
                                         mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
                                 }
                                 catch (Exception ex)
@@ -263,7 +265,7 @@ namespace BlazorDematReports.Core.Services.DataService
                             tasksToRemove.Count, mappingToRemove.IdProceduraLavorazione, mappingToRemove.IdFaseLavorazione);
                     }
                 }
-                
+
                 // FASE 2: Rimuovi i mapping
                 context.ConfigurazioneFaseCentros.RemoveRange(mappingsToRemove);
                 foreach (var m in incoming)
@@ -335,7 +337,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 await UpdateFlagDataReadingForMappingsAsync(context, incoming);
 
                 await tx.CommitAsync();
-                
+
                 // ? CLEANUP FINALE: Rimuove job Hangfire orfani dopo il commit
                 // Questo � un ulteriore livello di sicurezza che confronta Hangfire con il DB
                 try
@@ -354,7 +356,9 @@ namespace BlazorDematReports.Core.Services.DataService
             catch (Exception ex)
             {
                 logger.LogError(ex, "Errore aggiornamento configurazione fonti dati");
-                try { await tx.RollbackAsync(); } catch { }
+                try
+                { await tx.RollbackAsync(); }
+                catch { }
                 throw;
             }
         }
@@ -382,8 +386,8 @@ namespace BlazorDematReports.Core.Services.DataService
                     var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
                     var baseCodice = configurazioneFontiDati.CodiceConfigurazione.Split('_')[0];
                     configurazioneFontiDati.CodiceConfigurazione = $"{baseCodice}_{timestamp}";
-                    
-                    logger.LogWarning("CodiceConfigurazione duplicato rilevato, generato nuovo codice: {NewCode}", 
+
+                    logger.LogWarning("CodiceConfigurazione duplicato rilevato, generato nuovo codice: {NewCode}",
                         configurazioneFontiDati.CodiceConfigurazione);
                 }
 
@@ -407,11 +411,11 @@ namespace BlazorDematReports.Core.Services.DataService
                         mapping.IdFaseCentro = 0;
                         mapping.IdConfigurazione = configurazioneFontiDati.IdConfigurazione;
                         mapping.FlagAttiva = true;
-                        
+
                         // Assicura che GiorniPrecedenti sia valorizzato (default 10 se 0)
                         if (mapping.GiorniPrecedenti is null or <= 0)
                             mapping.GiorniPrecedenti = 10;
-                        
+
                         context.ConfigurazioneFaseCentros.Add(mapping);
                     }
 
@@ -422,14 +426,16 @@ namespace BlazorDematReports.Core.Services.DataService
                 }
 
                 await transaction.CommitAsync();
-                
-                logger.LogInformation("Configurazione {IdConf} creata con codice {Codice} e {NumMapping} mapping", 
+
+                logger.LogInformation("Configurazione {IdConf} creata con codice {Codice} e {NumMapping} mapping",
                     configurazioneFontiDati.IdConfigurazione, configurazioneFontiDati.CodiceConfigurazione, mappingFasi?.Count ?? 0);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Errore durante creazione ConfigurazioneFontiDati");
-                try { await transaction.RollbackAsync(); } catch { }
+                try
+                { await transaction.RollbackAsync(); }
+                catch { }
                 throw;
             }
         }
@@ -465,6 +471,27 @@ namespace BlazorDematReports.Core.Services.DataService
             {
                 var configCode = conflict.IdConfigurazioneNavigation?.CodiceConfigurazione ?? conflict.IdConfigurazione.ToString();
                 throw new InvalidOperationException($"La procedura {conflict.IdProceduraLavorazione} � gi� utilizzata dalla configurazione {configCode}.");
+            }
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ConfigurazioneFontiDati>> GetConfigurazioniByProceduraAsync(int idProcedura)
+        {
+            try
+            {
+                await using var context = await contextFactory.CreateDbContextAsync();
+                return await context.ConfigurazioneFontiDatis
+                    .Include(c => c.ConfigurazioneFaseCentros)
+                    .Where(c => c.ConfigurazioneFaseCentros.Any(fc =>
+                                fc.FlagAttiva &&
+                                fc.IdProceduraLavorazione == idProcedura))
+                    .OrderBy(c => c.CodiceConfigurazione)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Error loading configurations for procedure {IdProcedura}", idProcedura);
+                return [];
             }
         }
     }

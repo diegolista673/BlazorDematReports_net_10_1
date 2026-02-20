@@ -42,9 +42,9 @@ namespace BlazorDematReports.Core.Utility
             var props = GetType().GetProperties().Where(prop => Attribute.IsDefined(prop, typeof(ConnectionAttribute)));
             foreach (var conn in props)
             {
-                if (conn.Name != "CnxnPdP" &
-                    conn.Name != "CnxnPraticheSuccessione" &
-                    conn.Name != "HangfireConnection" &
+                if (conn.Name != "CnxnPdP" &&
+                    conn.Name != "CnxnPraticheSuccessione" &&
+                    conn.Name != "HangfireConnection" &&
                     conn.Name != "DematReportsContext")
                 {
                     list.Add(conn.Name);

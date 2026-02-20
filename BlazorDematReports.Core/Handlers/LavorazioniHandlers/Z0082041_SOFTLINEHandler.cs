@@ -1,10 +1,10 @@
-using Entities.Helpers;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Utility;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
+using Entities.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 using Oracle.ManagedDataAccess.Client;
@@ -39,7 +39,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
             // Crea l'istanza della lavorazione specifica
             var lavorazione = new Z0082041_SOFTLINEProcessor(normalizzatore, gestoreOperatori, elaboratore, configManager);
-            
+
             // Imposta il contesto della lavorazione
             lavorazione.NomeProcedura = context.NomeProcedura;
             lavorazione.IDFaseLavorazione = context.IDFaseLavorazione;
@@ -157,9 +157,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             try
             {
                 // Usa la connessione Oracle disponibile tramite GetConnectionString
-                var oracleConnection = _lavorazioniConfigManager.GetConnectionString("OracleConnectionString") 
+                var oracleConnection = _lavorazioniConfigManager.GetConnectionString("OracleConnectionString")
                                      ?? _lavorazioniConfigManager.CnxnCaptiva206; // Fallback
-                
+
                 await using var connection = new OracleConnection(oracleConnection);
                 await connection.OpenAsync();
 

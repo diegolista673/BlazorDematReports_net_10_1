@@ -1,7 +1,6 @@
 ﻿@page "/scheda-lavorazione"
 @page "/scheda-lavorazione/{IdproceduraLavorazione:int}"
 @using BlazorDematReports.Core.Services.ProcedureEdit
-@using BlazorDematReports.Services.ProcedureEdit
 
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inherits BaseComponentPage<PageSchedaLavorazione,ProcedureLavorazioniDto,ProcedureLavorazioniDto>

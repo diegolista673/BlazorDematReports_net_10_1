@@ -10,14 +10,14 @@ namespace BlazorDematReports.Core.Application.Dto
         public int IdConfigurazione { get; set; }
         public string CodiceConfigurazione { get; set; } = null!;
         public TipoFonteData TipoFonte { get; set; }
-        
+
         // Query Management
         public string? TestoQueryPrincipale { get; set; }
         public bool HasMultipleQueries => Mappings.Any(m => !string.IsNullOrEmpty(m.TestoQueryOverride));
-        
+
         // Mappings con Task
         public List<MappingConTaskDto> Mappings { get; set; } = new();
-        
+
         // Statistiche Task
         public int TotaleTasks => Mappings.Sum(m => m.Tasks.Count);
         public int TaskAttivi => Mappings.Sum(m => m.Tasks.Count(t => t.Enabled));
@@ -34,11 +34,11 @@ namespace BlazorDematReports.Core.Application.Dto
         public string NomeFase { get; set; } = null!;
         public string NomeCentro { get; set; } = null!;
         public bool FlagAttiva { get; set; }
-        
+
         // Query specifica per questo mapping
         public string? TestoQueryOverride { get; set; }
         public bool UsaQueryOverride => !string.IsNullOrEmpty(TestoQueryOverride);
-        
+
         // Task associati a questo mapping
         public List<TaskDto> Tasks { get; set; } = new();
     }
@@ -56,7 +56,7 @@ namespace BlazorDematReports.Core.Application.Dto
         public DateTime? LastRunUtc { get; set; }
         public string? LastError { get; set; }
         public int ConsecutiveFailures { get; set; }
-        
+
         // Computed
         public string DisplayStatus => $"{Stato} ({(Enabled ? "Attivo" : "Disabilitato")})";
     }

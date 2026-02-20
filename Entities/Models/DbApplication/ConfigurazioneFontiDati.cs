@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Entities.Enums;
+﻿using Entities.Enums;
 
 namespace Entities.Models.DbApplication;
 

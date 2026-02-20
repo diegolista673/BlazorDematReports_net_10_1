@@ -1,6 +1,4 @@
-﻿
-using BlazorDematReports.Core.Application.Dto;
-using Entities.Models.DbApplication;
+﻿using Entities.Models.DbApplication;
 
 namespace BlazorDematReports.Core.Interfaces.IDataService
 {
@@ -8,7 +6,7 @@ namespace BlazorDematReports.Core.Interfaces.IDataService
     /// Interfaccia per la gestione dell'invio email e configurazioni servizi mail.
     /// Fornisce metodi per inviare email e interrogare le configurazioni EmailCSV.
     /// </summary>
-    public interface IServiceMail 
+    public interface IServiceMail
     {
         /// <summary>
         /// Conta il numero totale di servizi mail configurati (configurazioni EmailCSV attive).

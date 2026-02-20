@@ -16,7 +16,7 @@ namespace Entities.Models.DbApplication
 
         public override bool Equals(object obj) => Equals(obj as QueryProcedureLavorazioni);
 
-        public override int GetHashCode() => (IdQuery).GetHashCode();
+        public override int GetHashCode() => IdQuery.GetHashCode();
 
         //public override int GetHashCode() => (IdproceduraLavorazione, IdFaseLavorazione).GetHashCode();
 

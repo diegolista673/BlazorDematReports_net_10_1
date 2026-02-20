@@ -67,7 +67,7 @@ namespace BlazorDematReports.Core.Application.Dto
             {
                 $"Tipo: {TipoTask}",
                 $"CRON: {CronExpression}",
-                "Stato: Gestito da TaskDaEseguire" 
+                "Stato: Gestito da TaskDaEseguire"
             };
 
             if (!string.IsNullOrWhiteSpace(TestoQueryTask))

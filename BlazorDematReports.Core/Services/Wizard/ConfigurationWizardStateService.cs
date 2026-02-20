@@ -1,7 +1,7 @@
-using System.Collections.Immutable;
 using BlazorDematReports.Core.Constants;
-using Entities.Models.DbApplication;
 using Entities.Enums;
+using Entities.Models.DbApplication;
+using System.Collections.Immutable;
 
 namespace BlazorDematReports.Core.Services.Wizard;
 
@@ -61,10 +61,10 @@ public record ConfigurationWizardState
     public bool CanFinish => CurrentStep == TotalSteps && IsStepValid(4);
 
     // Helper methods per creare nuovi stati
-    public ConfigurationWizardState NextStep() 
+    public ConfigurationWizardState NextStep()
         => this with { CurrentStep = Math.Min(CurrentStep + 1, TotalSteps) };
 
-    public ConfigurationWizardState PreviousStep() 
+    public ConfigurationWizardState PreviousStep()
         => this with { CurrentStep = Math.Max(CurrentStep - 1, 1) };
 
     public ConfigurationWizardState WithTipoFonte(TipoFonteData tipoFonte)
@@ -82,20 +82,20 @@ public record ConfigurationWizardState
             ConnectionTestPassed = false
         };
     }
-    
-    public ConfigurationWizardState WithConnectionString(string? connectionString, bool testPassed = false) 
-        => this with 
-        { 
+
+    public ConfigurationWizardState WithConnectionString(string? connectionString, bool testPassed = false)
+        => this with
+        {
             ConnectionStringName = connectionString,
             ConnectionTestPassed = testPassed
         };
 
-    public ConfigurationWizardState WithHandler(string? handler) 
+    public ConfigurationWizardState WithHandler(string? handler)
         => this with { HandlerClassName = handler };
-    
-    public ConfigurationWizardState WithProcedura(int? idProcedura, int? idCentro, string? nome, ImmutableList<FasiLavorazione>? fasi = null) 
-        => this with 
-        { 
+
+    public ConfigurationWizardState WithProcedura(int? idProcedura, int? idCentro, string? nome, ImmutableList<FasiLavorazione>? fasi = null)
+        => this with
+        {
             IdProcedura = idProcedura,
             IdCentro = idCentro,
             NomeProcedura = nome,
@@ -103,22 +103,22 @@ public record ConfigurationWizardState
             // Reset mappings when changing procedure
             Mappings = ImmutableList<ConfigurazioneFaseCentro>.Empty
         };
-    
-    public ConfigurationWizardState WithMapping(ConfigurazioneFaseCentro mapping) 
+
+    public ConfigurationWizardState WithMapping(ConfigurazioneFaseCentro mapping)
         => this with { Mappings = Mappings.Add(mapping) };
-    
-    public ConfigurationWizardState WithoutMapping(int index) 
+
+    public ConfigurationWizardState WithoutMapping(int index)
         => this with { Mappings = Mappings.RemoveAt(index) };
-    
+
     public ConfigurationWizardState WithMappingUpdate(int index, ConfigurazioneFaseCentro mapping)
         => this with { Mappings = Mappings.SetItem(index, mapping) };
-    
-    public ConfigurationWizardState WithDescrizione(string? descrizione) 
+
+    public ConfigurationWizardState WithDescrizione(string? descrizione)
         => this with { DescrizioneConfigurazione = descrizione };
-    
-    public ConfigurationWizardState WithValidationMessage(string? message) 
+
+    public ConfigurationWizardState WithValidationMessage(string? message)
         => this with { ValidationMessage = message };
-    
+
     /// <summary>
     /// Crea una ConfigurazioneFontiDati dal state corrente per il salvataggio.
     /// </summary>
@@ -164,11 +164,11 @@ public record ConfigurationWizardState
 public class ConfigurationWizardStateService
 {
     private ConfigurationWizardState _state = new();
-    
+
     public event Action? OnStateChanged;
-    
+
     public ConfigurationWizardState State => _state;
-    
+
     /// <summary>
     /// Aggiorna lo stato corrente del wizard applicando una funzione di trasformazione.
     /// </summary>
@@ -178,7 +178,7 @@ public class ConfigurationWizardStateService
         _state = updateFunc(_state);
         NotifyStateChanged();
     }
-    
+
     /// <summary>
     /// Reimposta lo stato del wizard ai valori iniziali.
     /// </summary>
@@ -187,7 +187,7 @@ public class ConfigurationWizardStateService
         _state = new ConfigurationWizardState();
         NotifyStateChanged();
     }
-    
+
     /// <summary>
     /// Carica lo stato del wizard per la modalità modifica di una configurazione esistente.
     /// </summary>
@@ -216,7 +216,7 @@ public class ConfigurationWizardStateService
         };
         NotifyStateChanged();
     }
-    
+
     /// <summary>
     /// Notifica ai sottoscrittori che lo stato è cambiato.
     /// </summary>

@@ -398,15 +398,8 @@ group by OP_INDEX, convert(date, DATA_INDEX)
         StateService.UpdateState(s => s.WithoutMapping(index));
     }
     
-    private string GetCronDescription(string? cron) => cron switch
-    {
-        "0 5 * * *" => "Giornaliero 05:00",
-        "0 2 * * *" => "Giornaliero 02:00",
-        "0 */4 * * *" => "Ogni 4 ore",
-        "0 * * * *" => "Ogni ora",
-        "0 0 1 * *" => "Mensile",
-        "0 0 * * 0" => "Domenica",
-        "0 0 * * 1" => "Lunedì",
-        _ => cron ?? "N/A"
-    };
+    /// <summary>
+    /// Converte cron expression in descrizione leggibile.
+    /// </summary>
+    private static string GetCronDescription(string? cron) => CronPresets.GetLabel(cron);
 }

@@ -1,10 +1,10 @@
-using Entities.Helpers;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Utility;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
+using Entities.Helpers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
@@ -39,7 +39,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
             // Crea l'istanza della lavorazione specifica
             var lavorazione = new Z0072370_28AUTProcessor(normalizzatore, gestoreOperatori, elaboratore, configManager);
-            
+
             // Imposta il contesto della lavorazione
             lavorazione.NomeProcedura = context.NomeProcedura;
             lavorazione.IDFaseLavorazione = context.IDFaseLavorazione;

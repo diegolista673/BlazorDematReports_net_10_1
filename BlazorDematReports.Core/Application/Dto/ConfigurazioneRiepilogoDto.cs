@@ -12,7 +12,7 @@
         public DateTime CreatoIl { get; set; }
         public int NumeroFasi { get; set; }
         public int TaskAttivi { get; set; }
-        
+
         // Nuovi campi per dettagli
         public List<string> FasiDettaglio { get; set; } = new();
         public List<string> CronExpressions { get; set; } = new();

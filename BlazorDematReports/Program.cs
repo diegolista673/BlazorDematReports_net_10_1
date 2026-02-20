@@ -1,39 +1,37 @@
 using BlazorDematReports.Application;
 using BlazorDematReports.Components;
 using BlazorDematReports.Components.Dialog;
-using BlazorDematReports.Helpers;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Mapping;
+using BlazorDematReports.Core.DataReading.Infrastructure;
+using BlazorDematReports.Core.DataReading.Interfaces;
+using BlazorDematReports.Core.DataReading.Services;
+using BlazorDematReports.Core.Handlers;
+using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
+using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
+using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
+using BlazorDematReports.Core.Handlers.Registry;
+using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Lavorazioni.Interfaces;
+using BlazorDematReports.Core.Services;
 using BlazorDematReports.Core.Services.DataService;
-using BlazorDematReports.Services.ProcedureEdit;
+using BlazorDematReports.Core.Services.Email;
+using BlazorDematReports.Core.Services.ProcedureEdit;
+using BlazorDematReports.Core.Services.Validation;
+using BlazorDematReports.Core.Services.Wizard;
+using BlazorDematReports.Core.Utility;
+using BlazorDematReports.Core.Utility.Interfaces;
+using BlazorDematReports.Helpers;
+using BlazorDematReports.Services;
+using BlazorDematReports.Services.Authentication;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Hangfire;
-using BlazorDematReports.Core.Utility;
-using BlazorDematReports.Core.Utility.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 using MudBlazor.Services;
 using NLog.Web;
-using BlazorDematReports.Services.Authentication;
-using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
-using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
-using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
-using BlazorDematReports.Core.Handlers.Registry;
-using BlazorDematReports.Core.Handlers;
-using BlazorDematReports.Core.Lavorazioni.Interfaces;
-using BlazorDematReports.Core.DataReading.Infrastructure;
-using BlazorDematReports.Core.DataReading.Services;
-using BlazorDematReports.Core.DataReading.Interfaces;
-using BlazorDematReports.Core.Services.Email;
-using BlazorDematReports.Core.Services;
-using BlazorDematReports.Core.Services.Wizard;
-using BlazorDematReports.Core.Services.Validation;
-using BlazorDematReports.Services;
-using BlazorDematReports.Core.Services.ProcedureEdit;
-
-
 
 /// <summary>
 /// Classe principale dell'applicazione che gestisce la configurazione e l'avvio del sistema.
@@ -54,20 +52,20 @@ public static class Program
         try
         {
             var builder = WebApplication.CreateBuilder(args);
-            
+
             // Carica User Secrets in Development
             if (builder.Environment.IsDevelopment())
             {
                 builder.Configuration.AddUserSecrets(typeof(Program).Assembly);
             }
-            
+
             // In Production, carica variabili ambiente (sovrascrivono appsettings)
             // Esempio: ConnectionStrings__DematReportsContext oppure DEMAT_ConnectionStrings__DematReportsContext
             if (!builder.Environment.IsDevelopment())
             {
                 builder.Configuration.AddEnvironmentVariables();
             }
-            
+
             ConfigureLogging(builder);
             RegisterFramework(builder);
             RegisterLoginSettings(builder);
@@ -143,25 +141,23 @@ public static class Program
             });
         }
 
-        var serviceProvider = builder.Services.BuildServiceProvider();
-        var logger = serviceProvider.GetService<ILoggerFactory>()?.CreateLogger("FluentEmail");
-        logger?.LogInformation("FluentEmail configurato: Host={Host}, Port={Port}, EnableSsl={Ssl}, From={From}", 
+        NLog.LogManager.GetCurrentClassLogger().Info(
+            "FluentEmail configurato: Host={0}, Port={1}, EnableSsl={2}, From={3}",
             smtpHost, smtpPort, enableSsl, defaultFrom);
-        serviceProvider.Dispose();
     }
 
     private static void RegisterLoginSettings(WebApplicationBuilder builder)
     {
         builder.Services.Configure<LoginSettings>(
             builder.Configuration.GetSection("LoginSettings"));
-        
+
         // Configurazione Active Directory
         builder.Services.Configure<ActiveDirectorySettings>(
             builder.Configuration.GetSection("ActiveDirectory"));
-        
+
         // Registrazione servizi di autenticazione
         builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
-        
+
         // Registrazione condizionale del servizio Active Directory
         if (builder.Environment.IsDevelopment())
         {
@@ -228,6 +224,9 @@ public static class Program
 
     private static void RegisterServices(WebApplicationBuilder builder)
     {
+        //Check diagnostico utilizzato solo all'avvio per verificare la connettività e lo stato di Hangfire,
+        //non è un servizio utilizzato direttamente nei job o nelle operazioni quotidiane
+        builder.Services.AddSingleton<IHangfireHealthService, HangfireHealthService>();
         builder.Services.AddSingleton<UiStateService>();
         builder.Services.AddSingleton<ILavorazioniConfigManager, LavorazioniConfigManager>();
 
@@ -235,39 +234,26 @@ public static class Program
         builder.Services.AddScoped<INormalizzatoreOperatori, NormalizzatoreOperatori>();
         builder.Services.AddScoped<IGestoreOperatoriDatiLavorazione, GestoreOperatoriDatiLavorazione>();
         builder.Services.AddScoped<IElaboratoreDatiLavorazione, ElaboratoreDatiLavorazione>();
-        
-        // Configurazione FluentEmail per ServiceMail
-        RegisterFluentEmail(builder);
-        
-        builder.Services.AddScoped<IServiceWrapper, ServiceWrapper>();
-        builder.Services.AddScoped<HangfireHealthService, HangfireHealthService>();
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IPdfExportService, PdfExportService>();
         builder.Services.AddScoped<NotificationDialog>();
-
         builder.Services.AddScoped<IQueryService, QueryService>();
-        builder.Services.AddScoped<IServiceTaskDaEseguire, ServiceTaskDaEseguire>();
-
-        builder.Services.AddScoped<IProductionJobScheduler, ProductionJobScheduler>(); 
-        builder.Services.AddScoped<IHangfireJobService, HangfireJobService>();
+        builder.Services.AddScoped<IProductionJobScheduler, ProductionJobScheduler>();
         builder.Services.AddScoped<IRecurringJobManagerAdapter, HangfireRecurringJobManagerAdapter>();
-
         builder.Services.AddScoped<ProcedureEditStateService>();
-        builder.Services.AddScoped<ProcedureNavigationService>();
         builder.Services.AddScoped<ProcedureValidationService>();
-        
+
         // Servizio validazione SQL (sicurezza SQL injection + test connessioni)
         builder.Services.AddScoped<SqlValidationService>();
 
         // Servizi per Configurazione Fonti Dati
-        builder.Services.AddScoped<ICronSchedulingService, CronSchedulingService>();
         builder.Services.AddScoped<IConfigurazioneDataReaderService, ConfigurazioneDataReaderService>();
         builder.Services.AddScoped<ITaskGenerationService, TaskGenerationService>();
-        
+
         // ? Wizard Multi-Step Configuration Services
         builder.Services.AddScoped<ConfigurationWizardStateService>();
         builder.Services.AddScoped<ConfigurationStepValidator>();
-        
+
         // Registra servizi email
         builder.Services.AddScoped<EmailDailyFlagService>();
         builder.Services.AddTransient<Ader4EmailService>();
@@ -283,17 +269,18 @@ public static class Program
         builder.Services.AddScoped<ILavorazioneHandler, Hera16EwsHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, Ader4Handler>();
 
-
         // Registry unificato (raccoglie ILavorazioneHandler)
         builder.Services.AddScoped<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
-        
+
         // Servizio unificato principale
         builder.Services.AddScoped<IUnifiedHandlerService, UnifiedHandlerService>();
 
-
-
         // Sistema Unificato Configurazione Fonti Dati
         builder.Services.AddScoped<UnifiedDataSourceHandler>();
+
+        // Configurazione FluentEmail per ServiceMail
+        RegisterFluentEmail(builder);
+
     }
 
 
@@ -351,7 +338,9 @@ public static class Program
     {
         var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
         QueryLoggingHelper.Initialize(loggerFactory, "LibraryLavorazioni.SqlQueries", "BlazorDematReports");
-        ProductionJobRunner.ServiceProvider = app.Services; // runner static binding
+
+        //class statica per eseguire i job di produzione, necessita di un IServiceScopeFactory per creare scope nei job
+        ProductionJobRunner.ScopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
     }
 
     private static async Task RunStartupDiagnosticsAsync(WebApplication app, NLog.Logger bootstrapLogger)
@@ -409,7 +398,7 @@ public static class Program
 
     private static void ScheduleSystemJobs()
     {
-        RecurringJob.AddOrUpdate("system:cleanup-orphans", () => CleanupJobsOrfaniSync(), "30 2 * * *");
+        RecurringJob.AddOrUpdate("system:cleanup-orphans",() => CleanupJobsOrfani(), "30 2 * * *");
     }
     #endregion
 
@@ -436,9 +425,6 @@ public static class Program
         }
     }
 
-    /// <summary>
-    /// Versione sincrona della pulizia job orfani per compatibilità con Hangfire.
-    /// </summary>
-    public static void CleanupJobsOrfaniSync() => CleanupJobsOrfani().GetAwaiter().GetResult();
+
     #endregion
 }

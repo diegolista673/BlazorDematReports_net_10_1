@@ -1,5 +1,4 @@
 using BlazorDematReports.Core.Application.Dto;
-using BlazorDematReports.Core.DataReading.Dto;
 using System.Text.Json;
 
 namespace BlazorDematReports.Core.Services.ProcedureEdit;
@@ -12,17 +11,17 @@ public class ProcedureEditStateService : IDisposable
 {
     private ProcedureLavorazioniDto? _originalModel;
     private ProcedureLavorazioniDto? _currentModel;
-    
+
     /// <summary>
     /// Evento scatenato quando cambia lo stato delle modifiche non salvate.
     /// </summary>
     public event EventHandler<bool>? UnsavedChangesChanged;
-    
+
     /// <summary>
     /// Indica se ci sono modifiche non salvate.
     /// </summary>
     public bool HasUnsavedChanges { get; private set; }
-    
+
     /// <summary>
     /// Inizializza lo stato del servizio con il modello specificato.
     /// </summary>
@@ -33,14 +32,15 @@ public class ProcedureEditStateService : IDisposable
         _currentModel = model;
         HasUnsavedChanges = false;
     }
-    
+
     /// <summary>
     /// Rileva se ci sono state modifiche rispetto al modello originale.
     /// </summary>
     public void DetectChanges()
     {
-        if (_originalModel == null || _currentModel == null) return;
-        
+        if (_originalModel == null || _currentModel == null)
+            return;
+
         var hasChanges = !ModelsAreEqual(_originalModel, _currentModel);
         if (hasChanges != HasUnsavedChanges)
         {
@@ -48,7 +48,7 @@ public class ProcedureEditStateService : IDisposable
             UnsavedChangesChanged?.Invoke(this, HasUnsavedChanges);
         }
     }
-    
+
     /// <summary>
     /// Marca lo stato corrente come salvato, aggiornando il modello di riferimento.
     /// </summary>
@@ -61,7 +61,7 @@ public class ProcedureEditStateService : IDisposable
         HasUnsavedChanges = false;
         UnsavedChangesChanged?.Invoke(this, false);
     }
-    
+
     /// <summary>
     /// Ripristina il modello corrente ai valori originali.
     /// </summary>
@@ -74,7 +74,7 @@ public class ProcedureEditStateService : IDisposable
             UnsavedChangesChanged?.Invoke(this, false);
         }
     }
-    
+
     /// <summary>
     /// Crea una copia profonda del modello utilizzando la serializzazione JSON.
     /// </summary>
@@ -89,7 +89,7 @@ public class ProcedureEditStateService : IDisposable
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             };
-            
+
             var json = JsonSerializer.Serialize(model, options);
             return JsonSerializer.Deserialize<ProcedureLavorazioniDto>(json, options) ?? new();
         }
@@ -111,7 +111,7 @@ public class ProcedureEditStateService : IDisposable
             };
         }
     }
-    
+
     /// <summary>
     /// Confronta due modelli per determinare se sono uguali.
     /// </summary>
@@ -126,7 +126,7 @@ public class ProcedureEditStateService : IDisposable
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             };
-            
+
             var json1 = JsonSerializer.Serialize(model1, options);
             var json2 = JsonSerializer.Serialize(model2, options);
             return json1 == json2;
@@ -141,7 +141,7 @@ public class ProcedureEditStateService : IDisposable
                    model1.LogoBase64 == model2.LogoBase64;
         }
     }
-    
+
     /// <summary>
     /// Copia i valori dal modello sorgente al modello target.
     /// </summary>
@@ -155,19 +155,19 @@ public class ProcedureEditStateService : IDisposable
         target.Centro = source.Centro;
         target.Idcentro = source.Idcentro;
         target.DataInserimento = source.DataInserimento;
-        
+
         // Copia anche le collezioni se necessario
         if (source.LavorazioniFasiDataReadingsDto != null)
         {
             target.LavorazioniFasiDataReadingsDto = source.LavorazioniFasiDataReadingsDto.ToList();
         }
-        
+
         if (source.QueryProcedureLavorazioniDto != null)
         {
             target.QueryProcedureLavorazioniDto = source.QueryProcedureLavorazioniDto.ToList();
         }
     }
-    
+
     /// <summary>
     /// Libera le risorse utilizzate dal servizio.
     /// </summary>

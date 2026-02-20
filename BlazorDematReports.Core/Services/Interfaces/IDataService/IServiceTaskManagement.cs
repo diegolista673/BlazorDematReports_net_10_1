@@ -11,7 +11,7 @@ namespace BlazorDematReports.Core.Interfaces.IDataService
         Task<bool> ToggleMappingTasksAsync(int idFaseCentro, bool enabled);
         Task<bool> DeleteTaskAsync(int idTask);
         Task<string> GetActiveQueryForMappingAsync(int idFaseCentro);
-        
+
         Task<ConfigurazioneTaskEditDto?> GetTaskForEditAsync(int idFaseCentro);
         Task<bool> UpdateTaskConfigurationAsync(ConfigurazioneTaskEditDto taskDto);
         Task<bool> ValidateUniqueTaskAsync(int idConfigurazione, int idFase, string cron, int? excludeIdFaseCentro = null);

@@ -7,10 +7,10 @@ using ClosedXML.Excel;
 using Entities.Helpers;
 using Entities.Models;
 using Entities.Models.DbApplication;
-using Microsoft.Extensions.Logging;
 using FastMember;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Globalization;
 
@@ -28,7 +28,7 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceProduzioneOperatori(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneOperatori> logger) 
+        public ServiceProduzioneOperatori(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneOperatori> logger)
             : base(contextFactory, logger, mapper, configUser)
         {
         }
@@ -250,7 +250,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 // Aggiunta degli esiti di lettura dati
                 return await AddEsitoReportProduzioneCompleta(lstReportProduzioneCompleta, startDataLavorazione, endDataLavorazione);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -332,8 +332,8 @@ namespace BlazorDematReports.Core.Services.DataService
                 .GroupBy(x => new
                 {
                     DataInizio = x.DataInizioLavorazione.Date,
-                    IdLavorazione = (int)x.IdLavorazione,
-                    IdFase = (int)x.IdFase,
+                    IdLavorazione = x.IdLavorazione,
+                    IdFase = x.IdFase,
                     Lavorazione = x.Lavorazione  // Includiamo anche Lavorazione nella chiave
                 })
                 .ToDictionary(
@@ -496,7 +496,7 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <inheritdoc/>
-        public async Task<List<ReportAnniSistema>> GetReportLast5YearsAsync(int IdProceduraLavorazione,int IdCentro)
+        public async Task<List<ReportAnniSistema>> GetReportLast5YearsAsync(int IdProceduraLavorazione, int IdCentro)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
@@ -597,7 +597,7 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <param name="IDProceduraLavorazione"></param>
         /// <param name="IDCentro"></param>
         /// <returns></returns>
-        public async Task<List<ReportOreDocumenti>> GetReportProduzioneOreDocumentiAsync(int anno,int IDProceduraLavorazione,int IDCentro)
+        public async Task<List<ReportOreDocumenti>> GetReportProduzioneOreDocumentiAsync(int anno, int IDProceduraLavorazione, int IDCentro)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
@@ -745,7 +745,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 {
                     table1.Load(reader);
                 }
-                
+
             }
 
 
@@ -757,7 +757,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 {
                     table2.Load(reader);
                 }
-                
+
             }
 
 

@@ -1,17 +1,16 @@
 @page "/procedure-lavorazioni/edit/{IdProcedura:int}"
-@page "/procedure-lavorazioni/edit/{IdProcedura:int}/{ActiveTab}"
 @using BlazorDematReports.Core.Services.ProcedureEdit
-@using BlazorDematReports.Services.ProcedureEdit
+
 
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageEditProcedura,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject ProcedureEditStateService StateService
-@inject ProcedureNavigationService NavigationService
+
 @inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
 @inject NavigationManager NavManager
 @inject IDialogService DialogService
 @inject IUnifiedHandlerRegistry HandlerRegistry
-@inject IDbContextFactory<DematReportsContext> DbFactory
+
 
 <PageTitle>@GetPageTitle()</PageTitle>
 
@@ -207,7 +206,6 @@
     private bool _isProcessing = false;
     private List<BreadcrumbItem> _breadcrumbItems = new();
     private int _configurazioniCount = 0;
-    private int _fasiCount = 0;
     private List<ConfigurazioneFontiDati> _configurazioni = new();
 
 
@@ -230,10 +228,7 @@
     {
         try
         {
-            var loadFasiTask = Task.Run(async () => 
-                ListFasiLavorazione = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync());
-
-            await Task.WhenAll(loadFasiTask);
+            ListFasiLavorazione = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
 
             Logger?.LogInformation("LoadDataAsync data loaded successfully");
         }
@@ -257,7 +252,7 @@
                 SetEditContext();
 
                 // Carica contatore configurazioni
-                await LoadConfigurazioniCountAsync();
+                await LoadConfigurazioniAsync();
 
                 Logger?.LogInformation("Loaded procedure {ProcedureId}: {ProcedureName}", 
                     IdProcedura, Model.NomeProcedura);
@@ -278,60 +273,17 @@
         }
     }
 
-    /// <summary>
-    /// Verifica se la procedura ha un handler implementato (query integrata disponibile).
-    /// </summary>
-    private bool HasIntegratedQuery
-    {
-        get
-        {
-            if (Model == null || string.IsNullOrWhiteSpace(Model.NomeProcedura))
-                return false;
 
-            // Verifica se esiste un handler registrato per questa procedura
-            return HandlerRegistry.IsRegistered(Model.NomeProcedura);
-        }
-    }
-
-    /// <summary>
-    /// Restituisce la classe CSS per la floating action bar in base allo stato.
-    /// </summary>
-    private string GetFloatingBarClass()
-    {
-        var baseClass = "floating-action-bar pa-3";
-        return StateService.HasUnsavedChanges
-            ? $"{baseClass} has-changes"
-            : $"{baseClass} saved";
-    }
 
 
     private async Task LoadConfigurazioniAsync()
     {
-        try
-        {
-            await using var context = await DbFactory!.CreateDbContextAsync();
-            _configurazioni = await context.ConfigurazioneFontiDatis
-                .Include(c => c.ConfigurazioneFaseCentros)
-                .Where(c => c.ConfigurazioneFaseCentros.Any(fc => 
-                           fc.FlagAttiva && 
-                           fc.IdProceduraLavorazione == IdProcedura))
-                .OrderBy(c => c.CodiceConfigurazione)
-                .ToListAsync();
-            
-            _configurazioniCount = _configurazioni.Count;
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogWarning(ex, "Error loading configurations");
-            _configurazioni = new();
-            _configurazioniCount = 0;
-        }
+        _configurazioni = await ServiceWrapper!.ServiceConfigurazioneFontiDati
+            .GetConfigurazioniByProceduraAsync(IdProcedura);
+        _configurazioniCount = _configurazioni.Count;
     }
 
-    private async Task LoadConfigurazioniCountAsync()
-    {
-        await LoadConfigurazioniAsync();
-    }
+
     
     private Color GetTipoColor(string tipo) => tipo switch
     {
@@ -342,14 +294,7 @@
         _ => Color.Default
     };
     
-    private async Task HandleTasksCreatedAsync()
-    {
-        // Ricarica contatore dopo creazione task
-        await LoadConfigurazioniCountAsync();
-        // Ricarica anche il model per aggiornare i KPI
-        await LoadProceduraAsync();
-        StateHasChanged();
-    }
+
     
     private async Task HandleModelChangedAsync()
     {
@@ -439,5 +384,6 @@
     public void Dispose()
     {
         StateService.UnsavedChangesChanged -= OnUnsavedChangesChanged;
+        base.Dispose();  
     }
 }

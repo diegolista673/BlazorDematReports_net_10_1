@@ -1,6 +1,6 @@
-using System.ComponentModel;
-using Entities.Enums;
 using Entities.Converters;
+using Entities.Enums;
+using System.ComponentModel;
 
 namespace BlazorDematReports.Helpers;
 
@@ -16,7 +16,8 @@ public static class TipoFonteDataHelper
     public static string GetDescription(this TipoFonteData tipoFonte)
     {
         var fieldInfo = tipoFonte.GetType().GetField(tipoFonte.ToString());
-        if (fieldInfo == null) return tipoFonte.ToString();
+        if (fieldInfo == null)
+            return tipoFonte.ToString();
 
         var attributes = (DescriptionAttribute[])fieldInfo.GetCustomAttributes(typeof(DescriptionAttribute), false);
         return attributes.Length > 0 ? attributes[0].Description : tipoFonte.ToString();

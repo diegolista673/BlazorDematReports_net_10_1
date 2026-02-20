@@ -52,7 +52,7 @@ public class ActiveDirectoryService : IActiveDirectoryService
         {
             // Definiamo il contesto del dominio
             using var context = new PrincipalContext(ContextType.Domain, _settings.Domain);
-            
+
             // Validazione DIRETTA delle credenziali dell'utente
             // Questo metodo effettua internamente il bind LDAP necessario
             bool isValid = context.ValidateCredentials(username, password);
@@ -62,7 +62,7 @@ public class ActiveDirectoryService : IActiveDirectoryService
                 _logger.LogWarning("Credenziali non valide o account bloccato per: {Username}", username);
                 return false;
             }
-            
+
             _logger.LogInformation("Autenticazione AD riuscita per: {Username}", username);
             return true;
         }

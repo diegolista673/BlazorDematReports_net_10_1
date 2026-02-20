@@ -15,7 +15,8 @@ namespace BlazorDematReports.Core.DataReading.Interfaces
         /// <param name="queryString">Query SQL da eseguire.</param>
         /// <param name="startDate">Data di inizio per il filtro della query.</param>
         /// <param name="endDate">Data di fine per il filtro della query.</param>
+        /// <param name="cancellationToken">Token per la cancellazione dell'operazione.</param>
         /// <returns>Oggetto DataTable con i risultati della query.</returns>
-        Task<DataTable> ExecuteQueryAsync(string connectionString, string queryString, DateTime startDate, DateTime endDate);
+        Task<DataTable> ExecuteQueryAsync(string connectionString, string queryString, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
     }
 }

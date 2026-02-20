@@ -18,12 +18,12 @@ namespace BlazorDematReports.Core.Application.Mapping
             CreateMap<ReportDocumenti, ConfigReportDocumenti>();
 
             CreateMap<ReportProduzioneCompleta, ReportProduzioneCompleta>()
-                    .ForMember(dest => dest.TempoLavOreCent, opt => opt.Condition(src => (src.TempoLavOreCent > 0)))
-                    .ForMember(dest => dest.Documenti, opt => opt.Condition(src => (src.Documenti > 0)))
-                    .ForMember(dest => dest.Fogli, opt => opt.Condition(src => (src.Fogli > 0)))
-                    .ForMember(dest => dest.Pagine, opt => opt.Condition(src => (src.Pagine > 0)))
-                    .ForMember(dest => dest.PagineSenzaBianco, opt => opt.Condition(src => (src.PagineSenzaBianco > 0)))
-                    .ForMember(dest => dest.Scarti, opt => opt.Condition(src => (src.Scarti > 0)));
+                    .ForMember(dest => dest.TempoLavOreCent, opt => opt.Condition(src => src.TempoLavOreCent > 0))
+                    .ForMember(dest => dest.Documenti, opt => opt.Condition(src => src.Documenti > 0))
+                    .ForMember(dest => dest.Fogli, opt => opt.Condition(src => src.Fogli > 0))
+                    .ForMember(dest => dest.Pagine, opt => opt.Condition(src => src.Pagine > 0))
+                    .ForMember(dest => dest.PagineSenzaBianco, opt => opt.Condition(src => src.PagineSenzaBianco > 0))
+                    .ForMember(dest => dest.Scarti, opt => opt.Condition(src => src.Scarti > 0));
         }
     }
 }

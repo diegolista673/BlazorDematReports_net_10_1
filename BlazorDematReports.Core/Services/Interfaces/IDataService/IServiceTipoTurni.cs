@@ -1,5 +1,4 @@
-﻿using BlazorDematReports.Core.Interfaces.IDataService;
-using Entities.Models.DbApplication;
+﻿using Entities.Models.DbApplication;
 
 namespace BlazorDematReports.Core.Interfaces.IDataService
 {

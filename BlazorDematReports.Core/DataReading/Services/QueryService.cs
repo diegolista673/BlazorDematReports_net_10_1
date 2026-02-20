@@ -30,9 +30,10 @@ namespace BlazorDematReports.Core.DataReading.Services
         /// <param name="queryString">Query SQL da eseguire.</param>
         /// <param name="startDate">Data di inizio per il filtro della query.</param>
         /// <param name="endDate">Data di fine per il filtro della query.</param>
+        /// <param name="cancellationToken">Token per la cancellazione dell'operazione.</param>
         /// <returns>Oggetto DataTable con i risultati della query.</returns>
         /// <exception cref="SqlException">Errore nell'esecuzione della query SQL.</exception>
-        public async Task<DataTable> ExecuteQueryAsync(string connectionString, string queryString, DateTime startDate, DateTime endDate)
+        public async Task<DataTable> ExecuteQueryAsync(string connectionString, string queryString, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
             QueryLoggingHelper.LogQueryExecution(_logger);
 
@@ -40,17 +41,17 @@ namespace BlazorDematReports.Core.DataReading.Services
             try
             {
                 using var connection = new SqlConnection(connectionString);
-                await connection.OpenAsync();
+                await connection.OpenAsync(cancellationToken);
                 using var command = new SqlCommand(queryString, connection);
-                command.CommandTimeout = 30;
-                
+                command.CommandTimeout = 60;
+
                 var startDateParam = command.Parameters.Add("@startDate", SqlDbType.DateTime2);
                 startDateParam.Value = startDate;
-                
+
                 var endDateParam = command.Parameters.Add("@endDate", SqlDbType.DateTime2);
                 endDateParam.Value = endDate;
 
-                using var reader = await command.ExecuteReaderAsync();
+                using var reader = await command.ExecuteReaderAsync(cancellationToken);
                 table.Load(reader);
             }
             catch (SqlException ex)

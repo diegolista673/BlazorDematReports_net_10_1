@@ -30,9 +30,9 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <param name="fluentEmail">Servizio FluentEmail per invio email.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
         public ServiceMail(
-            IMapper mapper, 
-            ConfigUser configUser, 
-            IDbContextFactory<DematReportsContext> contextFactory, 
+            IMapper mapper,
+            ConfigUser configUser,
+            IDbContextFactory<DematReportsContext> contextFactory,
             IFluentEmail fluentEmail,
             ILogger<ServiceMail> logger)
         {
@@ -54,7 +54,7 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
-                
+
                 var count = await MailConfigurationQuery(context)
                     .CountAsync();
 
@@ -79,10 +79,10 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
-                
+
                 var count = await MailConfigurationQuery(context)
-                    .Where(c => c.ConfigurazioneFaseCentros.Any(fc => 
-                           fc.FlagAttiva == true && 
+                    .Where(c => c.ConfigurazioneFaseCentros.Any(fc =>
+                           fc.FlagAttiva == true &&
                            fc.IdProceduraLavorazione == idProceduraLavorazione))
                     .CountAsync();
 
@@ -106,7 +106,7 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
-                
+
                 return await MailConfigurationQuery(context)
                     .Include(c => c.ConfigurazioneFaseCentros.Where(fc => fc.FlagAttiva == true))
                         .ThenInclude(fc => fc.IdProceduraLavorazioneNavigation.NomeProcedura)
@@ -135,11 +135,11 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
-                
+
                 return await MailConfigurationQuery(context)
-                    .Where(c => c.ConfigurazioneFaseCentros.Any(fc => 
+                    .Where(c => c.ConfigurazioneFaseCentros.Any(fc =>
                         fc.FlagAttiva == true && fc.IdProceduraLavorazione == idProceduraLavorazione))
-                    .Include(c => c.ConfigurazioneFaseCentros.Where(fc => 
+                    .Include(c => c.ConfigurazioneFaseCentros.Where(fc =>
                         fc.FlagAttiva == true && fc.IdProceduraLavorazione == idProceduraLavorazione))
                         .ThenInclude(fc => fc.IdFaseLavorazioneNavigation.FaseLavorazione)
                     .OrderBy(c => c.HandlerClassName)
@@ -170,7 +170,7 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 logger.LogInformation("Invio email a {To} con oggetto: {Subject}", to, subject);
-                
+
                 var response = await fluentEmail
                     .To(to)
                     .Subject(subject)
@@ -209,7 +209,7 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 logger.LogInformation("Invio email da {From} a {To} con oggetto: {Subject}", from, to, subject);
-                
+
                 var response = await fluentEmail
                     .SetFrom(from)
                     .To(to, toName)

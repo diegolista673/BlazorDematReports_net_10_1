@@ -1,6 +1,6 @@
-﻿using Entities.Helpers;
-using BlazorDematReports.Core.Utility.Interfaces;
+﻿using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
+using Entities.Helpers;
 using Microsoft.Data.SqlClient;
 using NLog;
 using System.Data;

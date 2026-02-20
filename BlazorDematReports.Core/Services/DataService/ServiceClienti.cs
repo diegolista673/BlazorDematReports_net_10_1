@@ -1,11 +1,11 @@
 ﻿using AutoMapper;
+using BlazorDematReports.Core.Application;
+using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
-using BlazorDematReports.Core.Application;
 using Microsoft.Extensions.Logging;
-using BlazorDematReports.Core.Application.Dto;
-using BlazorDematReports.Core.Interfaces.IDataService;
 
 namespace BlazorDematReports.Core.Services.DataService
 {

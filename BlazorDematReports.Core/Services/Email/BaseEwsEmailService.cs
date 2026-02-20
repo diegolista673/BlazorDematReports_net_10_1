@@ -132,7 +132,7 @@ namespace BlazorDematReports.Core.Services.Email
                 try
                 {
                     var result = await ProcessSingleEmailAsync(emailMessage, ct);
-                    
+
                     if (result.Success)
                     {
                         successfulEmails.Add(result);
@@ -207,7 +207,7 @@ namespace BlazorDematReports.Core.Services.Email
         /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Risultato elaborazione email.</returns>
         protected virtual async System.Threading.Tasks.Task<EmailProcessingResult> ProcessSingleEmailAsync(
-            EmailMessage emailMessage, 
+            EmailMessage emailMessage,
             CancellationToken ct)
         {
             // Load full email properties
@@ -290,7 +290,7 @@ namespace BlazorDematReports.Core.Services.Email
         /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Informazioni allegato scaricato.</returns>
         protected virtual async System.Threading.Tasks.Task<AttachmentInfo> DownloadAttachmentAsync(
-            FileAttachment fileAttachment, 
+            FileAttachment fileAttachment,
             CancellationToken ct)
         {
             var fileName = fileAttachment.Name;
@@ -350,8 +350,8 @@ namespace BlazorDematReports.Core.Services.Email
         /// <param name="metadata">Metadata estratti da email.</param>
         /// <param name="ct">Token di cancellazione.</param>
         protected virtual System.Threading.Tasks.Task ProcessAttachmentAsync(
-            AttachmentInfo attachment, 
-            Dictionary<string, string> metadata, 
+            AttachmentInfo attachment,
+            Dictionary<string, string> metadata,
             CancellationToken ct)
         {
             _logger.LogDebug("ProcessAttachmentAsync chiamato (no override implementation)");
@@ -370,8 +370,8 @@ namespace BlazorDematReports.Core.Services.Email
         /// <param name="hasHeader">Indica se CSV ha riga header (default: true).</param>
         /// <returns>DataTable con dati CSV.</returns>
         protected virtual DataTable ReadCsvFile(
-            string csvFilePath, 
-            char delimiter = ';', 
+            string csvFilePath,
+            char delimiter = ';',
             bool hasHeader = true)
         {
             _logger.LogDebug("Lettura file CSV: {FilePath}, Delimiter={Delimiter}", csvFilePath, delimiter);
@@ -452,9 +452,9 @@ namespace BlazorDematReports.Core.Services.Email
         /// Estrae singolo campo metadata da body text.
         /// </summary>
         protected void ExtractMetadataField(
-            string bodyText, 
-            string searchPattern, 
-            Dictionary<string, string> metadata, 
+            string bodyText,
+            string searchPattern,
+            Dictionary<string, string> metadata,
             string metadataKey)
         {
             if (string.IsNullOrWhiteSpace(bodyText) || string.IsNullOrWhiteSpace(searchPattern))
@@ -528,8 +528,8 @@ namespace BlazorDematReports.Core.Services.Email
                     File.Delete(zipFilePath);
                 }
 
-                await System.Threading.Tasks.Task.Run(() => 
-                    ZipFile.CreateFromDirectory(_config.LocalAttachmentPath, zipFilePath), 
+                await System.Threading.Tasks.Task.Run(() =>
+                    ZipFile.CreateFromDirectory(_config.LocalAttachmentPath, zipFilePath),
                     ct
                 );
 

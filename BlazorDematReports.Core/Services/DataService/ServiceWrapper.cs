@@ -1,11 +1,10 @@
 ﻿using AutoMapper;
-using BlazorDematReports.Core.Interfaces.IDataService;
-using BlazorDematReports.Core.DataReading.Dto;
+using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.DataReading.Infrastructure;
+using BlazorDematReports.Core.Interfaces.IDataService;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using BlazorDematReports.Core.Application;
 
 namespace BlazorDematReports.Core.Services.DataService
 {
@@ -60,9 +59,9 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <param name="fluentEmail">Servizio FluentEmail per invio email.</param>
         /// <param name="productionScheduler">Scheduler per la gestione dei job Hangfire di produzione.</param>
         public ServiceWrapper(
-            IMapper mapper, 
-            ConfigUser configUser, 
-            IDbContextFactory<DematReportsContext> contextFactory, 
+            IMapper mapper,
+            ConfigUser configUser,
+            IDbContextFactory<DematReportsContext> contextFactory,
             ILoggerFactory loggerFactory,
             FluentEmail.Core.IFluentEmail fluentEmail,
             IProductionJobScheduler productionScheduler)

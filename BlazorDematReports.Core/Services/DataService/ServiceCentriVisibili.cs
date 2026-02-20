@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
+using BlazorDematReports.Core.Application;
+using BlazorDematReports.Core.Interfaces.IDataService;
+using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
-using Entities.Helpers;
-using BlazorDematReports.Core.Application;
 using Microsoft.Extensions.Logging;
-using BlazorDematReports.Core.Interfaces.IDataService;
 
 namespace BlazorDematReports.Core.Services.DataService
 {
@@ -52,7 +52,7 @@ namespace BlazorDematReports.Core.Services.DataService
                     CentriVisibili centriVisibili = new CentriVisibili();
                     centriVisibili.IdOperatore = opi.Idoperatore;
                     centriVisibili.IdCentro = i;
-                    centriVisibili.FlagVisibile = (opi.Idcentro == i);
+                    centriVisibili.FlagVisibile = opi.Idcentro == i;
                     context.CentriVisibilis.Add(centriVisibili);
                 }
             }

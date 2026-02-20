@@ -1,13 +1,12 @@
 ﻿using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Interfaces.IDataService;
-using Entities.Converters;
+using BlazorDematReports.Core.Services.DataService.Queries;
 using Entities.Enums;
 using Entities.Models.DbApplication;
-using Microsoft.EntityFrameworkCore;
 using Hangfire;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using BlazorDematReports.Core.Services.DataService.Queries;
 
 namespace BlazorDematReports.Core.Services.DataService
 {
@@ -37,7 +36,8 @@ namespace BlazorDematReports.Core.Services.DataService
                 .GetConfigurazioneWithMappings()
                 .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
 
-            if (configDto == null) return null;
+            if (configDto == null)
+                return null;
 
             var result = new ConfigurazioneTaskDetailDto
             {
@@ -225,7 +225,8 @@ namespace BlazorDematReports.Core.Services.DataService
                 .Include(fc => fc.IdConfigurazioneNavigation)
                 .FirstOrDefaultAsync(fc => fc.IdFaseCentro == idFaseCentro);
 
-            if (mapping == null) return null;
+            if (mapping == null)
+                return null;
 
             return new ConfigurazioneTaskEditDto
             {
@@ -251,7 +252,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             if (!taskDto.IsValid())
             {
-                _logger.LogWarning("Task configuration non valida per IdFaseCentro {Id}: {Desc}", 
+                _logger.LogWarning("Task configuration non valida per IdFaseCentro {Id}: {Desc}",
                     taskDto.IdFaseCentro, taskDto.GetDescription());
                 return false;
             }
@@ -272,17 +273,17 @@ namespace BlazorDematReports.Core.Services.DataService
 
                 // Validazione duplicati (Fase + Cron)
                 var isUnique = await ValidateUniqueTaskAsync(
-                    taskDto.IdConfigurazione, 
-                    taskDto.IdFaseLavorazione, 
-                    taskDto.CronExpression, 
+                    taskDto.IdConfigurazione,
+                    taskDto.IdFaseLavorazione,
+                    taskDto.CronExpression,
                     taskDto.IdFaseCentro);
 
                 if (!isUnique)
                 {
                     _logger.LogWarning(
-                        "Task duplicato rilevato: Config={Config} Fase={Fase} Cron={Cron}", 
-                        taskDto.IdConfigurazione, 
-                        taskDto.IdFaseLavorazione, 
+                        "Task duplicato rilevato: Config={Config} Fase={Fase} Cron={Cron}",
+                        taskDto.IdConfigurazione,
+                        taskDto.IdFaseLavorazione,
                         taskDto.CronExpression);
                     return false;
                 }
@@ -310,7 +311,7 @@ namespace BlazorDematReports.Core.Services.DataService
                         hangfireTask.IdTaskHangFire,
                         () => Console.WriteLine($"Task {taskDto.IdFaseCentro} execution placeholder"),
                         taskDto.CronExpression);
-                    
+
                     _logger.LogInformation(
                         "Recurring job Hangfire aggiornato: JobId={JobId} CRON={Cron}",
                         hangfireTask.IdTaskHangFire,
@@ -338,15 +339,15 @@ namespace BlazorDematReports.Core.Services.DataService
         /// Valida che non esista un task duplicato (stessa Fase + stesso CRON)
         /// </summary>
         public async Task<bool> ValidateUniqueTaskAsync(
-            int idConfigurazione, 
-            int idFase, 
-            string cron, 
+            int idConfigurazione,
+            int idFase,
+            string cron,
             int? excludeIdFaseCentro = null)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
             var query = context.ConfigurazioneFaseCentros
-                .Where(fc => 
+                .Where(fc =>
                     fc.IdConfigurazione == idConfigurazione &&
                     fc.IdFaseLavorazione == idFase &&
                     fc.CronExpression == cron);

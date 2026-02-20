@@ -3,7 +3,7 @@ using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace  BlazorDematReports.Core.Services.Email
+namespace BlazorDematReports.Core.Services.Email
 {
     /// <summary>
     /// Servizio per gestione flag elaborazione email giornaliera.
@@ -31,7 +31,7 @@ namespace  BlazorDematReports.Core.Services.Email
         /// <param name="ct">Token cancellazione.</param>
         /// <returns>True se questo task ha acquisito il lock (primo oggi), false altrimenti.</returns>
         public async System.Threading.Tasks.Task<bool> TryMarkAsProcessingAsync(
-            string codiceServizio, 
+            string codiceServizio,
             string nomeTask,
             CancellationToken ct = default)
         {
@@ -44,9 +44,9 @@ namespace  BlazorDematReports.Core.Services.Email
 
                     // Cerca flag esistente per oggi
                     var flag = await context.ElaborazioneEmailGiornalieras
-                        .FirstOrDefaultAsync(f => 
-                            f.CodiceServizio == codiceServizio && 
-                            f.DataElaborazione == oggi, 
+                        .FirstOrDefaultAsync(f =>
+                            f.CodiceServizio == codiceServizio &&
+                            f.DataElaborazione == oggi,
                             ct);
 
                     if (flag != null && flag.Elaborata)
@@ -135,10 +135,10 @@ namespace  BlazorDematReports.Core.Services.Email
             var oggi = DateOnly.FromDateTime(DateTime.Today);
 
             return await context.ElaborazioneEmailGiornalieras
-                .AnyAsync(f => 
-                    f.CodiceServizio == codiceServizio && 
-                    f.DataElaborazione == oggi && 
-                    f.Elaborata, 
+                .AnyAsync(f =>
+                    f.CodiceServizio == codiceServizio &&
+                    f.DataElaborazione == oggi &&
+                    f.Elaborata,
                     ct);
         }
 
@@ -148,16 +148,16 @@ namespace  BlazorDematReports.Core.Services.Email
         /// <param name="codiceServizio">Codice servizio email.</param>
         /// <param name="ct">Token cancellazione.</param>
         public async System.Threading.Tasks.Task ResetFlagAsync(
-            string codiceServizio, 
+            string codiceServizio,
             CancellationToken ct = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(ct);
             var oggi = DateOnly.FromDateTime(DateTime.Today);
 
             var flag = await context.ElaborazioneEmailGiornalieras
-                .FirstOrDefaultAsync(f => 
-                    f.CodiceServizio == codiceServizio && 
-                    f.DataElaborazione == oggi, 
+                .FirstOrDefaultAsync(f =>
+                    f.CodiceServizio == codiceServizio &&
+                    f.DataElaborazione == oggi,
                     ct);
 
             if (flag != null)

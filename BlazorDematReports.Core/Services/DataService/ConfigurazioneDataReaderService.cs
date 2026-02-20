@@ -50,7 +50,7 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
-                
+
                 var fasi = await context.LavorazioniFasiDataReadings
                     .Where(l => l.IdProceduraLavorazione == idProcedura)
                     .Select(l => l.IdFaseLavorazioneNavigation)
@@ -72,7 +72,7 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
-                
+
                 return await context.ConfigurazioneFontiDatis
                     .Include(c => c.ConfigurazioneFaseCentros)
                     .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
@@ -106,7 +106,7 @@ namespace BlazorDematReports.Core.Services.DataService
             try
             {
                 await using var context = await contextFactory.CreateDbContextAsync();
-                
+
                 // Otteniamo il centro dalla procedura
                 var procedura = await context.ProcedureLavorazionis
                     .Where(p => p.IdproceduraLavorazione == idProcedura)
@@ -117,7 +117,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 {
                     var centro = await context.CentriLavoraziones
                         .FirstOrDefaultAsync(c => c.Idcentro == procedura);
-                    
+
                     if (centro != null)
                         return new List<CentriLavorazione> { centro };
                 }

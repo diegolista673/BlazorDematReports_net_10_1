@@ -1,5 +1,5 @@
-﻿using Entities.Models.DbApplication;
-using BlazorDematReports.Core.Utility.Interfaces;
+﻿using BlazorDematReports.Core.Utility.Interfaces;
+using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;

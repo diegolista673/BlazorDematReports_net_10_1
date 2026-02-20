@@ -1,12 +1,12 @@
-using Entities.Helpers;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Utility;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
+using Entities.Helpers;
 using Microsoft.Extensions.DependencyInjection;
-using NLog;
+using Microsoft.Extensions.Logging;
 using Oracle.ManagedDataAccess.Client;
 
 namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
@@ -36,10 +36,11 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             var gestoreOperatori = context.ServiceProvider.GetRequiredService<IGestoreOperatoriDatiLavorazione>();
             var elaboratore = context.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
             var configManager = context.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
+            var loggerFactory = context.ServiceProvider.GetRequiredService<ILoggerFactory>();
 
             // Crea l'istanza della lavorazione specifica
-            var lavorazione = new PRATICHE_SUCCESSIONEProcessor(normalizzatore, gestoreOperatori, elaboratore, configManager);
-            
+            var lavorazione = new PRATICHE_SUCCESSIONEProcessor(normalizzatore, gestoreOperatori, elaboratore, configManager, loggerFactory.CreateLogger<PRATICHE_SUCCESSIONEProcessor>());
+
             // Imposta il contesto della lavorazione
             lavorazione.NomeProcedura = context.NomeProcedura;
             lavorazione.IDFaseLavorazione = context.IDFaseLavorazione;
@@ -60,7 +61,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     internal sealed class PRATICHE_SUCCESSIONEProcessor : BaseLavorazione
     {
-        private readonly Logger _logger;
+        private readonly ILogger<PRATICHE_SUCCESSIONEProcessor> _logger;
         private readonly ILavorazioniConfigManager _lavorazioniConfigManager;
 
         /// <summary>
@@ -74,11 +75,12 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             INormalizzatoreOperatori normalizzatoreOperatori,
             IGestoreOperatoriDatiLavorazione gestoreOperatoriDati,
             IElaboratoreDatiLavorazione elaboratoreDati,
-            ILavorazioniConfigManager lavorazioniConfigManager
+            ILavorazioniConfigManager lavorazioniConfigManager,
+            ILogger<PRATICHE_SUCCESSIONEProcessor> logger
         ) : base(normalizzatoreOperatori, gestoreOperatoriDati, elaboratoreDati)
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
-            _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
+            _logger = logger;
         }
 
         /// <summary>
@@ -88,13 +90,13 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalla fonte dati.</returns>
         public override async Task<List<DatiLavorazione>> SetDatiDematAsync()
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "bp_pratichesucc_s");
+            QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
             var result = new List<DatiLavorazione>();
             var startData = StartDataLavorazione.ToString("yyyyMMdd");
             var endData = EndDataLavorazione?.ToString("yyyyMMdd") ?? startData;
 
-            _logger.Info($"[PRATICHE_SUCCESSIONE] Elaborazione dati per IDFaseLavorazione: {IDFaseLavorazione}, Periodo: {startData} - {endData}");
+            _logger.LogInformation("[PRATICHE_SUCCESSIONE] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start} - {End}", IDFaseLavorazione, startData, endData);
 
             if (IDFaseLavorazione == 4)
             {
@@ -130,10 +132,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             }
             else
             {
-                _logger.Warn($"[PRATICHE_SUCCESSIONE] IDFaseLavorazione {IDFaseLavorazione} non gestito");
+                _logger.LogWarning("[PRATICHE_SUCCESSIONE] IDFaseLavorazione {IdFase} non gestito", IDFaseLavorazione);
             }
 
-            _logger.Info($"[PRATICHE_SUCCESSIONE] Elaborazione completata. Record ottenuti: {result.Count}");
+            _logger.LogInformation("[PRATICHE_SUCCESSIONE] Elaborazione completata. Record ottenuti: {Count}", result.Count);
 
             return result;
         }
@@ -147,7 +149,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
         private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", additionalInfo: $"Parametri: startData={startData}, endData={endData}");
+            QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
             var result = new List<DatiLavorazione>();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -164,7 +166,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                 cmd.Parameters.Add("startData", startData);
                 cmd.Parameters.Add("endData", endData);
 
-                _logger.Debug($"[PRATICHE_SUCCESSIONE] Esecuzione query Oracle con timeout: {cmd.CommandTimeout}s");
+                _logger.LogDebug("[PRATICHE_SUCCESSIONE] Esecuzione query Oracle con timeout: {Timeout}s", cmd.CommandTimeout);
 
                 await using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
@@ -184,24 +186,18 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                 stopwatch.Stop();
 
-                _logger.Info($"[PRATICHE_SUCCESSIONE] Query Oracle eseguita con successo. " +
-                            $"Record letti: {result.Count}, " +
-                            $"Tempo esecuzione: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogInformation("[PRATICHE_SUCCESSIONE] Query Oracle eseguita con successo. Record letti: {Count}, Tempo: {Ms}ms", result.Count, stopwatch.ElapsedMilliseconds);
             }
             catch (OracleException oracleEx)
             {
                 stopwatch.Stop();
-                _logger.Error(oracleEx, $"[PRATICHE_SUCCESSIONE] Errore Oracle durante l'esecuzione della query. " +
-                                        $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms, " +
-                                        $"Numero errore: {oracleEx.Number}, " +
-                                        $"Messaggio: {oracleEx.Message}");
+                _logger.LogError(oracleEx, "[PRATICHE_SUCCESSIONE] Errore Oracle. Tempo: {Ms}ms, Numero: {ErrNum}", stopwatch.ElapsedMilliseconds, oracleEx.Number);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.Error(ex, $"[PRATICHE_SUCCESSIONE] Errore generico durante l'esecuzione della query. " +
-                                 $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogError(ex, "[PRATICHE_SUCCESSIONE] Errore generico. Tempo: {Ms}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
 

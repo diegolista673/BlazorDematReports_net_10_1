@@ -38,5 +38,10 @@ namespace BlazorDematReports.Core.Interfaces.IDataService
         /// <returns></returns>
         Task AddConfigurazioneFontiDatiAsync(ConfigurazioneFontiDati configurazioneFontiDati, List<ConfigurazioneFaseCentro> mappingFasi, string user);
 
+
+        /// <summary>
+        /// Recupera le configurazioni fonti dati associate a una procedura.
+        /// </summary>
+        Task<List<ConfigurazioneFontiDati>> GetConfigurazioniByProceduraAsync(int idProcedura);
     }
 }

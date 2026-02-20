@@ -1,14 +1,14 @@
-using Entities.Enums;
-using Entities.Models.DbApplication;
+using BlazorDematReports.Core.DataReading.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Utility.Interfaces;
+using Entities.Enums;
+using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using BlazorDematReports.Core.DataReading.Interfaces;
 
 namespace BlazorDematReports.Core.DataReading.Infrastructure
 {
@@ -25,9 +25,9 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         private readonly ILogger<ProductionJobScheduler>? _logger;
 
         public ProductionJobScheduler(DematReportsContext db, IRecurringJobManagerAdapter adapter, ILogger<ProductionJobScheduler>? logger = null)
-        { 
-            _db = db; 
-            _adapter = adapter; 
+        {
+            _db = db;
+            _adapter = adapter;
             _logger = logger;
         }
 
@@ -105,30 +105,30 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             using var activity = new Activity("ProductionJobScheduler.AddOrUpdate")
                 .AddTag("TaskId", idTaskDaEseguire.ToString())
                 .Start();
-        
+
             _logger?.LogDebug("Inizio sincronizzazione task {TaskId}", idTaskDaEseguire);
-        
+
             try
             {
                 // Recupera il task con tutte le relazioni necessarie
                 var task = await GetTaskWithRelationsAsync(idTaskDaEseguire);
-                
+
                 // Genera chiave e configurazione
                 var hangfireKey = BuildHangfireKey(task);
                 var cronExpression = ResolveCron(task);
-                
+
                 // Aggiorna il task nel database
                 await UpdateTaskInDatabaseAsync(task, hangfireKey, cronExpression);
-                
+
                 // Registra il job in Hangfire
                 _adapter.AddOrUpdate(hangfireKey, task.IdTaskDaEseguire, cronExpression);
-                
-                _logger?.LogInformation("Task {TaskId} sincronizzato con chiave: {HangfireKey}", 
+
+                _logger?.LogInformation("Task {TaskId} sincronizzato con chiave: {HangfireKey}",
                     idTaskDaEseguire, hangfireKey);
-                
+
                 activity?.AddTag("HangfireKey", hangfireKey);
                 activity?.AddTag("Success", "true");
-                
+
                 return hangfireKey;
             }
             catch (Exception ex)
@@ -163,8 +163,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 throw new InvalidOperationException(errorMessage);
             }
 
-            _logger?.LogDebug("Task {TaskId} recuperato con relazioni: Procedura={ProcedureName}, Fase={PhaseName}", 
-                idTaskDaEseguire, 
+            _logger?.LogDebug("Task {TaskId} recuperato con relazioni: Procedura={ProcedureName}, Fase={PhaseName}",
+                idTaskDaEseguire,
                 task.IdLavorazioneFaseDateReadingNavigation?.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "N/A",
                 task.IdLavorazioneFaseDateReadingNavigation?.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "N/A");
 
@@ -182,7 +182,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             var changes = new List<string>();
 
             // Controlla e aggiorna IdTaskHangFire - FORZA l'aggiornamento se è un ID temporaneo
-            if (task.IdTaskHangFire != hangfireKey || 
+            if (task.IdTaskHangFire != hangfireKey ||
                 (!string.IsNullOrWhiteSpace(task.IdTaskHangFire) && task.IdTaskHangFire.StartsWith("temp-")))
             {
                 var oldKey = task.IdTaskHangFire ?? "NULL";
@@ -208,7 +208,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             if (changes.Any())
             {
                 await _db.SaveChangesAsync();
-                _logger?.LogDebug("Task {TaskId} aggiornato: {Changes}", 
+                _logger?.LogDebug("Task {TaskId} aggiornato: {Changes}",
                     task.IdTaskDaEseguire, string.Join(", ", changes));
             }
             else
@@ -259,25 +259,25 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 var cron = ResolveCron(t);
 
                 // Aggiorna se la chiave è diversa OPPURE se è un ID temporaneo
-                if (t.IdTaskHangFire != key || 
+                if (t.IdTaskHangFire != key ||
                     (!string.IsNullOrWhiteSpace(t.IdTaskHangFire) && t.IdTaskHangFire.StartsWith("temp-")))
                 {
                     t.IdTaskHangFire = key;
                 }
-                    
+
                 if (string.IsNullOrWhiteSpace(t.CronExpression))
                     t.CronExpression = cron;
 
                 _adapter.AddOrUpdate(t.IdTaskHangFire, t.IdTaskDaEseguire, cron);
             }
-            
+
             // Ora riattacca le entità modificate al contesto per il salvataggio
             foreach (var t in enabled)
             {
                 _db.TaskDaEseguires.Attach(t);
                 _db.Entry(t).State = EntityState.Modified;
             }
-            
+
             await _db.SaveChangesAsync();
         }
 
@@ -304,7 +304,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             {
                 var expected = BuildHangfireKey(t);
                 validKeys.Add(expected);
-                
+
                 // Aggiunge anche la chiave corrente se non è temporanea, per evitare rimozioni errate durante la transizione
                 if (!string.IsNullOrWhiteSpace(t.IdTaskHangFire) && !t.IdTaskHangFire.StartsWith("temp-"))
                 {
@@ -334,7 +334,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 var cron = ResolveCron(task);
 
                 // Aggiorna se la chiave è diversa OPPURE se è un ID temporaneo
-                if (task.IdTaskHangFire != expected || 
+                if (task.IdTaskHangFire != expected ||
                     (!string.IsNullOrWhiteSpace(task.IdTaskHangFire) && task.IdTaskHangFire.StartsWith("temp-")))
                 {
                     task.IdTaskHangFire = expected;
@@ -364,26 +364,33 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
     public static class ProductionJobRunner
     {
-        public static IServiceProvider ServiceProvider { get; set; } = default!;
+        /// <summary>
+        /// Factory per la creazione di scope DI nei job Hangfire.
+        /// </summary>
+        public static IServiceScopeFactory ScopeFactory { get; set; } = default!;
 
         /// <summary>
         /// Esecuzione runtime (richiamata da Hangfire) di un task schedulato.
         /// Versione unificata che usa il sistema unificato per tutti i tipi di job.
         /// </summary>
-        public static async Task RunAsync(int idTaskDaEseguire)
-        {
-            using var scope = ServiceProvider.CreateScope();
+        /// <param name="idTaskDaEseguire">ID del task da eseguire.</param>
+        /// <param name="cancellationToken">Token per la cancellazione cooperativa (utile per esecuzioni manuali dall'UI).</param>
+        public static async Task RunAsync(int idTaskDaEseguire, CancellationToken cancellationToken = default)
+        {    
+            // Crea un nuovo scope DI per ogni esecuzione del job
+            using var scope = ScopeFactory.CreateScope();
+
             var db = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
             var logger = scope.ServiceProvider
                 .GetRequiredService<ILoggerFactory>()
                 .CreateLogger("DataReading.Infrastructure.ProductionJobRunner");
 
-        var entity = await db.TaskDaEseguires
-                .AsSplitQuery()
-                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                .Include(x => x.IdConfigurazioneDatabaseNavigation)
-                .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
+            var entity = await db.TaskDaEseguires
+                    .AsSplitQuery()
+                    .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
+                    .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
+                    .Include(x => x.IdConfigurazioneDatabaseNavigation)
+                    .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire, cancellationToken);
 
             if (entity == null)
             {
@@ -404,19 +411,19 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
                 // Determina il tipo di job e il codice per il registry
                 var (jobType, handlerCode) = DetermineJobTypeAndCode(entity);
-                logger?.LogDebug("Tipo job rilevato: {JobType}, Handler: {HandlerCode} per task {TaskId}", 
+                logger?.LogDebug("Tipo job rilevato: {JobType}, Handler: {HandlerCode} per task {TaskId}",
                     jobType, handlerCode, idTaskDaEseguire);
 
                 // Esegui in base al tipo usando il sistema unificato
                 switch (jobType)
                 {
                     case "UnifiedHandler":
-                        await ExecuteUnifiedHandlerAsync(scope, entity, handlerCode);
+                        await ExecuteUnifiedHandlerAsync(scope, entity, handlerCode, cancellationToken);
                         break;
 
                     case "DatabaseQuery":
                         // NUOVO: Tutti i task SQL usano il sistema unificato tramite UnifiedDataSourceHandler
-                        await ExecuteUnifiedDataSourceAsync(scope, entity);
+                        await ExecuteUnifiedDataSourceAsync(scope, entity, cancellationToken);
                         break;
 
                     default:
@@ -424,7 +431,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 }
 
                 MarkSuccess(entity);
-                logger?.LogInformation("Task {TaskId} completato con successo: {JobType}", 
+                logger?.LogInformation("Task {TaskId} completato con successo: {JobType}",
                     idTaskDaEseguire, jobType);
             }
             catch (Exception ex)
@@ -435,12 +442,12 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             }
             finally
             {
-                await db.SaveChangesAsync();
+                await db.SaveChangesAsync(cancellationToken);
             }
         }
 
         #region Job Type Detection and Execution
-        
+
         /// <summary>
         /// Determina il tipo di job basandosi su IdConfigurazioneDatabase.
         /// Tutti i task DEVONO avere IdConfigurazioneDatabase configurato.
@@ -470,10 +477,14 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>
         /// Esegue un job usando il sistema unificato degli handler.
         /// </summary>
-        private static async Task ExecuteUnifiedHandlerAsync(IServiceScope scope, TaskDaEseguire entity, string handlerCode)
+        /// <param name="scope">Scope DI per la risoluzione dei servizi.</param>
+        /// <param name="entity">Task da eseguire.</param>
+        /// <param name="handlerCode">Codice identificativo dell'handler da eseguire.</param>
+        /// <param name="cancellationToken">Token per la cancellazione cooperativa.</param>
+        private static async Task ExecuteUnifiedHandlerAsync(IServiceScope scope, TaskDaEseguire entity, string handlerCode, CancellationToken cancellationToken = default)
         {
             var unifiedService = scope.ServiceProvider.GetRequiredService<IUnifiedHandlerService>();
-            
+
             var context = new UnifiedExecutionContext
             {
                 IDProceduraLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione,
@@ -490,14 +501,17 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 }
             };
 
-            await unifiedService.ExecuteHandlerAsync(handlerCode, context, CancellationToken.None);
+            await unifiedService.ExecuteHandlerAsync(handlerCode, context, cancellationToken);
         }
 
         /// <summary>
         /// Esegue un job di tipo produzione/SQL usando il sistema unificato.
         /// Tutti i task SQL devono avere IdConfigurazioneDatabase configurato.
         /// </summary>
-        private static async Task ExecuteUnifiedDataSourceAsync(IServiceScope scope, TaskDaEseguire entity)
+        /// <param name="scope">Scope DI per la risoluzione dei servizi.</param>
+        /// <param name="entity">Task da eseguire.</param>
+        /// <param name="cancellationToken">Token per la cancellazione cooperativa.</param>
+        private static async Task ExecuteUnifiedDataSourceAsync(IServiceScope scope, TaskDaEseguire entity, CancellationToken cancellationToken = default)
         {
             if (!entity.IdConfigurazioneDatabase.HasValue)
             {
@@ -509,7 +523,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             var db = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
             var queryService = scope.ServiceProvider.GetRequiredService<IQueryService>();
             var lavorazioniConfig = scope.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
-            
+
             // Carica configurazione con mappings
             var config = await db.ConfigurazioneFontiDatis
                 .Include(c => c.ConfigurazioneFaseCentros)
@@ -521,7 +535,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     $"Configurazione {entity.IdConfigurazioneDatabase.Value} non trovata per task {entity.IdTaskDaEseguire}");
             }
 
-            if (config.TipoFonte != TipoFonteData.SQL) // ? Type-safe!
+            if (config.TipoFonte != TipoFonteData.SQL) 
             {
                 throw new InvalidOperationException(
                     $"Configurazione {config.IdConfigurazione} ha TipoFonte='{config.TipoFonte}' invece di 'SQL'");
@@ -537,7 +551,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
             // Usa query specifica del mapping se presente
             var query = mapping?.TestoQueryTask;
-            
+
             if (string.IsNullOrWhiteSpace(query))
             {
                 throw new InvalidOperationException(
@@ -561,7 +575,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 connectionString,
                 query,
                 startDate,
-                endDate);
+                endDate,
+                cancellationToken);
         }
 
         /// <summary>

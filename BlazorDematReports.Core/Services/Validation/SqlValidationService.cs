@@ -1,9 +1,9 @@
-﻿using System.Text.RegularExpressions;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Oracle.ManagedDataAccess.Client;
+using System.Text.RegularExpressions;
 
 namespace BlazorDematReports.Core.Services.Validation;
 
@@ -17,8 +17,8 @@ public class SqlValidationService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<SqlValidationService>? _logger;
-    
-    
+
+
     // Pattern pericolosi che indicano possibili SQL injection
     private static readonly string[] DangerousPatterns = new[]
     {
@@ -38,7 +38,7 @@ public class SqlValidationService
         @"--.*",                  // SQL comments (qualsiasi)
         @"/\*.*\*/"               // Multi-line comments
     };
-    
+
     // Keyword vietate (stored procedure sistema)
     private static readonly string[] RestrictedKeywords = new[]
     {
@@ -146,11 +146,11 @@ public class SqlValidationService
 
             if (errors != null && errors.Count > 0)
             {
-                var errorMessages = string.Join("; ", errors.Select(e => 
+                var errorMessages = string.Join("; ", errors.Select(e =>
                     $"Linea {e.Line}, Colonna {e.Column}: {e.Message}"));
-                
+
                 _logger?.LogWarning("Errori sintassi SQL: {Errors}", errorMessages);
-                
+
                 return ValidationResult.Error(
                     $"Errori di sintassi SQL rilevati:\n{errorMessages}");
             }
@@ -163,7 +163,7 @@ public class SqlValidationService
             return ValidationResult.Error($"Errore durante validazione sintassi: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Controlli manuali sulla struttura della query SQL.
     /// Verifica presenza clausole obbligatorie come FROM.
@@ -171,18 +171,18 @@ public class SqlValidationService
     private ValidationResult ValidateQueryStructure(string query)
     {
         var normalizedQuery = query.Trim();
-        
+
         // Rimuovi commenti SQL per analisi pulita
         normalizedQuery = Regex.Replace(normalizedQuery, @"--.*$", "", RegexOptions.Multiline);
         normalizedQuery = Regex.Replace(normalizedQuery, @"/\*.*?\*/", "", RegexOptions.Singleline);
-        
+
         // Controlla se inizia con SELECT
         if (normalizedQuery.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
         {
             // SELECT deve avere FROM (a meno che non sia una query di sistema come SELECT @@VERSION)
             bool hasFrom = Regex.IsMatch(normalizedQuery, @"\bFROM\b", RegexOptions.IgnoreCase);
             bool isSystemQuery = Regex.IsMatch(normalizedQuery, @"SELECT\s+@@", RegexOptions.IgnoreCase);
-            
+
             if (!hasFrom && !isSystemQuery)
             {
                 _logger?.LogWarning("Query SELECT senza clausola FROM rilevata");
@@ -190,19 +190,19 @@ public class SqlValidationService
                     "Sintassi errata: SELECT richiede la clausola FROM.\n" +
                     "Esempio: SELECT col1, col2 FROM tabella WHERE ...");
             }
-            
+
             // Verifica ordine clausole: SELECT ... FROM ... WHERE ... GROUP BY ... ORDER BY
             if (hasFrom)
             {
                 var selectPos = normalizedQuery.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
                 var fromPos = normalizedQuery.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
                 var wherePos = normalizedQuery.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
-                
+
                 if (fromPos < selectPos)
                 {
                     return ValidationResult.Error("Sintassi errata: FROM non può precedere SELECT");
                 }
-                
+
                 if (wherePos > 0 && wherePos < fromPos)
                 {
                     return ValidationResult.Error("Sintassi errata: WHERE non può precedere FROM");
@@ -214,18 +214,18 @@ public class SqlValidationService
             // CTE deve contenere SELECT e FROM
             bool hasSelect = Regex.IsMatch(normalizedQuery, @"\bSELECT\b", RegexOptions.IgnoreCase);
             bool hasFrom = Regex.IsMatch(normalizedQuery, @"\bFROM\b", RegexOptions.IgnoreCase);
-            
+
             if (!hasSelect)
             {
                 return ValidationResult.Error("CTE (WITH) richiede una clausola SELECT");
             }
-            
+
             if (!hasFrom)
             {
                 return ValidationResult.Error("CTE (WITH) richiede una clausola FROM");
             }
         }
-        
+
         return ValidationResult.Success("Struttura query valida");
     }
 
@@ -250,10 +250,6 @@ public class SqlValidationService
 
         string columnsSection = selectMatch.Groups[1].Value;
 
-        // Verifica che non contenga SELECT * (ma consenti funzioni aggregate come COUNT(*), SUM(*))
-        // Pattern più preciso: asterisco NON preceduto da una funzione aggregata
-        var selectStarPattern = @"(?<!COUNT\s*\()\*(?!\s*\))";  // * non in COUNT(*)
-        
         // Controllo più semplice: verifica se c'è una virgola prima del primo asterisco
         // Se SELECT *, l'asterisco sarà il primo elemento dopo SELECT
         var trimmedColumns = columnsSection.Trim();
@@ -292,14 +288,14 @@ public class SqlValidationService
     /// Testa connessione al database.
     /// </summary>
     public async Task<ValidationResult> TestConnectionAsync(
-        string connectionStringName, 
+        string connectionStringName,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(connectionStringName))
             return ValidationResult.Error("Nome connection string obbligatorio");
 
         var connectionString = _configuration.GetConnectionString(connectionStringName);
-        
+
         if (string.IsNullOrWhiteSpace(connectionString))
             return ValidationResult.Error(
                 $"Connection string '{connectionStringName}' non trovata in configurazione");
@@ -314,7 +310,7 @@ public class SqlValidationService
                 await using var sqlConn = new SqlConnection(connectionString);
                 await sqlConn.OpenAsync(ct);
                 var serverVersion = sqlConn.ServerVersion;
-                
+
                 return ValidationResult.Success(
                     $"Connessione SQL Server '{connectionStringName}' riuscita. Versione: {serverVersion}");
             }
@@ -324,7 +320,7 @@ public class SqlValidationService
                 await using var oraConn = new OracleConnection(connectionString);
                 await oraConn.OpenAsync(ct);
                 var serverVersion = oraConn.ServerVersion;
-                
+
                 return ValidationResult.Success(
                     $"Connessione Oracle '{connectionStringName}' riuscita. Versione: {serverVersion}");
             }
@@ -388,12 +384,12 @@ public class SqlValidationService
                 {
                     CommandTimeout = 30 // 30 secondi timeout
                 };
-                
+
                 cmd.Parameters.AddWithValue("@startData", startDate);
                 cmd.Parameters.AddWithValue("@endData", endDate);
 
                 await conn.OpenAsync(ct);
-                
+
                 // ExecuteReader con SchemaOnly = legge solo schema, non dati
                 await using var reader = await cmd.ExecuteReaderAsync(
                     System.Data.CommandBehavior.SchemaOnly, ct);
@@ -429,7 +425,7 @@ public class SqlValidationService
                 {
                     CommandTimeout = 30
                 };
-                
+
                 cmd.Parameters.Add("startData", OracleDbType.Date).Value = startDate;
                 cmd.Parameters.Add("endData", OracleDbType.Date).Value = endDate;
 

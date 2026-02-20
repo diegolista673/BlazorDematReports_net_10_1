@@ -1,8 +1,8 @@
-﻿using Entities.Models.DbApplication;
+﻿using BlazorDematReports.Core.Constants;
+using BlazorDematReports.Core.DataReading.Infrastructure;
+using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using BlazorDematReports.Core.DataReading.Infrastructure;
-using BlazorDematReports.Core.Constants;
 
 namespace BlazorDematReports.Core.Services.DataService
 {
@@ -15,7 +15,7 @@ namespace BlazorDematReports.Core.Services.DataService
         /// Genera task per una configurazione appena creata/aggiornata
         /// </summary>
         Task<TaskGenerationResult> GenerateTasksForConfigurationAsync(int idConfigurazione);
-        
+
         /// <summary>
         /// Genera un singolo task per un mapping specifico
         /// </summary>
@@ -38,30 +38,30 @@ namespace BlazorDematReports.Core.Services.DataService
             _logger = logger;
         }
 
-    public async Task<TaskGenerationResult> GenerateTasksForConfigurationAsync(int idConfigurazione)
-    {
-        var result = new TaskGenerationResult();
-
-        await using var context = await _contextFactory.CreateDbContextAsync();
-
-        // Carica configurazione con mappings
-        var config = await context.ConfigurazioneFontiDatis
-            .Include(c => c.ConfigurazioneFaseCentros)
-            .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
-
-        if (config == null)
+        public async Task<TaskGenerationResult> GenerateTasksForConfigurationAsync(int idConfigurazione)
         {
-            result.Errors.Add($"Configurazione {idConfigurazione} non trovata");
-            _logger.LogError("Configurazione {ConfigId} non trovata", idConfigurazione);
-            return result;
-        }
+            var result = new TaskGenerationResult();
 
-        _logger.LogInformation(
-            "Generazione task per Configurazione {ConfigId}. Mappings attivi: {Count}",
-            idConfigurazione, config.ConfigurazioneFaseCentros.Count(m => m.FlagAttiva));
+            await using var context = await _contextFactory.CreateDbContextAsync();
 
-        // Per ogni mapping attivo, crea un task
-        foreach (var mapping in config.ConfigurazioneFaseCentros.Where(m => m.FlagAttiva))
+            // Carica configurazione con mappings
+            var config = await context.ConfigurazioneFontiDatis
+                .Include(c => c.ConfigurazioneFaseCentros)
+                .FirstOrDefaultAsync(c => c.IdConfigurazione == idConfigurazione);
+
+            if (config == null)
+            {
+                result.Errors.Add($"Configurazione {idConfigurazione} non trovata");
+                _logger.LogError("Configurazione {ConfigId} non trovata", idConfigurazione);
+                return result;
+            }
+
+            _logger.LogInformation(
+                "Generazione task per Configurazione {ConfigId}. Mappings attivi: {Count}",
+                idConfigurazione, config.ConfigurazioneFaseCentros.Count(m => m.FlagAttiva));
+
+            // Per ogni mapping attivo, crea un task
+            foreach (var mapping in config.ConfigurazioneFaseCentros.Where(m => m.FlagAttiva))
             {
                 try
                 {
@@ -77,7 +77,7 @@ namespace BlazorDematReports.Core.Services.DataService
                         _logger.LogInformation(
                             "Creazione LavorazioneFasiDataReading per Procedura {ProcId}, Fase {FaseId}",
                             mapping.IdProceduraLavorazione, mapping.IdFaseLavorazione);
-                        
+
                         lavorazioneFase = new LavorazioniFasiDataReading
                         {
                             IdProceduraLavorazione = mapping.IdProceduraLavorazione,
@@ -85,10 +85,10 @@ namespace BlazorDematReports.Core.Services.DataService
                             FlagDataReading = true,
                             FlagGraficoDocumenti = false
                         };
-                        
+
                         context.LavorazioniFasiDataReadings.Add(lavorazioneFase);
                         await context.SaveChangesAsync(); // Salva per ottenere l'ID
-                        
+
                         _logger.LogInformation(
                             "LavorazioneFasiDataReading creata con ID {Id}",
                             lavorazioneFase.IdlavorazioneFaseDateReading);
@@ -116,8 +116,8 @@ namespace BlazorDematReports.Core.Services.DataService
                         IdConfigurazioneDatabase = idConfigurazione,
                         Stato = "CONFIGURED",
                         DataStato = DateTime.Now,
-                        GiorniPrecedenti = mapping.GiorniPrecedenti > 0 
-                            ? mapping.GiorniPrecedenti 
+                        GiorniPrecedenti = mapping.GiorniPrecedenti > 0
+                            ? mapping.GiorniPrecedenti
                             : TaskConfigurationDefaults.DefaultGiorniPrecedenti,
                         CronExpression = mapping.CronExpression ?? TaskConfigurationDefaults.DefaultCronExpression,
                         Enabled = true,
@@ -132,7 +132,7 @@ namespace BlazorDematReports.Core.Services.DataService
                     {
                         await _scheduler.AddOrUpdateAsync(nuovoTask.IdTaskDaEseguire);
                         result.CreatedTasks++;
-                        
+
                         _logger.LogInformation(
                             "Task {TaskId} creato per Config {ConfigId}, Mapping {MappingId}",
                             nuovoTask.IdTaskDaEseguire, idConfigurazione, mapping.IdFaseCentro);
@@ -181,7 +181,7 @@ namespace BlazorDematReports.Core.Services.DataService
             {
                 _logger.LogInformation(
                     "Creazione LavorazioneFasiDataReading per Mapping {MappingId}", idFaseCentro);
-                
+
                 lavorazioneFase = new LavorazioniFasiDataReading
                 {
                     IdProceduraLavorazione = mapping.IdProceduraLavorazione,
@@ -189,10 +189,10 @@ namespace BlazorDematReports.Core.Services.DataService
                     FlagDataReading = true,
                     FlagGraficoDocumenti = false
                 };
-                
+
                 context.LavorazioniFasiDataReadings.Add(lavorazioneFase);
                 await context.SaveChangesAsync();
-                
+
                 _logger.LogInformation(
                     "LavorazioneFasiDataReading creata con ID {Id}",
                     lavorazioneFase.IdlavorazioneFaseDateReading);
@@ -248,20 +248,20 @@ namespace BlazorDematReports.Core.Services.DataService
 
         public bool HasErrors => Errors.Any();
         public bool Success => CreatedTasks > 0 && !HasErrors;
-        
+
         public string GetSummary()
         {
             var parts = new List<string>();
-            
+
             if (CreatedTasks > 0)
                 parts.Add($"{CreatedTasks} task creati");
-            
+
             if (ExistingTasks > 0)
                 parts.Add($"{ExistingTasks} già esistenti");
-            
+
             if (HasErrors)
                 parts.Add($"{Errors.Count} errori");
-            
+
             return string.Join(", ", parts);
         }
     }

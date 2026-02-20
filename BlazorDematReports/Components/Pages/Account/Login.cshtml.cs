@@ -1,7 +1,5 @@
 ﻿using BlazorDematReports.Application;
-using BlazorDematReports.Services.Authentication;
 using Entities.Models.DbApplication;
-using IAppAuthenticationService = BlazorDematReports.Services.Authentication.IAuthenticationService;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using IAppAuthenticationService = BlazorDematReports.Services.Authentication.IAuthenticationService;
 
 namespace BlazorDematReports.Components.Pages.Account
 {

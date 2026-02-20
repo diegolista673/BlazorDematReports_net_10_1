@@ -1,10 +1,10 @@
-using Entities.Helpers;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
 using BlazorDematReports.Core.Utility;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
+using Entities.Helpers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
@@ -39,7 +39,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
             // Crea l'istanza della lavorazione specifica
             var lavorazione = new ANT_ADER4_SORTER_1_2Processor(normalizzatore, gestoreOperatori, elaboratore, configManager);
-            
+
             // Imposta il contesto della lavorazione
             lavorazione.NomeProcedura = context.NomeProcedura;
             lavorazione.IDFaseLavorazione = context.IDFaseLavorazione;
@@ -112,7 +112,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                     {
                         await using var connection = new SqlConnection(connectionString);
                         await connection.OpenAsync();
-                        
+
                         await using var command = new SqlCommand(query, connection);
                         command.CommandTimeout = 30;
                         command.Parameters.AddWithValue("@startDataScan", startDataScan);

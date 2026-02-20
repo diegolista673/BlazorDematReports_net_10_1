@@ -1,6 +1,7 @@
 ﻿@page "/data-manager"
 @using BlazorDematReports.Core.DataReading.Infrastructure
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageDataManager,TaskDataReadingAggiornamentoDto,TaskDataReadingAggiornamentoDto,SearchDataDto,SearchDataDto>
 
 
@@ -211,6 +212,8 @@
 
 @code {
 
+    private CancellationTokenSource? _queryCts;
+
     protected MudSelect<int?>? RefCentro;
     protected MudSelect<int?>? RefTask;
     protected MudDatePicker? RefDatePickerFrom;
@@ -264,6 +267,11 @@
         int idProcLav = 0;
         try
         {
+            // Cancella eventuali operazioni precedenti
+            _queryCts?.Cancel();
+            _queryCts?.Dispose();
+            _queryCts = new CancellationTokenSource();
+
             UiState?.SetMenuDisabled(true);
             UiState?.ShowOverlay("Ricerca in corso...");
 
@@ -274,27 +282,27 @@
             {
                 var procedura = ListProcedureLavorazioni?.FirstOrDefault(x => x.NomeProcedura == uModel.NomeProcedura);
                 var fase = ListFasiLavorazione?.FirstOrDefault(x => x.FaseLavorazione == uModel.Fase);
-                
+
                 if (procedura?.IdproceduraLavorazione == null)
                 {
                     MessaggioErrore = "Procedura di lavorazione non trovata";
                     return;
                 }
-                
+
                 if (fase?.IdFaseLavorazione == null)
                 {
                     MessaggioErrore = "Fase di lavorazione non trovata";
                     return;
                 }
-                
+
                 idProcLav = (int)procedura.IdproceduraLavorazione;
                 int idFase = fase.IdFaseLavorazione;
 
                 if (IdTaskDaEseguire == null)
                     throw new NullReferenceException("Errore manca Task/Query da eseguire");
 
-                // Esegui task tramite ProductionJobRunner (già in Core)
-                await ProductionJobRunner.RunAsync((int)IdTaskDaEseguire);
+                // Esegui task con token cancellabile
+                await ProductionJobRunner.RunAsync((int)IdTaskDaEseguire, _queryCts.Token);
 
                 IsFormValid = false;
                 IsDisabledLavorazione = false;
@@ -305,6 +313,10 @@
                 UiState?.ShowSnackbar("Lavorazione eseguita con successo", Severity.Success);
 
             }
+        }
+        catch (OperationCanceledException)
+        {
+            UiState?.ShowSnackbar("Operazione annullata", Severity.Warning);
         }
         catch (Exception ex)
         {
@@ -481,6 +493,15 @@
 
     #endregion
 
+    /// <summary>
+    /// Rilascia le risorse e cancella eventuali query in esecuzione.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        _queryCts?.Cancel();
+        _queryCts?.Dispose();
+        await ValueTask.CompletedTask;
+    }
 
 }
 

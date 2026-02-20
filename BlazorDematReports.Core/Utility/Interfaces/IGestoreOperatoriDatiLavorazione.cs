@@ -1,5 +1,5 @@
-﻿using Entities.Models.DbApplication;
-using BlazorDematReports.Core.Utility.Models;
+﻿using BlazorDematReports.Core.Utility.Models;
+using Entities.Models.DbApplication;
 
 namespace BlazorDematReports.Core.Utility.Interfaces
 {

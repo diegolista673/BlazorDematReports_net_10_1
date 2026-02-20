@@ -73,7 +73,7 @@ namespace BlazorDematReports.Core.Application
 
                 // Extract and cache claims
                 var claims = user.Identities.FirstOrDefault()?.Claims.ToList() ?? new();
-                
+
                 if (claims.Count > 0)
                 {
                     _cachedIdUtente = Convert.ToInt32(claims.FirstOrDefault(x => x.Type.Equals("IdOperatore", StringComparison.OrdinalIgnoreCase))?.Value ?? "0");

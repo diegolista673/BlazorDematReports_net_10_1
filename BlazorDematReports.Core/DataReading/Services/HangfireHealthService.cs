@@ -1,5 +1,4 @@
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
+using Hangfire;
 using Microsoft.Extensions.Logging;
 
 namespace BlazorDematReports.Core.DataReading.Services
@@ -23,124 +22,87 @@ namespace BlazorDematReports.Core.DataReading.Services
     }
 
     /// <summary>
-    /// Implementazione del servizio di monitoraggio Hangfire.
+    /// Implementazione del servizio di monitoraggio Hangfire basata su IMonitoringApi.
+    /// Usa l'API ufficiale Hangfire invece di query SQL dirette sullo schema interno,
+    /// garantendo compatibilità con future versioni di Hangfire.
     /// </summary>
     public class HangfireHealthService : IHangfireHealthService
     {
+        private static readonly TimeSpan ServerActiveThreshold = TimeSpan.FromMinutes(5);
         private readonly ILogger<HangfireHealthService> _logger;
-        private readonly string _connectionString;
 
-        public HangfireHealthService(ILogger<HangfireHealthService> logger, IConfiguration configuration)
+        /// <summary>
+        /// Inizializza una nuova istanza di <see cref="HangfireHealthService"/>.
+        /// </summary>
+        /// <param name="logger">Logger per il tracking delle operazioni.</param>
+        public HangfireHealthService(ILogger<HangfireHealthService> logger)
         {
             _logger = logger;
-            _connectionString = configuration.GetConnectionString("HangfireConnection")
-                ?? throw new InvalidOperationException("HangfireConnection not found in configuration");
         }
 
         /// <summary>
-        /// Verifica lo stato di salute di Hangfire.
+        /// Verifica lo stato di salute di Hangfire tramite IMonitoringApi.
         /// </summary>
-        public async Task<bool> CheckHangfireHealthAsync()
+        public Task<bool> CheckHangfireHealthAsync()
         {
             try
             {
                 _logger.LogDebug("[HangfireHealth] Controllo stato salute Hangfire");
 
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var monitoring = JobStorage.Current.GetMonitoringApi();
+                var servers = monitoring.Servers();
+                var threshold = DateTime.UtcNow.Subtract(ServerActiveThreshold);
 
-                // Verifica che le tabelle Hangfire esistano
-                using var command = new SqlCommand(@"
-                    SELECT COUNT(*) 
-                    FROM INFORMATION_SCHEMA.TABLES 
-                    WHERE TABLE_SCHEMA = 'HangFire' 
-                    AND TABLE_NAME IN ('Job', 'JobQueue', 'Server', 'State')", connection);
-
-                var tableCount = (int)await command.ExecuteScalarAsync();
-
-                if (tableCount < 4)
-                {
-                    _logger.LogWarning("[HangfireHealth] Tabelle Hangfire mancanti. Trovate: {TableCount}/4", tableCount);
-                    return false;
-                }
-
-                // Verifica che ci siano server attivi
-                using var serverCommand = new SqlCommand(@"
-                    SELECT COUNT(*) 
-                    FROM [HangFire].[Server] 
-                    WHERE [LastHeartbeat] >= DATEADD(minute, -5, GETUTCDATE())", connection);
-
-                var activeServers = (int)await serverCommand.ExecuteScalarAsync();
+                var activeServers = servers.Count(s =>
+                    s.Heartbeat.HasValue && s.Heartbeat.Value >= threshold);
 
                 if (activeServers == 0)
                 {
                     _logger.LogWarning("[HangfireHealth] Nessun server Hangfire attivo trovato");
-                    return false;
+                    return Task.FromResult(false);
                 }
 
                 _logger.LogInformation("[HangfireHealth] Hangfire operativo. Server attivi: {ActiveServers}", activeServers);
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[HangfireHealth] Errore durante il controllo stato Hangfire");
-                return false;
+                return Task.FromResult(false);
             }
         }
 
         /// <summary>
-        /// Ottiene statistiche dettagliate sullo stato di Hangfire.
+        /// Ottiene statistiche dettagliate sullo stato di Hangfire tramite IMonitoringApi.
         /// </summary>
-        public async Task<HangfireStats> GetHangfireStatsAsync()
+        public Task<HangfireStats> GetHangfireStatsAsync()
         {
-            var stats = new HangfireStats();
+            var result = new HangfireStats();
 
             try
             {
-                using var connection = new SqlConnection(_connectionString);
-                await connection.OpenAsync();
+                var monitoring = JobStorage.Current.GetMonitoringApi();
+                var statistics = monitoring.GetStatistics();
+                var servers = monitoring.Servers();
+                var threshold = DateTime.UtcNow.Subtract(ServerActiveThreshold);
 
-                // Job in coda
-                using var queueCommand = new SqlCommand(@"
-                    SELECT COUNT(*) FROM [HangFire].[JobQueue] WHERE [FetchedAt] IS NULL", connection);
-                stats.EnqueuedJobs = (int)await queueCommand.ExecuteScalarAsync();
+                result.EnqueuedJobs = (int)statistics.Enqueued;
+                result.ProcessingJobs = (int)statistics.Processing;
+                result.FailedJobs = (int)statistics.Failed;
+                result.RecurringJobs = (int)statistics.Recurring;
+                result.ActiveServers = servers.Count(s =>
+                    s.Heartbeat.HasValue && s.Heartbeat.Value >= threshold);
 
-                // Job processing
-                using var processingCommand = new SqlCommand(@"
-                    SELECT COUNT(*) FROM [HangFire].[JobQueue] WHERE [FetchedAt] IS NOT NULL", connection);
-                stats.ProcessingJobs = (int)await processingCommand.ExecuteScalarAsync();
-
-                // Job failed
-                using var failedCommand = new SqlCommand(@"
-                    SELECT COUNT(*) FROM [HangFire].[Job] j
-                    INNER JOIN [HangFire].[State] s ON j.[Id] = s.[JobId]
-                    WHERE s.[Name] = 'Failed' AND s.[Id] = (
-                        SELECT TOP 1 [Id] FROM [HangFire].[State] 
-                        WHERE [JobId] = j.[Id] ORDER BY [CreatedAt] DESC
-                    )", connection);
-                stats.FailedJobs = (int)await failedCommand.ExecuteScalarAsync();
-
-                // Server attivi
-                using var serverCommand = new SqlCommand(@"
-                    SELECT COUNT(*) FROM [HangFire].[Server] 
-                    WHERE [LastHeartbeat] >= DATEADD(minute, -5, GETUTCDATE())", connection);
-                stats.ActiveServers = (int)await serverCommand.ExecuteScalarAsync();
-
-                // Recurring jobs
-                using var recurringCommand = new SqlCommand(@"
-                    SELECT COUNT(*) FROM [HangFire].[Hash] 
-                    WHERE [Key] LIKE 'recurring-job:%' AND [Field] = 'Job'", connection);
-                stats.RecurringJobs = (int)await recurringCommand.ExecuteScalarAsync();
-
-                _logger.LogInformation("[HangfireHealth] Statistiche: Enqueued={EnqueuedJobs}, Processing={ProcessingJobs}, Failed={FailedJobs}, Servers={ActiveServers}, Recurring={RecurringJobs}",
-                    stats.EnqueuedJobs, stats.ProcessingJobs, stats.FailedJobs, stats.ActiveServers, stats.RecurringJobs);
+                _logger.LogInformation(
+                    "[HangfireHealth] Statistiche: Enqueued={Enqueued}, Processing={Processing}, Failed={Failed}, Servers={Servers}, Recurring={Recurring}",
+                    result.EnqueuedJobs, result.ProcessingJobs, result.FailedJobs, result.ActiveServers, result.RecurringJobs);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[HangfireHealth] Errore durante il recupero delle statistiche Hangfire");
             }
 
-            return stats;
+            return Task.FromResult(result);
         }
     }
 

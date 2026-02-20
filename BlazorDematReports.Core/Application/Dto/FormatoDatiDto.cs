@@ -1,7 +1,7 @@
 ﻿#nullable disable
 
 namespace BlazorDematReports.Core.Application.Dto
-{   
+{
     /// <summary>
     /// DTO che rappresenta il formato dei dati di produzione.
     /// </summary>

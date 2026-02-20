@@ -1,7 +1,7 @@
 using AutoMapper;
 using BlazorDematReports.Core.DataReading.Dto;
-using Entities.Models.DbApplication;
 using BlazorDematReports.Core.Utility.Models;
+using Entities.Models.DbApplication;
 
 namespace BlazorDematReports.Core.Application.Mapping
 {
