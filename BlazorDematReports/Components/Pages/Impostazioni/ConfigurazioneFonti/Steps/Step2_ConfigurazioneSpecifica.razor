@@ -125,10 +125,9 @@ protected override void OnInitialized()
     var section = Configuration.GetSection("ConnectionStrings");
     _connectionStrings = section.GetChildren().Select(c => c.Key).ToList();
 
-    // TODO: Implementare filtering by type in future
+    // Carica tutti gli handler disponibili dal registry
     var allHandlers = HandlerRegistry.GetAllCodes();
     _availableHandlers = allHandlers
-        .Where(code => code != "DEFAULT")
         .Select(code => new HandlerDisplayInfo
     {
         ClassName = code ?? "Unknown",

@@ -17,21 +17,11 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     public sealed class Z0072370_28AutHandler : ILavorazioneHandler
     {
-        private readonly INormalizzatoreOperatori _normalizzatore;
-        private readonly IGestoreOperatoriDatiLavorazione _gestoreOperatori;
-        private readonly IElaboratoreDatiLavorazione _elaboratore;
         private readonly ILavorazioniConfigManager _configManager;
 
-        public Z0072370_28AutHandler(
-            INormalizzatoreOperatori normalizzatore,
-            IGestoreOperatoriDatiLavorazione gestoreOperatori,
-            IElaboratoreDatiLavorazione elaboratore,
-            ILavorazioniConfigManager configManager)
+        public Z0072370_28AutHandler(ILavorazioniConfigManager configManager)
         {
-            _normalizzatore   = normalizzatore;
-            _gestoreOperatori = gestoreOperatori;
-            _elaboratore      = elaboratore;
-            _configManager    = configManager;
+            _configManager = configManager;
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
@@ -40,14 +30,15 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>Esegue la lavorazione Z0072370_28AUT.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazione = new Z0072370_28AUTProcessor(_normalizzatore, _gestoreOperatori, _elaboratore, _configManager);
+            var lavorazione = new Z0072370_28AUTProcessor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;
             lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
             lavorazione.IDCentro               = context.IDCentro;
             lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
             lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
-            return await lavorazione.SetDatiDematAsync();
+
+            return await lavorazione.SetDatiDematAsync(ct);
         }
     }
 
@@ -63,16 +54,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>
         /// Inizializza una nuova istanza di Z0072370_28AUTProcessor.
         /// </summary>
-        /// <param name="normalizzatoreOperatori">Servizio di normalizzazione operatori.</param>
-        /// <param name="gestoreOperatoriDati">Servizio di gestione operatori dati lavorazione.</param>
-        /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
         public Z0072370_28AUTProcessor(
-            INormalizzatoreOperatori normalizzatoreOperatori,
-            IGestoreOperatoriDatiLavorazione gestoreOperatoriDati,
-            IElaboratoreDatiLavorazione elaboratoreDati,
             ILavorazioniConfigManager lavorazioniConfigManager
-        ) : base(normalizzatoreOperatori, gestoreOperatoriDati, elaboratoreDati)
+        )
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
             _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
@@ -81,8 +66,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>
         /// Recupera e aggrega i dati di lavorazione per la procedura Z0072370_28AUT.
         /// </summary>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalla fonte dati.</returns>
-        public override async Task<List<DatiLavorazione>> SetDatiDematAsync()
+        public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO");
 
@@ -105,7 +91,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                     where convert(date, DATA_SCAN) >= @startData and convert(date, DATA_SCAN) <= @endData and department = 'GENOVA'
                     group by OP_SCAN, convert(date, DATA_SCAN)";
 
-                result.AddRange(await EseguiQueryAsync(query, startData, endData));
+                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
             }
             else if (IDFaseLavorazione == 5)
             {
@@ -120,7 +106,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                     where convert(date, DATA_INDEX) >= @startData and convert(date, DATA_INDEX) <= @endData and department = 'GENOVA'
                     group by OP_INDEX, convert(date, DATA_INDEX), OP_SCAN";
 
-                result.AddRange(await EseguiQueryAsync(query, startData, endData));
+                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
             }
             else
             {
@@ -138,8 +124,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <param name="query">Query SQL da eseguire.</param>
         /// <param name="startData">Data di inizio periodo in formato stringa (yyyyMMdd).</param>
         /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData)
+        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData, CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", additionalInfo: $"Parametri: startData={startData}, endData={endData}");
 
@@ -149,7 +136,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             try
             {
                 await using var connection = new SqlConnection(_lavorazioniConfigManager.CnxnCaptiva206);
-                await connection.OpenAsync();
+                await connection.OpenAsync(ct);
 
                 await using var cmd = new SqlCommand(query, connection);
                 cmd.CommandTimeout = 30;
@@ -158,8 +145,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                 _logger.Debug($"[Z0072370_28AUT] Esecuzione query con timeout: {cmd.CommandTimeout}s");
 
-                using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
+                using var reader = await cmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
                 {
                     var dati = new DatiLavorazione
                     {

@@ -17,20 +17,11 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     public sealed class Ant_Ader4_Sorter_1_2Handler : ILavorazioneHandler
     {
-        private readonly INormalizzatoreOperatori _normalizzatore;
-        private readonly IGestoreOperatoriDatiLavorazione _gestoreOperatori;
-        private readonly IElaboratoreDatiLavorazione _elaboratore;
         private readonly ILavorazioniConfigManager _configManager;
 
         public Ant_Ader4_Sorter_1_2Handler(
-            INormalizzatoreOperatori normalizzatore,
-            IGestoreOperatoriDatiLavorazione gestoreOperatori,
-            IElaboratoreDatiLavorazione elaboratore,
             ILavorazioniConfigManager configManager)
         {
-            _normalizzatore   = normalizzatore;
-            _gestoreOperatori = gestoreOperatori;
-            _elaboratore      = elaboratore;
             _configManager    = configManager;
         }
 
@@ -40,14 +31,15 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>Esegue la lavorazione ANT_ADER4_SORTER_1_2.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazione = new ANT_ADER4_SORTER_1_2Processor(_normalizzatore, _gestoreOperatori, _elaboratore, _configManager);
+            var lavorazione = new ANT_ADER4_SORTER_1_2Processor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;
             lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
             lavorazione.IDCentro               = context.IDCentro;
             lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
             lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
-            return await lavorazione.SetDatiDematAsync();
+
+            return await lavorazione.SetDatiDematAsync(ct);
         }
     }
 
@@ -64,16 +56,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>
         /// Inizializza una nuova istanza di ANT_ADER4_SORTER_1_2Processor.
         /// </summary>
-        /// <param name="normalizzatoreOperatori">Servizio di normalizzazione operatori.</param>
-        /// <param name="gestoreOperatoriDati">Servizio di gestione operatori dati lavorazione.</param>
-        /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
         public ANT_ADER4_SORTER_1_2Processor(
-            INormalizzatoreOperatori normalizzatoreOperatori,
-            IGestoreOperatoriDatiLavorazione gestoreOperatoriDati,
-            IElaboratoreDatiLavorazione elaboratoreDati,
             ILavorazioniConfigManager lavorazioniConfigManager
-        ) : base(normalizzatoreOperatori, gestoreOperatoriDati, elaboratoreDati)
+        )
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
             _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
@@ -83,8 +69,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// Recupera e aggrega i dati di lavorazione per la procedura ANT_ADER4_SORTER_1_2.
         /// Esegue la query di produzione su entrambe le connessioni configurate (Sorter 1 e Sorter 2).
         /// </summary>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalle fonti dati.</returns>
-        public override async Task<List<DatiLavorazione>> SetDatiDematAsync()
+        public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "GesimCheck_Local_Produzione.Tab_Lavorato");
 
@@ -103,13 +90,13 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 								 AND convert(date, dateTime_acquisizione) <= @endDataScan
 								 GROUP BY Username, CONVERT(date, dateTime_acquisizione)";
 
-                async Task LeggiDatiAsync(string connectionString, string sourceName)
-                {
+				async Task LeggiDatiAsync(string connectionString, string sourceName, CancellationToken ct)
+				{
                     var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                     try
                     {
                         await using var connection = new SqlConnection(connectionString);
-                        await connection.OpenAsync();
+                        await connection.OpenAsync(ct);
 
                         await using var command = new SqlCommand(query, connection);
                         command.CommandTimeout = 30;
@@ -118,9 +105,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                         _logger.Debug($"[ANT_ADER4_SORTER_1_2] Esecuzione query su {sourceName} con timeout: {command.CommandTimeout}s");
 
-                        using var reader = await command.ExecuteReaderAsync();
+                        using var reader = await command.ExecuteReaderAsync(ct);
                         int recordCount = 0;
-                        while (await reader.ReadAsync())
+                        while (await reader.ReadAsync(ct))
                         {
                             result.Add(new DatiLavorazione
                             {
@@ -159,8 +146,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                 }
 
                 // Legge dati da entrambe le sorgenti ADER4
-                await LeggiDatiAsync(_lavorazioniConfigManager.CnxnAder4Sorter1!, "ADER4_SORTER_1");
-                await LeggiDatiAsync(_lavorazioniConfigManager.CnxnAder4Sorter2!, "ADER4_SORTER_2");
+                await LeggiDatiAsync(_lavorazioniConfigManager.CnxnAder4Sorter1!, "ADER4_SORTER_1", ct);
+                await LeggiDatiAsync(_lavorazioniConfigManager.CnxnAder4Sorter2!, "ADER4_SORTER_2", ct);
             }
             else
             {

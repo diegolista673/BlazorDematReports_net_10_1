@@ -17,24 +17,15 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     public sealed class PraticheSuccessioneHandler : ILavorazioneHandler
     {
-        private readonly INormalizzatoreOperatori _normalizzatore;
-        private readonly IGestoreOperatoriDatiLavorazione _gestoreOperatori;
-        private readonly IElaboratoreDatiLavorazione _elaboratore;
         private readonly ILavorazioniConfigManager _configManager;
         private readonly ILoggerFactory _loggerFactory;
 
         public PraticheSuccessioneHandler(
-            INormalizzatoreOperatori normalizzatore,
-            IGestoreOperatoriDatiLavorazione gestoreOperatori,
-            IElaboratoreDatiLavorazione elaboratore,
             ILavorazioniConfigManager configManager,
             ILoggerFactory loggerFactory)
         {
-            _normalizzatore   = normalizzatore;
-            _gestoreOperatori = gestoreOperatori;
-            _elaboratore      = elaboratore;
-            _configManager    = configManager;
-            _loggerFactory    = loggerFactory;
+            _configManager = configManager;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
@@ -44,7 +35,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
         {
             var lavorazione = new PRATICHE_SUCCESSIONEProcessor(
-                _normalizzatore, _gestoreOperatori, _elaboratore, _configManager,
+                _configManager,
                 _loggerFactory.CreateLogger<PRATICHE_SUCCESSIONEProcessor>());
 
             lavorazione.NomeProcedura          = context.NomeProcedura;
@@ -54,9 +45,11 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
             lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
 
-            return await lavorazione.SetDatiDematAsync();
+            return await lavorazione.SetDatiDematAsync(ct);
         }
     }
+
+
 
     /// <summary>
     /// Classe di lavorazione per la procedura PRATICHE_SUCCESSIONE.
@@ -71,17 +64,11 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>
         /// Inizializza una nuova istanza di PRATICHE_SUCCESSIONEProcessor.
         /// </summary>
-        /// <param name="normalizzatoreOperatori">Servizio di normalizzazione operatori.</param>
-        /// <param name="gestoreOperatoriDati">Servizio di gestione operatori dati lavorazione.</param>
-        /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
         public PRATICHE_SUCCESSIONEProcessor(
-            INormalizzatoreOperatori normalizzatoreOperatori,
-            IGestoreOperatoriDatiLavorazione gestoreOperatoriDati,
-            IElaboratoreDatiLavorazione elaboratoreDati,
             ILavorazioniConfigManager lavorazioniConfigManager,
             ILogger<PRATICHE_SUCCESSIONEProcessor> logger
-        ) : base(normalizzatoreOperatori, gestoreOperatoriDati, elaboratoreDati)
+        )
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
             _logger = logger;
@@ -91,8 +78,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// Recupera e aggrega i dati di lavorazione per la procedura PRATICHE_SUCCESSIONE.
         /// Gestisce le diverse fasi di lavorazione per le pratiche di successione.
         /// </summary>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalla fonte dati.</returns>
-        public override async Task<List<DatiLavorazione>> SetDatiDematAsync()
+        public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
@@ -116,7 +104,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                     and TRUNC(pt_data_scan) <= to_date(:endData,'yyyymmdd')
                     group by pt_operatore_scan, TRUNC(pt_data_scan)";
 
-                result.AddRange(await EseguiQueryAsync(query, startData, endData));
+                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
             }
             else if (IDFaseLavorazione == 5)
             {
@@ -132,7 +120,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                     and TRUNC(pt_data_index) <= to_date(:endData,'yyyymmdd') 
                     group by pt_operatore_index, TRUNC(pt_data_index)";
 
-                result.AddRange(await EseguiQueryAsync(query, startData, endData));
+                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
             }
             else
             {
@@ -150,8 +138,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <param name="query">Query Oracle da eseguire.</param>
         /// <param name="startData">Data di inizio periodo in formato stringa (yyyyMMdd).</param>
         /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData)
+        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData, CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
@@ -161,7 +150,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             try
             {
                 await using var connection = new OracleConnection(_lavorazioniConfigManager.CnxnPraticheSuccessione);
-                await connection.OpenAsync();
+                await connection.OpenAsync(ct);
 
                 await using var cmd = connection.CreateCommand();
                 cmd.CommandTimeout = 30;
@@ -172,8 +161,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                 _logger.LogDebug("[PRATICHE_SUCCESSIONE] Esecuzione query Oracle con timeout: {Timeout}s", cmd.CommandTimeout);
 
-                await using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
                 {
                     var dati = new DatiLavorazione
                     {

@@ -41,19 +41,25 @@ namespace BlazorDematReports.Core.Utility
         /// Elabora i dati di lavorazione originali, normalizzando gli operatori, raggruppando e aggregando i dati,
         /// e restituendo una lista di <see cref="DatiElaborati"/> pronti per la persistenza o l'analisi.
         /// </summary>
+        /// <param name="ct">Token di cancellazione.</param>
         public async Task<List<DatiElaborati>> ElaboraDatiLavorazioneAsync(
             List<DatiLavorazione> datiOriginali,
             int idCentro,
             int idProceduraLavorazione,
-            int idFaseLavorazione)
+            int idFaseLavorazione,
+            CancellationToken ct = default)
         {
             if (datiOriginali == null || !datiOriginali.Any())
                 return new List<DatiElaborati>();
+
+            ct.ThrowIfCancellationRequested();
 
             try
             {
                 // Caricamento ottimizzato degli elenchi di operatori - cache se possibile
                 EnsureCachesLoaded();
+
+                ct.ThrowIfCancellationRequested();
 
                 // Creazione di lookup per ricerche più efficienti
                 var lookups = BuildLookups();
@@ -63,6 +69,8 @@ namespace BlazorDematReports.Core.Utility
 
                 foreach (var gruppo in datiOriginali.GroupBy(d => (d.Operatore, d.DataLavorazione)))
                 {
+                    ct.ThrowIfCancellationRequested();
+
                     var record = await ProcessGroupAsync(
                         gruppo,
                         idCentro,
@@ -74,6 +82,8 @@ namespace BlazorDematReports.Core.Utility
                     if (record != null)
                         datiRaggruppati.Add(record);
                 }
+
+                ct.ThrowIfCancellationRequested();
 
                 // Secondo raggruppamento per aggregare ulteriormente i dati
                 return RaggruppaESommaDatiFinali(

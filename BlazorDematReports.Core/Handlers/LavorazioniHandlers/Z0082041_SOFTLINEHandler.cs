@@ -17,21 +17,11 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     public sealed class Z0082041_SoftlineHandler : ILavorazioneHandler
     {
-        private readonly INormalizzatoreOperatori _normalizzatore;
-        private readonly IGestoreOperatoriDatiLavorazione _gestoreOperatori;
-        private readonly IElaboratoreDatiLavorazione _elaboratore;
         private readonly ILavorazioniConfigManager _configManager;
 
-        public Z0082041_SoftlineHandler(
-            INormalizzatoreOperatori normalizzatore,
-            IGestoreOperatoriDatiLavorazione gestoreOperatori,
-            IElaboratoreDatiLavorazione elaboratore,
-            ILavorazioniConfigManager configManager)
+        public Z0082041_SoftlineHandler(ILavorazioniConfigManager configManager)
         {
-            _normalizzatore   = normalizzatore;
-            _gestoreOperatori = gestoreOperatori;
-            _elaboratore      = elaboratore;
-            _configManager    = configManager;
+            _configManager = configManager;
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
@@ -40,14 +30,14 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>Esegue la lavorazione Z0082041_SOFTLINE.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazione = new Z0082041_SOFTLINEProcessor(_normalizzatore, _gestoreOperatori, _elaboratore, _configManager);
+            var lavorazione = new Z0082041_SOFTLINEProcessor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;
             lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
             lavorazione.IDCentro               = context.IDCentro;
             lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
             lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
-            return await lavorazione.SetDatiDematAsync();
+            return await lavorazione.SetDatiDematAsync(ct);
         }
     }
 
@@ -69,11 +59,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
         public Z0082041_SOFTLINEProcessor(
-            INormalizzatoreOperatori normalizzatoreOperatori,
-            IGestoreOperatoriDatiLavorazione gestoreOperatoriDati,
-            IElaboratoreDatiLavorazione elaboratoreDati,
             ILavorazioniConfigManager lavorazioniConfigManager
-        ) : base(normalizzatoreOperatori, gestoreOperatoriDati, elaboratoreDati)
+        )
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
             _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
@@ -83,8 +70,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// Recupera e aggrega i dati di lavorazione per la procedura Z0082041_SOFTLINE.
         /// Esegue la query di produzione sulle tabelle Oracle in base alla fase di lavorazione.
         /// </summary>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalla fonte dati.</returns>
-        public override async Task<List<DatiLavorazione>> SetDatiDematAsync()
+        public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "Oracle_Z0082041_SOFTLINE_Tables");
 
@@ -109,7 +97,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                     AND TRUNC(DATA_SCAN) <= TO_DATE(:endData, 'YYYYMMDD')
                     GROUP BY OP_SCAN, TRUNC(DATA_SCAN)";
 
-                result.AddRange(await EseguiQueryOracleAsync(query, startData, endData));
+                result.AddRange(await EseguiQueryOracleAsync(query, startData, endData, ct));
             }
             else if (IDFaseLavorazione == 5)
             {
@@ -126,7 +114,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                     AND TRUNC(DATA_INDEX) <= TO_DATE(:endData, 'YYYYMMDD')
                     GROUP BY OP_INDEX, TRUNC(DATA_INDEX)";
 
-                result.AddRange(await EseguiQueryOracleAsync(query, startData, endData));
+                result.AddRange(await EseguiQueryOracleAsync(query, startData, endData, ct));
             }
             else
             {
@@ -144,8 +132,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <param name="query">Query Oracle da eseguire.</param>
         /// <param name="startData">Data di inizio periodo in formato stringa (yyyyMMdd).</param>
         /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryOracleAsync(string query, string startData, string endData)
+        private async Task<List<DatiLavorazione>> EseguiQueryOracleAsync(string query, string startData, string endData, CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", additionalInfo: $"Parametri: startData={startData}, endData={endData}");
 
@@ -159,7 +148,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                                      ?? _lavorazioniConfigManager.CnxnCaptiva206; // Fallback
 
                 await using var connection = new OracleConnection(oracleConnection);
-                await connection.OpenAsync();
+                await connection.OpenAsync(ct);
 
                 await using var cmd = new OracleCommand(query, connection);
                 cmd.CommandTimeout = 30;
@@ -168,8 +157,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                 _logger.Debug($"[Z0082041_SOFTLINE] Esecuzione query Oracle con timeout: {cmd.CommandTimeout}s");
 
-                using var reader = await cmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
+                using var reader = await cmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
                 {
                     var dati = new DatiLavorazione
                     {

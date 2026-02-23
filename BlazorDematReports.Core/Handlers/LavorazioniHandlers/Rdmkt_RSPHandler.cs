@@ -17,21 +17,11 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// </summary>
     public sealed class Rdmkt_RSPHandler : ILavorazioneHandler
     {
-        private readonly INormalizzatoreOperatori _normalizzatore;
-        private readonly IGestoreOperatoriDatiLavorazione _gestoreOperatori;
-        private readonly IElaboratoreDatiLavorazione _elaboratore;
         private readonly ILavorazioniConfigManager _configManager;
 
-        public Rdmkt_RSPHandler(
-            INormalizzatoreOperatori normalizzatore,
-            IGestoreOperatoriDatiLavorazione gestoreOperatori,
-            IElaboratoreDatiLavorazione elaboratore,
-            ILavorazioniConfigManager configManager)
+        public Rdmkt_RSPHandler(ILavorazioniConfigManager configManager)
         {
-            _normalizzatore   = normalizzatore;
-            _gestoreOperatori = gestoreOperatori;
-            _elaboratore      = elaboratore;
-            _configManager    = configManager;
+            _configManager = configManager;
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
@@ -40,14 +30,15 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>Esegue la lavorazione RDMKT_RSP.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazione = new RDMKT_RSPProcessor(_normalizzatore, _gestoreOperatori, _elaboratore, _configManager);
+            var lavorazione = new RDMKT_RSPProcessor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;
             lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
             lavorazione.IDCentro               = context.IDCentro;
             lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
             lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
-            return await lavorazione.SetDatiDematAsync();
+
+            return await lavorazione.SetDatiDematAsync(ct);
         }
     }
 
@@ -69,11 +60,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
         public RDMKT_RSPProcessor(
-            INormalizzatoreOperatori normalizzatoreOperatori,
-            IGestoreOperatoriDatiLavorazione gestoreOperatoriDati,
-            IElaboratoreDatiLavorazione elaboratoreDati,
             ILavorazioniConfigManager lavorazioniConfigManager
-        ) : base(normalizzatoreOperatori, gestoreOperatoriDati, elaboratoreDati)
+        )
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
             _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
@@ -83,8 +71,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// Recupera e aggrega i dati di lavorazione per la procedura RDMKT_RSP.
         /// Gestisce tabelle dinamiche con pattern '_RSP_' e '_UDA_DETTAGLIO'.
         /// </summary>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalle fonti dati.</returns>
-        public override async Task<List<DatiLavorazione>> SetDatiDematAsync()
+        public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "RDMKT_RSP_Dynamic_Tables");
 
@@ -96,7 +85,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
             try
             {
-                var tableNames = await GetNonEmptyTableNamesAsync();
+                var tableNames = await GetNonEmptyTableNamesAsync(ct);
 
                 _logger.Info($"[RDMKT_RSP] Trovate {tableNames.Count} tabelle RSP con dati");
 
@@ -116,7 +105,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                             where CONVERT(date, DATA_INDEX) >= @startData and CONVERT(date, DATA_INDEX) <= @endData
                             group by OP_INDEX, CONVERT(date, DATA_INDEX), OP_SCAN";
 
-                        result.AddRange(await EseguiQueryAsync(query, startData, endData, tabName, true));
+                        result.AddRange(await EseguiQueryAsync(query, startData, endData, tabName, true, ct));
                     }
                 }
                 else if (IDFaseLavorazione == 4)
@@ -136,7 +125,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                             group by OP_SCAN, CONVERT(date, DATA_SCAN)
                             order by CONVERT(date, DATA_SCAN)";
 
-                        result.AddRange(await EseguiQueryAsync(query, startData, endData, tabName, false));
+                        result.AddRange(await EseguiQueryAsync(query, startData, endData, tabName, false, ct));
                     }
                 }
                 else
@@ -158,8 +147,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>
         /// Trova tutte le tabelle con nome che contiene '_RSP_' e '_UDA_DETTAGLIO' e con almeno una riga.
         /// </summary>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista dei nomi delle tabelle che soddisfano i criteri.</returns>
-        private async Task<List<string>> GetNonEmptyTableNamesAsync()
+        private async Task<List<string>> GetNonEmptyTableNamesAsync(CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "METADATA", additionalInfo: "Ricerca tabelle dinamiche RSP");
 
@@ -174,15 +164,15 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                                         where t.name LIKE '%_RSP_%_UDA_DETTAGLIO' and i.Rows > 0";
 
                 await using var connection = new SqlConnection(_lavorazioniConfigManager.CnxnCaptiva206);
-                await connection.OpenAsync();
+                await connection.OpenAsync(ct);
 
                 await using var command = new SqlCommand(queryTabelle, connection);
                 command.CommandTimeout = 30;
 
                 _logger.Debug("[RDMKT_RSP] Esecuzione ricerca tabelle dinamiche");
 
-                using var reader = await command.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
+                using var reader = await command.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
                 {
                     tableNames.Add(reader.GetString(0));
                 }
@@ -227,8 +217,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
         /// <param name="tableName">Nome della tabella su cui viene eseguita la query.</param>
         /// <param name="includeOperatoreScan">Indica se includere il campo OperatoreScan nei risultati.</param>
+        /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData, string tableName, bool includeOperatoreScan)
+        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData, string tableName, bool includeOperatoreScan, CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", additionalInfo: $"Tabella: {tableName}, Parametri: startData={startData}, endData={endData}");
 
@@ -238,7 +229,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             try
             {
                 await using var connection = new SqlConnection(_lavorazioniConfigManager.CnxnCaptiva206);
-                await connection.OpenAsync();
+                await connection.OpenAsync(ct);
 
                 await using var cmd = new SqlCommand(query, connection);
                 cmd.CommandTimeout = 60; // Timeout maggiore per tabelle dinamiche
@@ -247,9 +238,9 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                 _logger.Debug($"[RDMKT_RSP] Esecuzione query su tabella {tableName} con timeout: {cmd.CommandTimeout}s");
 
-                using var reader = await cmd.ExecuteReaderAsync();
+                using var reader = await cmd.ExecuteReaderAsync(ct);
                 int recordCount = 0;
-                while (await reader.ReadAsync())
+                while (await reader.ReadAsync(ct))
                 {
                     var dati = new DatiLavorazione
                     {

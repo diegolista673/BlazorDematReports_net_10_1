@@ -257,13 +257,8 @@ public static class Program
         builder.Services.AddScoped<ConfigurationWizardStateService>();
         builder.Services.AddScoped<ConfigurationStepValidator>();
 
-        // Registra servizi email
-        builder.Services.AddScoped<EmailDailyFlagService>();
-        builder.Services.AddTransient<Ader4EmailService>();
-        //builder.Services.AddTransient<Hera16EmailService>(); 
 
         // Registrazione handler lavorazioni SQL
-        builder.Services.AddScoped<ILavorazioneHandler, DefaultLavorazioneHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, Z0072370_28AutHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, Z0082041_SoftlineHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, Ant_Ader4_Sorter_1_2Handler>();
@@ -272,14 +267,16 @@ public static class Program
         builder.Services.AddScoped<ILavorazioneHandler, Hera16EwsHandler>();
         builder.Services.AddScoped<ILavorazioneHandler, Ader4Handler>();
 
+        // Registra servizi email
+        builder.Services.AddScoped<EmailDailyFlagService>();
+        builder.Services.AddTransient<Ader4EmailService>();
+        //builder.Services.AddTransient<Hera16EmailService>(); 
+
         // Registry unificato (raccoglie ILavorazioneHandler)
         builder.Services.AddScoped<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
 
         // Servizio unificato principale
         builder.Services.AddScoped<IUnifiedHandlerService, UnifiedHandlerService>();
-
-        // Sistema Unificato Configurazione Fonti Dati
-        builder.Services.AddScoped<UnifiedDataSourceHandler>();
 
         // Configurazione FluentEmail per ServiceMail
         RegisterFluentEmail(builder);

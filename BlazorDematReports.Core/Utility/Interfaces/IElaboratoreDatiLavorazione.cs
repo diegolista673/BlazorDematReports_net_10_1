@@ -8,7 +8,8 @@ namespace BlazorDematReports.Core.Utility.Interfaces
                     List<DatiLavorazione> datiOriginali,
                     int idCentro,
                     int idProceduraLavorazione,
-                    int idFaseLavorazione);
+                    int idFaseLavorazione,
+                    CancellationToken ct = default);
 
     }
 }

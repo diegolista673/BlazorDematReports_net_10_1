@@ -16,7 +16,7 @@ using System.Text.RegularExpressions;
 namespace BlazorDematReports.Core.DataReading.Infrastructure
 {
     /// <summary>
-    /// Scheduler unificato per task di produzione e task di import mail basati sulla tabella TaskDaEseguire.
+    /// Scheduler per task di produzione in tabella TaskDaEseguire.
     /// Costruisce la chiave Hangfire in base al tipo di task.
     /// Formato: {tipoAbbreviato}:{IdTaskDaEseguire}-{nomeprocedura}:{dettaglio}
     ///   - sql:{id}-{proc}:{fase}         per TipoFonte.SQL
@@ -366,7 +366,17 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         }
     }
 
-    /// <summary>Esegue i task schedulati da Hangfire leggendo dati dalla sorgente e salvandoli in ProduzioneSistema.</summary>
+
+    /// <summary>
+    /// Provides methods to execute production jobs using Hangfire, managing task execution, dependency injection
+    /// scopes, and task state updates.
+    /// </summary>
+    /// <remarks>This static class serves as the entry point for running production tasks in a background job
+    /// context. Each job is executed within its own dependency injection scope to ensure proper resource management and
+    /// isolation. The class handles task retrieval, execution, and logging, and updates the task's state to reflect
+    /// success or failure. It supports both SQL-based and custom handler data acquisition strategies, and ensures that
+    /// only enabled tasks are executed. Use this class to coordinate the full lifecycle of production job execution,
+    /// including data acquisition, processing, and persistence.</remarks>
     public static class ProductionJobRunner
     {
         /// <summary>Factory DI per la creazione di scope per ogni job Hangfire.</summary>
@@ -403,7 +413,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
             try
             {
-                await DispatchAsync(scope, entity, cancellationToken);
+                await ExecuteProductionTaskAsync(scope, entity, cancellationToken);
                 MarkSuccess(entity);
                 logger.LogInformation("Task {TaskId} completato", idTaskDaEseguire);
             }
@@ -420,103 +430,94 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         }
 
 
-        #region Dispatch e Execution
+        #region Unified Execution Pipeline
 
         /// <summary>
-        /// Smista l'esecuzione in base a <see cref="TipoFonteData"/> eliminando magic strings.
+        /// Punto di ingresso unificato per l'esecuzione di tutti i task di produzione.
+        /// Pipeline: Acquire → Elaborate → Persist (comune per SQL e HandlerIntegrato).
         /// </summary>
-        private static Task DispatchAsync(IServiceScope scope, TaskDaEseguire entity, CancellationToken ct)
+        private static async Task ExecuteProductionTaskAsync(
+            IServiceScope scope, TaskDaEseguire entity, CancellationToken ct)
         {
-            var config = entity.IdConfigurazioneDatabaseNavigation
-                ?? throw new InvalidOperationException(
-                    $"Task {entity.IdTaskDaEseguire}: IdConfigurazioneDatabase mancante. " +
-                    "Configurare tramite /admin/fonti-dati.");
-
-            return config.TipoFonte switch
-            {
-                TipoFonteData.SQL              => ExecuteUnifiedDataSourceAsync(scope, entity, ct),
-                TipoFonteData.HandlerIntegrato => ExecuteUnifiedHandlerAsync(scope, entity, config.HandlerClassName ?? "", ct),
-                _ => throw new InvalidOperationException(
-                    $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}.")
-            };
-        }
-
-
-
-        /// <summary>Esegue un handler tramite <see cref="IUnifiedHandlerService"/>.</summary>
-        private static async Task ExecuteUnifiedHandlerAsync(
-            IServiceScope scope, TaskDaEseguire entity, string handlerCode, CancellationToken ct)
-        {
-            var unifiedService = scope.ServiceProvider.GetRequiredService<IUnifiedHandlerService>();
-            var fase           = entity.IdLavorazioneFaseDateReadingNavigation;
-
-            var context = new UnifiedExecutionContext
-            {
-                IDProceduraLavorazione = fase.IdProceduraLavorazione,
-                HandlerCode            = handlerCode,
-                Parameters = new Dictionary<string, object>
-                {
-                    { "IDFaseLavorazione",    fase.IdFaseLavorazione },
-                    { "NomeProcedura",        fase.IdProceduraLavorazioneNavigation?.NomeProceduraProgramma ?? "UNKNOWN" },
-                    { "StartDataLavorazione", DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti)) },
-                    { "EndDataLavorazione",   DateTime.Now },
-                    { "TaskId",               entity.IdTaskDaEseguire },
-                    { "IdConfigurazioneDatabase", entity.IdConfigurazioneDatabase ?? 0 }
-                }
-            };
-
-            await unifiedService.ExecuteHandlerAsync(handlerCode, context, ct);
-        }
-
-        /// <summary>Esegue una query SQL, elabora i dati e li persiste in ProduzioneSistema.</summary>
-        private static async Task ExecuteUnifiedDataSourceAsync(
-            IServiceScope scope, TaskDaEseguire entity, CancellationToken cancellationToken = default)
-        {
-            if (!entity.IdConfigurazioneDatabase.HasValue)
-            {
-                throw new InvalidOperationException(
-                    $"Task {entity.IdTaskDaEseguire} non ha IdConfigurazioneDatabase. " +
-                    "Tutti i task devono essere configurati tramite /admin/fonti-dati");
-            }
-
-            var db = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
-            var queryService = scope.ServiceProvider.GetRequiredService<IQueryService>();
-            var lavorazioniConfig = scope.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
+            var db          = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
             var elaboratore = scope.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
-            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-                .CreateLogger("DataReading.Infrastructure.ProductionJobRunner");
+            var logger      = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                                  .CreateLogger("ProductionJobRunner");
+            var fase = entity.IdLavorazioneFaseDateReadingNavigation;
 
-            // Carica configurazione con mappings
+            // Carica configurazione + mapping (comune per entrambi i path)
             var config = await db.ConfigurazioneFontiDatis
                 .Include(c => c.ConfigurazioneFaseCentros)
-                .FirstOrDefaultAsync(c => c.IdConfigurazione == entity.IdConfigurazioneDatabase.Value, cancellationToken);
+                .FirstOrDefaultAsync(c => c.IdConfigurazione == entity.IdConfigurazioneDatabase, ct)
+                ?? throw new InvalidOperationException(
+                    $"Configurazione {entity.IdConfigurazioneDatabase} non trovata per task {entity.IdTaskDaEseguire}");
 
-            if (config == null)
-            {
-                throw new InvalidOperationException(
-                    $"Configurazione {entity.IdConfigurazioneDatabase.Value} non trovata per task {entity.IdTaskDaEseguire}");
-            }
-
-            if (config.TipoFonte != TipoFonteData.SQL)
-            {
-                throw new InvalidOperationException(
-                    $"Configurazione {config.IdConfigurazione} ha TipoFonte='{config.TipoFonte}' invece di 'SQL'");
-            }
-
-            var idFaseLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdFaseLavorazione;
-            var idProceduraLavorazione = entity.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione;
-
-            // Trova il mapping per questa fase (include IdCentro necessario per ElaboraDatiLavorazione)
-            var mapping = config.ConfigurazioneFaseCentros.FirstOrDefault(fc =>
-                fc.IdFaseLavorazione == idFaseLavorazione &&
-                fc.FlagAttiva == true);
-
-            if (mapping == null)
-            {
-                throw new InvalidOperationException(
-                    $"Nessun mapping attivo per fase {idFaseLavorazione} nella configurazione {config.IdConfigurazione}. " +
+            var mapping = config.ConfigurazioneFaseCentros
+                .FirstOrDefault(fc => fc.IdFaseLavorazione == fase.IdFaseLavorazione && fc.FlagAttiva == true)
+                ?? throw new InvalidOperationException(
+                    $"Nessun mapping attivo per fase {fase.IdFaseLavorazione} nella configurazione {config.IdConfigurazione}. " +
                     "Verificare i mapping Fase/Centro in /admin/fonti-dati.");
+
+            // STRATEGY: Acquisisce dati in base al TipoFonte
+            var datiLavorazione = await AcquireDatiLavorazioneAsync(
+                scope, entity, config, mapping, ct);
+
+            if (datiLavorazione.Count == 0)
+            {
+                logger.LogInformation(
+                    "Task {TaskId}: nessun dato acquisito per il periodo configurato",
+                    entity.IdTaskDaEseguire);
+                return;
             }
+
+            // Pipeline condivisa: elabora operatori e normalizza
+            var datiElaborati = await elaboratore.ElaboraDatiLavorazioneAsync(
+                datiLavorazione,
+                mapping.IdCentro,
+                fase.IdProceduraLavorazione,
+                fase.IdFaseLavorazione,
+                ct);
+
+            // Persiste con strategia delete-then-reinsert
+            int saved = await PersistProduzioneSistemaAsync(db, datiElaborati, ct);
+
+            logger.LogInformation(
+                "Task {TaskId}: {Saved} record salvati in ProduzioneSistema su {Total} elaborati",
+                entity.IdTaskDaEseguire, saved, datiElaborati.Count);
+        }
+
+        /// <summary>
+        /// Strategy method: acquisisce dati dalla sorgente in base al TipoFonte.
+        /// Restituisce sempre List&lt;DatiLavorazione&gt; indipendentemente dalla sorgente.
+        /// </summary>
+        private static Task<List<DatiLavorazione>> AcquireDatiLavorazioneAsync(
+            IServiceScope scope,
+            TaskDaEseguire entity,
+            ConfigurazioneFontiDati config,
+            ConfigurazioneFaseCentro mapping,
+            CancellationToken ct)
+        {
+            return config.TipoFonte switch
+            {
+                TipoFonteData.SQL              => AcquireFromSqlAsync(scope, entity, config, mapping, ct),
+                TipoFonteData.HandlerIntegrato => AcquireFromHandlerAsync(scope, entity, config, mapping, ct),
+                _ => throw new InvalidOperationException(
+                    $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
+            };
+        }
+
+        /// <summary>Strategy SQL: esegue query configurata e converte DataTable a DatiLavorazione.</summary>
+        private static async Task<List<DatiLavorazione>> AcquireFromSqlAsync(
+            IServiceScope scope,
+            TaskDaEseguire entity,
+            ConfigurazioneFontiDati config,
+            ConfigurazioneFaseCentro mapping,
+            CancellationToken ct)
+        {
+            var queryService      = scope.ServiceProvider.GetRequiredService<IQueryService>();
+            var lavorazioniConfig = scope.ServiceProvider.GetRequiredService<ILavorazioniConfigManager>();
+            var logger            = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                                        .CreateLogger("ProductionJobRunner");
 
             var query = mapping.TestoQueryTask;
             if (string.IsNullOrWhiteSpace(query))
@@ -534,38 +535,76 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             }
 
             var startDate = DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti));
-            var endDate = DateTime.Now;
-
-            // Esegue la query SQL
-            var dataTable = await queryService.ExecuteQueryAsync(connectionString, query, startDate, endDate, cancellationToken);
+            var dataTable = await queryService.ExecuteQueryAsync(connectionString, query, startDate, DateTime.Now, ct);
 
             if (dataTable.Rows.Count == 0)
             {
                 logger.LogInformation(
-                    "Task {TaskId}: nessun dato restituito dalla query SQL per il periodo {Start:d}-{End:d}",
-                    entity.IdTaskDaEseguire, startDate, endDate);
-                return;
+                    "Task {TaskId}: nessun dato dalla query SQL per periodo {Start:d}-{End:d}",
+                    entity.IdTaskDaEseguire, startDate, DateTime.Now);
+                return new List<DatiLavorazione>();
             }
 
-            // Converte DataTable → List<DatiLavorazione> verificando le colonne obbligatorie
-            var datiLavorazione = DataTableToDatiLavorazione(dataTable);
-
-            // Normalizza operatori e raggruppa via ElaboratoreDatiLavorazione
-            var datiElaborati = await elaboratore.ElaboraDatiLavorazioneAsync(
-                datiLavorazione,
-                mapping.IdCentro,
-                idProceduraLavorazione,
-                idFaseLavorazione);
-
-            // Persiste i risultati in ProduzioneSistema
-            int saved = await PersistProduzioneSistemaAsync(db, datiElaborati, cancellationToken);
-
-            logger.LogInformation(
-                "Task {TaskId}: {Saved} record salvati in ProduzioneSistema su {Total} elaborati",
-                entity.IdTaskDaEseguire, saved, datiElaborati.Count);
+            return DataTableToDatiLavorazione(dataTable);
         }
 
+        /// <summary>Strategy Handler: esegue handler integrato custom e cattura DatiLavorazione.</summary>
+        private static async Task<List<DatiLavorazione>> AcquireFromHandlerAsync(
+            IServiceScope scope,
+            TaskDaEseguire entity,
+            ConfigurazioneFontiDati config,
+            ConfigurazioneFaseCentro mapping,
+            CancellationToken ct)
+        {
+            var unifiedService = scope.ServiceProvider.GetRequiredService<IUnifiedHandlerService>();
+            var logger         = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                                     .CreateLogger("ProductionJobRunner");
+            var fase = entity.IdLavorazioneFaseDateReadingNavigation;
 
+            var handlerCode = config.HandlerClassName;
+            if (string.IsNullOrWhiteSpace(handlerCode))
+            {
+                throw new InvalidOperationException(
+                    $"HandlerClassName mancante nella configurazione {config.IdConfigurazione}");
+            }
+
+            var context = new UnifiedExecutionContext
+            {
+                IDProceduraLavorazione = fase.IdProceduraLavorazione,
+                HandlerCode            = handlerCode,
+                Parameters = new Dictionary<string, object>
+                {
+                    { "IDFaseLavorazione",        fase.IdFaseLavorazione },
+                    { "IDCentro",                 mapping.IdCentro },
+                    { "NomeProcedura",            fase.IdProceduraLavorazioneNavigation?.NomeProceduraProgramma ?? "UNKNOWN" },
+                    { "StartDataLavorazione",     DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti)) },
+                    { "EndDataLavorazione",       DateTime.Now },
+                    { "TaskId",                   entity.IdTaskDaEseguire },
+                    { "IdConfigurazioneDatabase", entity.IdConfigurazioneDatabase ?? 0 }
+                }
+            };
+
+            var result = await unifiedService.ExecuteHandlerAsync(handlerCode, context, ct);
+
+            if (result is not List<DatiLavorazione> datiLavorazione)
+            {
+                logger.LogWarning(
+                    "Handler {Code} ha restituito tipo inatteso: {Type}",
+                    handlerCode, result?.GetType().Name ?? "null");
+                return new List<DatiLavorazione>();
+            }
+
+            if (datiLavorazione.Count == 0)
+            {
+                logger.LogInformation("Handler {Code}: nessun dato restituito", handlerCode);
+            }
+
+            return datiLavorazione;
+        }
+
+        #endregion
+
+        #region Data Transformation
 
         /// <summary>
         /// Converte un DataTable con le colonne standard in una lista di DatiLavorazione.

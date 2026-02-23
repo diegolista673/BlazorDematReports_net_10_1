@@ -7,11 +7,6 @@ namespace BlazorDematReports.Core.Constants
     public static class LavorazioniCodes
     {
         /// <summary>
-        /// Lavorazione di default utilizzata quando non viene specificata una lavorazione specifica.
-        /// </summary>
-        public const string DEFAULT = "DEFAULT";
-
-        /// <summary>
         /// Lavorazione Z0072370 per 28 AUT.
         /// </summary>
         public const string Z0072370_28AUT = "Z0072370_28AUT";

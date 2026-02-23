@@ -14,13 +14,21 @@ with (firstrow = 170,
       per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
       esempio :
 
- chiederea cosa serve lavorazioneDefault e se è possibile eliminare i metodi che non vengono utilizzati
+
+controllare Ader4Handler e Ader4EmailService
+
+completare lettura alleagti e poi la notitfica via mail della lettura avvenuta?
 scrivere documentazione per la crazione dei task e di tutte le operazioni 
+
 spiegare funzionamento degli handler e le inrterfacce
+
 spiegare come recupera tutti gli handles in registry e come funziona il patern registry
+
+
 fare guida per developer per aggiungere un nuovo handler passo passo
+
 testare iserimento dati in produzione sistema con dati a 10 giorni e verificare se elimina incogreunze
-spiegare funzinamento del processo lavoazione di default e i suoi metodi , e se ci sono metodi da eliminare?
+
 
 implemtare gli handler via mail e testare letture allegati e inserimento dati in produzione
 
@@ -32,8 +40,7 @@ controllare le lavorazioni che sono in datareading true ma non hanno un job asso
 
 
 TODO
-Per le tabelle di appoggio stabilire come eseguire query di controllo per vedere se tutti i dati sono stati caricati esempio ader mensile totali per fatturazione coop
-visualizzare le tabelle di appoggio?
+
 
 Controllare le varie operazioni fatte con utenti e permessi diversi e ruoli soprattutto per elenco lavoratori, schede totali e impostazioni
 
