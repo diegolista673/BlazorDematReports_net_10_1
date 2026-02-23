@@ -13,10 +13,10 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Hera16
     /// Questo handler è un placeholder per il registry system.
     /// </summary>
     [Description("Import dati HERA16 da allegati email CSV")]
-    public sealed class Hera16EwsHandler : ILavorazioneHandler
+    public sealed class Hera16EwsHandler : IProductionDataHandler
     {
         /// <inheritdoc />
-        public string LavorazioneCode => LavorazioniCodes.HERA16;
+        public string HandlerCode => LavorazioniCodes.HERA16;
 
         /// <inheritdoc />
         public string? GetServiceCode() => LavorazioniCodes.HERA16;
@@ -30,7 +30,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Hera16
         };
 
         /// <inheritdoc />
-        public Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
+        public Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
             // La logica di elaborazione mail HERA16 è gestita da job Hangfire dedicati
             // che accedono direttamente ai servizi mail tramite il service provider.

@@ -15,7 +15,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// Gestisce l'elaborazione dei dati di produzione dalla sorgente Oracle
     /// relativa alle pratiche di successione.
     /// </summary>
-    public sealed class PraticheSuccessioneHandler : ILavorazioneHandler
+    public sealed class PraticheSuccessioneHandler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
         private readonly ILoggerFactory _loggerFactory;
@@ -29,10 +29,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
-        public string LavorazioneCode => LavorazioniCodes.PRATICHE_SUCCESSIONE;
+        public string HandlerCode => LavorazioniCodes.PRATICHE_SUCCESSIONE;
 
         /// <summary>Esegue la lavorazione PRATICHE_SUCCESSIONE.</summary>
-        public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
+        public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
             var lavorazione = new PRATICHE_SUCCESSIONEProcessor(
                 _configManager,

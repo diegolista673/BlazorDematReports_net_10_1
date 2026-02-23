@@ -13,7 +13,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
     /// Gestisce email da Verona e Genova inserendo in ProduzioneSistema.
     /// </summary>
     [Description("Import dati ADER4/Equitalia da allegati email CSV (Verona + Genova)")]
-    public sealed class Ader4Handler : ILavorazioneHandler
+    public sealed class Ader4Handler : IProductionDataHandler
     {
         private readonly ILogger<Ader4Handler> _logger;
         private readonly EmailDailyFlagService _flagService;
@@ -30,7 +30,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         }
 
         /// <inheritdoc />
-        public string LavorazioneCode => LavorazioniCodes.ADER4;
+        public string HandlerCode => LavorazioniCodes.ADER4;
 
         /// <inheritdoc />
         public string? GetServiceCode() => LavorazioniCodes.ADER4;
@@ -45,7 +45,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 
         /// <inheritdoc />
         public async Task<List<DatiLavorazione>> ExecuteAsync(
-            LavorazioneExecutionContext context,
+            ProductionExecutionContext context,
             CancellationToken ct = default)
         {
             string taskName = $"ADER4_P{context.IDProceduraLavorazione}_F{context.IDFaseLavorazione}";
@@ -80,7 +80,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         /// Chiamato solo dal primo task che esegue oggi.
         /// </summary>
         private async Task<List<DatiLavorazione>> ProcessEmailAndInsertAllDataAsync(
-            LavorazioneExecutionContext context,
+            ProductionExecutionContext context,
             CancellationToken ct)
         {
             var emailResults = await _emailService.ProcessEmailsAsync(ct);
@@ -107,7 +107,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         /// </summary>
         private List<DatiLavorazione> ConvertEmailResultsToDatiLavorazione(
             BatchEmailProcessingResult emailResults,
-            LavorazioneExecutionContext context)
+            ProductionExecutionContext context)
         {
             var datiLavorazione = new List<DatiLavorazione>();
 

@@ -56,7 +56,7 @@ namespace BlazorDematReports.Core.Services
         /// <summary>
         /// Registra un handler nel sistema.
         /// </summary>
-        public void RegisterHandler(IUnifiedHandler handler)
+        public void RegisterHandler(IRegistrableHandler handler)
         {
             _registry.Register(handler);
             _logger.LogInformation("Handler {Code} registrato", handler.Code);
@@ -83,10 +83,10 @@ namespace BlazorDematReports.Core.Services
         /// </summary>
         /// <param name="type">Tipo di handler da filtrare.</param>
         /// <returns>Collezione di handler del tipo specificato.</returns>
-        public Task<IReadOnlyCollection<IUnifiedHandler>> GetHandlersByTypeAsync(HandlerType type)
+        public Task<IReadOnlyCollection<IRegistrableHandler>> GetHandlersByTypeAsync(HandlerType type)
         {
-            // Per ora ritorna lista vuota, da implementare se necessario
-            return Task.FromResult<IReadOnlyCollection<IUnifiedHandler>>(new List<IUnifiedHandler>());
+            var handlers = _registry.GetHandlersByType(type);
+            return Task.FromResult(handlers);
         }
 
         /// <summary>

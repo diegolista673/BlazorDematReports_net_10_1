@@ -15,7 +15,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// Gestisce l'elaborazione dei dati di produzione per la procedura Z0072370_28AUT,
     /// sia per la fase di scansione che di indicizzazione.
     /// </summary>
-    public sealed class Z0072370_28AutHandler : ILavorazioneHandler
+    public sealed class Z0072370_28AutHandler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
 
@@ -25,10 +25,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
-        public string LavorazioneCode => LavorazioniCodes.Z0072370_28AUT;
+        public string HandlerCode => LavorazioniCodes.Z0072370_28AUT;
 
         /// <summary>Esegue la lavorazione Z0072370_28AUT.</summary>
-        public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
+        public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
             var lavorazione = new Z0072370_28AUTProcessor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;

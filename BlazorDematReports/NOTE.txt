@@ -15,14 +15,14 @@ with (firstrow = 170,
       esempio :
 
 
-controllare Ader4Handler e Ader4EmailService
+
 
 completare lettura alleagti e poi la notitfica via mail della lettura avvenuta?
 scrivere documentazione per la crazione dei task e di tutte le operazioni 
+scrivere documentazione completa del progetto , aggiungere note create in instructions per miglioare la documentazione
 
 spiegare funzionamento degli handler e le inrterfacce
 
-spiegare come recupera tutti gli handles in registry e come funziona il patern registry
 
 
 fare guida per developer per aggiungere un nuovo handler passo passo

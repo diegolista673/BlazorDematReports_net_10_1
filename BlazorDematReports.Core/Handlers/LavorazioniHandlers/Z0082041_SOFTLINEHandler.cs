@@ -15,7 +15,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// Gestisce l'elaborazione dei dati di produzione da più tabelle Oracle
     /// relative alla procedura Z0082041_SOFTLINE.
     /// </summary>
-    public sealed class Z0082041_SoftlineHandler : ILavorazioneHandler
+    public sealed class Z0082041_SoftlineHandler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
 
@@ -25,10 +25,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
-        public string LavorazioneCode => LavorazioniCodes.Z0082041_SOFTLINE;
+        public string HandlerCode => LavorazioniCodes.Z0082041_SOFTLINE;
 
         /// <summary>Esegue la lavorazione Z0082041_SOFTLINE.</summary>
-        public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
+        public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
             var lavorazione = new Z0082041_SOFTLINEProcessor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;

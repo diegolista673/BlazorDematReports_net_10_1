@@ -1,10 +1,10 @@
 namespace BlazorDematReports.Core.Lavorazioni.Models
 {
     /// <summary>
-    /// Contesto di esecuzione per le lavorazioni.
-    /// Trasporta i parametri temporali e gli ID necessari agli handler.
+    /// Contesto di esecuzione per handler di produzione.
+    /// Trasporta i parametri temporali e gli ID necessari agli handler per acquisire dati.
     /// </summary>
-    public sealed class LavorazioneExecutionContext
+    public sealed class ProductionExecutionContext
     {
         public string? NomeProcedura { get; init; }
         public int IDFaseLavorazione { get; init; }
@@ -25,11 +25,11 @@ namespace BlazorDematReports.Core.Lavorazioni.Models
         public Dictionary<string, object> Parameters { get; init; } = new();
 
         /// <summary>
-        /// Converte il contesto unificato in un contesto specifico per lavorazioni.
+        /// Converte il contesto unificato in un contesto specifico per handler di produzione.
         /// </summary>
-        public LavorazioneExecutionContext ToLavorazioneContext()
+        public ProductionExecutionContext ToProductionContext()
         {
-            return new LavorazioneExecutionContext
+            return new ProductionExecutionContext
             {
                 IDProceduraLavorazione = IDProceduraLavorazione,
                 IDFaseLavorazione = Parameters.GetValueOrDefault("IDFaseLavorazione", 0) as int? ?? 0,

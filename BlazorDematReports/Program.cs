@@ -258,22 +258,24 @@ public static class Program
         builder.Services.AddScoped<ConfigurationStepValidator>();
 
 
-        // Registrazione handler lavorazioni SQL
-        builder.Services.AddScoped<ILavorazioneHandler, Z0072370_28AutHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, Z0082041_SoftlineHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, Ant_Ader4_Sorter_1_2Handler>();
-        builder.Services.AddScoped<ILavorazioneHandler, PraticheSuccessioneHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, Rdmkt_RSPHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, Hera16EwsHandler>();
-        builder.Services.AddScoped<ILavorazioneHandler, Ader4Handler>();
+        // Registrazione handler lavorazioni (SQL/Oracle/Email)
+        // Auto-discovery: IProductionDataHandler raccolti dal registry via DI
+        builder.Services.AddScoped<IProductionDataHandler, Z0072370_28AutHandler>();
+        builder.Services.AddScoped<IProductionDataHandler, Z0082041_SoftlineHandler>();
+        builder.Services.AddScoped<IProductionDataHandler, Ant_Ader4_Sorter_1_2Handler>();
+        builder.Services.AddScoped<IProductionDataHandler, PraticheSuccessioneHandler>();
+        builder.Services.AddScoped<IProductionDataHandler, Rdmkt_RSPHandler>();
+        builder.Services.AddScoped<IProductionDataHandler, Hera16EwsHandler>();
+        builder.Services.AddScoped<IProductionDataHandler, Ader4Handler>();
+
+        // Registry unificato (raccoglie ILavorazioneHandler)
+        builder.Services.AddScoped<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
 
         // Registra servizi email
         builder.Services.AddScoped<EmailDailyFlagService>();
         builder.Services.AddTransient<Ader4EmailService>();
         //builder.Services.AddTransient<Hera16EmailService>(); 
 
-        // Registry unificato (raccoglie ILavorazioneHandler)
-        builder.Services.AddScoped<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
 
         // Servizio unificato principale
         builder.Services.AddScoped<IUnifiedHandlerService, UnifiedHandlerService>();

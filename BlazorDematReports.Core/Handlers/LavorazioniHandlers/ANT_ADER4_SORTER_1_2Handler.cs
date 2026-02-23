@@ -15,7 +15,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// Gestisce l'elaborazione dei dati di produzione dalle sorgenti dati
     /// associate ai sistemi ADER4 SORTER 1 e 2.
     /// </summary>
-    public sealed class Ant_Ader4_Sorter_1_2Handler : ILavorazioneHandler
+    public sealed class Ant_Ader4_Sorter_1_2Handler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
 
@@ -26,10 +26,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
-        public string LavorazioneCode => LavorazioniCodes.ANT_ADER4_SORTER_1_2;
+        public string HandlerCode => LavorazioniCodes.ANT_ADER4_SORTER_1_2;
 
         /// <summary>Esegue la lavorazione ANT_ADER4_SORTER_1_2.</summary>
-        public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
+        public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
             var lavorazione = new ANT_ADER4_SORTER_1_2Processor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;

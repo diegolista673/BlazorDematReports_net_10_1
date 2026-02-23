@@ -5,33 +5,35 @@ using BlazorDematReports.Core.Utility.Models;
 namespace BlazorDematReports.Core.Wrappers
 {
     /// <summary>
-    /// Wrapper per integrare gli handler di lavorazione nel sistema unificato.
+    /// Adapter che integra handler di produzione (IProductionDataHandler) nel registry unificato.
+    /// Converte tra context specifico/generico e return type specifico/object.
+    /// Pattern: Adapter (GoF) — Adatta IProductionDataHandler a IRegistrableHandler.
     /// </summary>
-    public sealed class LavorazioneHandlerWrapper : IUnifiedHandler
+    public sealed class ProductionHandlerAdapter : IRegistrableHandler
     {
-        private readonly ILavorazioneHandler _handler;
+        private readonly IProductionDataHandler _handler;
 
-        public LavorazioneHandlerWrapper(ILavorazioneHandler handler)
+        public ProductionHandlerAdapter(IProductionDataHandler handler)
         {
             _handler = handler;
         }
 
         /// <inheritdoc />
-        public string Code => _handler.LavorazioneCode;
+        public string Code => _handler.HandlerCode;
 
         /// <inheritdoc />
         public HandlerType Type => HandlerType.Lavorazione;
 
         /// <inheritdoc />
-        public string Description => $"Lavorazione: {_handler.LavorazioneCode}";
+        public string Description => $"Production Handler: {_handler.HandlerCode}";
 
         /// <summary>
-        /// Esegue l'handler di lavorazione.
+        /// Esegue l'handler di produzione adattando context e return type per il registry.
         /// </summary>
         public async Task<object> ExecuteAsync(UnifiedExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazioneContext = context.ToLavorazioneContext();
-            var result = await _handler.ExecuteAsync(lavorazioneContext, ct);
+            var productionContext = context.ToProductionContext();
+            var result = await _handler.ExecuteAsync(productionContext, ct);
             return result ?? new List<DatiLavorazione>();
         }
     }

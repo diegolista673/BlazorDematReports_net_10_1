@@ -15,7 +15,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     /// Gestisce l'elaborazione dei dati di produzione da tabelle dinamiche SQL Server
     /// relative alla procedura RDMKT_RSP.
     /// </summary>
-    public sealed class Rdmkt_RSPHandler : ILavorazioneHandler
+    public sealed class Rdmkt_RSPHandler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
 
@@ -25,10 +25,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
-        public string LavorazioneCode => LavorazioniCodes.RDMKT_RSP;
+        public string HandlerCode => LavorazioniCodes.RDMKT_RSP;
 
         /// <summary>Esegue la lavorazione RDMKT_RSP.</summary>
-        public async Task<List<DatiLavorazione>> ExecuteAsync(LavorazioneExecutionContext context, CancellationToken ct = default)
+        public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
             var lavorazione = new RDMKT_RSPProcessor(_configManager);
             lavorazione.NomeProcedura          = context.NomeProcedura;
