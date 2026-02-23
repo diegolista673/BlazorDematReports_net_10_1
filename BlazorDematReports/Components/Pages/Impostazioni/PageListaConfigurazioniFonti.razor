@@ -1,14 +1,17 @@
 ﻿@page "/fonti-dati"
-@using BlazorDematReports.Core.Interfaces.IDataService
+@using BlazorDematReports.Core.Services.Interfaces.IDataService
 @using Entities.Models.DbApplication
 @using Entities.Enums
 
 @inject IDbContextFactory<DematReportsContext> DbFactory
-@inject IServiceWrapper ServiceWrapper
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
+
+@inject IServiceConfigurazioneFontiDati serviceConfigurazioneFontiDati
+@inject IServiceTaskDaEseguire serviceTaskDaEseguire
+ 
 
 <PageTitle >Configurazioni Fonti Dati</PageTitle>
 
@@ -185,7 +188,7 @@
     private async Task LoadConfigurazioniAsync()
     {
         _loading = true;
-        _configurazioni = await ServiceWrapper.ServiceConfigurazioneFontiDati.GetConfigurazioneFontiDatiDtoAsync();
+        _configurazioni = await serviceConfigurazioneFontiDati.GetConfigurazioneFontiDatiDtoAsync();
         _loading = false;
     }
 
@@ -206,7 +209,7 @@
         _bulkActionInProgress = true;
         try
         {
-            var count = await ServiceWrapper.ServiceTaskDaEseguire.DisableAllTasksAsync();
+            var count = await serviceTaskDaEseguire.DisableAllTasksAsync();
             await LoadConfigurazioniAsync();
             Snackbar.Add($"Disabilitati {count} task", Severity.Success);
         }
@@ -237,7 +240,7 @@
         _bulkActionInProgress = true;
         try
         {
-            var count = await ServiceWrapper.ServiceTaskDaEseguire.EnableAllTasksAsync();
+            var count = await serviceTaskDaEseguire.EnableAllTasksAsync();
             await LoadConfigurazioniAsync();
             Snackbar.Add($"Abilitati {count} task", Severity.Success);
         }
@@ -285,7 +288,7 @@
 
         try
         {
-            await ServiceWrapper!.ServiceConfigurazioneFontiDati.DeleteConfigurazioneFontiDatiAsync(config.IdConfigurazione);
+            await serviceConfigurazioneFontiDati.DeleteConfigurazioneFontiDatiAsync(config.IdConfigurazione);
             await LoadConfigurazioniAsync();
             Snackbar.Add("Configurazione eliminata definitivamente", Severity.Success);
         }

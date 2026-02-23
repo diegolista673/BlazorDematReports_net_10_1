@@ -1,11 +1,13 @@
 @page "/procedure-lavorazioni/edit/{IdProcedura:int}"
 @using BlazorDematReports.Core.Services.ProcedureEdit
-
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceFasiLavorazioni ServiceFasiLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceConfigurazioneFontiDati ServiceConfigurazioneFontiDati
 
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageEditProcedura,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject ProcedureEditStateService StateService
-
+@inject IServiceProcedureLavorazioni ServiceProcedureLavorazioni
 @inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
 @inject NavigationManager NavManager
 @inject IDialogService DialogService
@@ -228,7 +230,7 @@
     {
         try
         {
-            ListFasiLavorazione = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+            ListFasiLavorazione = await ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
 
             Logger?.LogInformation("LoadDataAsync data loaded successfully");
         }
@@ -243,7 +245,7 @@
     {
         try
         {
-            Model = await ServiceWrapper!.ServiceProcedureLavorazioni
+            Model = await ServiceProcedureLavorazioni
                 .GetSingleProceduraLavorazioneDtoByIDAsync(IdProcedura);
 
             if (Model != null)
@@ -278,7 +280,7 @@
 
     private async Task LoadConfigurazioniAsync()
     {
-        _configurazioni = await ServiceWrapper!.ServiceConfigurazioneFontiDati
+        _configurazioni = await ServiceConfigurazioneFontiDati
             .GetConfigurazioniByProceduraAsync(IdProcedura);
         _configurazioniCount = _configurazioni.Count;
     }
@@ -309,7 +311,7 @@
         {
             Logger?.LogInformation("Saving procedure {ProcedureId}", IdProcedura);
             
-            await ServiceWrapper!.ServiceProcedureLavorazioni
+            await ServiceProcedureLavorazioni
                 .UpdateProceduraLavorazioneAndFasiDataReadingASync(Model!);
             
             await ProductionScheduler.SyncAllAsync();

@@ -11,7 +11,7 @@ using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
 using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
 using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
 using BlazorDematReports.Core.Handlers.Registry;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Services;
 using BlazorDematReports.Core.Services.DataService;
@@ -237,9 +237,34 @@ public static class Program
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IPdfExportService, PdfExportService>();
         builder.Services.AddScoped<NotificationDialog>();
-
+        
+        // Data Access Services 
         builder.Services.AddScoped<IQueryService, QueryService>();
-        builder.Services.AddScoped<IServiceWrapper, ServiceWrapper>();
+        builder.Services.AddScoped<IServiceCentri, ServiceCentri>();
+        builder.Services.AddScoped<IServiceOperatori, ServiceOperatori>();
+        builder.Services.AddScoped<IServiceClienti, ServiceClienti>();
+        builder.Services.AddScoped<IServiceProcedureClienti, ServiceProcedureClienti>();
+        builder.Services.AddScoped<IServiceProcedureLavorazioni, ServiceProcedureLavorazioni>();
+        builder.Services.AddScoped<IServiceFormatoDati, ServiceFormatoDati>();
+        builder.Services.AddScoped<IServiceRepartiProduzione, ServiceRepartiProduzione>();
+        builder.Services.AddScoped<IServiceFasiLavorazioni, ServiceFasiLavorazioni>();
+        builder.Services.AddScoped<IServiceProduzioneOperatori, ServiceProduzioneOperatori>();
+        builder.Services.AddScoped<IServiceTipologieTotali, ServiceTipologieTotali>();
+        builder.Services.AddScoped<IServiceLavorazioniFasiTipoTotale, ServiceLavorazioniFasiTipoTotale>();
+        builder.Services.AddScoped<IServiceTurni, ServiceTurni>();
+        builder.Services.AddScoped<IServiceProduzioneSistema, ServiceProduzioneSistema>();
+        builder.Services.AddScoped<IServiceConfigReportDocumenti, ServiceConfigReportDocumenti>();
+        builder.Services.AddScoped<IServiceOperatoriNormalizzati, ServiceOperatoriNormalizzati>();
+        builder.Services.AddScoped<IServiceTaskDataReadingAggiornamento, ServiceTaskDataReadingAggiornamento>();
+        builder.Services.AddScoped<IServiceQueryProcedureLavorazioni, ServiceQueryProcedureLavorazioni>();
+        builder.Services.AddScoped<IServiceCentriVisibili, ServiceCentriVisibili>();
+        builder.Services.AddScoped<IServiceTipoTurni, ServiceTipoTurni>();
+        builder.Services.AddScoped<IServiceTaskDaEseguire, ServiceTaskDaEseguire>();
+        builder.Services.AddScoped<IServiceRuoli, ServiceRuoli>();
+        builder.Services.AddScoped<IServiceConfigurazioneFontiDati, ServiceConfigurazioneFontiDati>();
+        builder.Services.AddScoped<IServiceMail, ServiceMail>();
+        builder.Services.AddScoped<IServiceTaskManagement, ServiceTaskManagement>();
+
         builder.Services.AddScoped<IProductionJobScheduler, ProductionJobScheduler>();
         builder.Services.AddScoped<IRecurringJobManagerAdapter, HangfireRecurringJobManagerAdapter>();
 

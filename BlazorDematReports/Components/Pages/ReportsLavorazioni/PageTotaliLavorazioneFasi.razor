@@ -5,6 +5,10 @@
 @using BlazorDematReports.Core.Application.Dto
 @using System.Globalization
 @using Newtonsoft.Json
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProduzioneOperatori ServiceProduzioneOperatori
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProduzioneSistema ServiceProduzioneSistema
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceTaskDataReadingAggiornamento ServiceTaskDataReadingAggiornamento
 @inherits BaseComponentPage<PageTotaliLavorazioneFasi,ReportAnnualeDto,ReportAnnualeDto>
 @inject NavigationManager NavManager
 @inject IJSRuntime JSInterop
@@ -127,7 +131,7 @@
             SetEditContext();
             Model!.Year = DateTime.Today;
             Model!.Anno = DateTime.Today.Year;
-            ListProcedureLavorazioni = await ServiceWrapper!.ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
+            ListProcedureLavorazioni = await ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
             if (ListProcedureLavorazioni != null)
                 SetSelectLavorazione();
         }, "Caricamento dati...");
@@ -161,7 +165,7 @@
     {
         try
         {
-            var excelStream = ServiceWrapper!.ServiceProduzioneOperatori.CreateExcelProduzioneAnnua(
+            var excelStream = ServiceProduzioneOperatori.CreateExcelProduzioneAnnua(
                 faseData.ReportData ?? new List<ReportOreDocumenti>(),
                 faseData.ReportTotaliDedicati ?? new List<ReportAnnualeTotaliDedicati>());
             var fileName = $"ProduzioneAnnua_{faseData.FaseNome}_{Model!.Anno}.xlsx";
@@ -266,9 +270,9 @@
             var primaFase = _fasiReportData.FirstOrDefault(f => f.ReportData?.Any() == true);
             if (primaFase?.IdFaseLavorazione > 0)
             {
-                var primaDataTask = ServiceWrapper!.ServiceProduzioneSistema.GetPrimaDataInseritaAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
-                var ultimaDataTask = ServiceWrapper!.ServiceProduzioneSistema.GetUltimaDataInseritaAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
-                var aggiornatoTask = ServiceWrapper!.ServiceTaskDataReadingAggiornamento.GetUltimoAggiornamentoAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
+                var primaDataTask = ServiceProduzioneSistema.GetPrimaDataInseritaAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
+                var ultimaDataTask = ServiceProduzioneSistema.GetUltimaDataInseritaAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
+                var aggiornatoTask = ServiceTaskDataReadingAggiornamento.GetUltimoAggiornamentoAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
 
                 await Task.WhenAll(primaDataTask, ultimaDataTask, aggiornatoTask);
 
@@ -309,7 +313,7 @@
 
     private async Task<ProcedureLavorazioniDto?> LoadProceduraAsync()
     {
-        var procedura = await ServiceWrapper!.ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(Model!.Lavorazione!);
+        var procedura = await ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(Model!.Lavorazione!);
         if (procedura == null)
         { ErrorMessage = "Lavorazione non trovata"; return null; }
         return procedura;
@@ -329,9 +333,9 @@
         var fasi = GetValidFasiFromProcedura();
         if (!fasi.Any()) return;
 
-        var allMonthlyTask = ServiceWrapper!.ServiceProduzioneOperatori.GetReportProduzioneOreDocumentiAsync(Model!.Anno, (int)Model.IdProceduraLavorazione!, (int)Model.IdCentro!);
-        var last5YearsTask = ServiceWrapper!.ServiceProduzioneOperatori.GetReportLast5YearsAsync((int)Model.IdProceduraLavorazione!, (int)Model.IdCentro!);
-        var totaliDedicatiTask = ServiceWrapper!.ServiceProduzioneOperatori.GetReportTotaliDedicatiAsync((int)Model.IdProceduraLavorazione!, (int)Model.Anno!, (int)Model.IdCentro!);
+        var allMonthlyTask = ServiceProduzioneOperatori.GetReportProduzioneOreDocumentiAsync(Model!.Anno, (int)Model.IdProceduraLavorazione!, (int)Model.IdCentro!);
+        var last5YearsTask = ServiceProduzioneOperatori.GetReportLast5YearsAsync((int)Model.IdProceduraLavorazione!, (int)Model.IdCentro!);
+        var totaliDedicatiTask = ServiceProduzioneOperatori.GetReportTotaliDedicatiAsync((int)Model.IdProceduraLavorazione!, (int)Model.Anno!, (int)Model.IdCentro!);
 
         await Task.WhenAll(allMonthlyTask, last5YearsTask, totaliDedicatiTask);
         var allMonthly = await allMonthlyTask;

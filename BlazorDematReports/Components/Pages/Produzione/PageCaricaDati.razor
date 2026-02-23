@@ -1,6 +1,12 @@
 ﻿@page "/carica-dati"
+
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO, USER")]
 @inherits BaseComponentPage<PageCaricaDati,ProduzioneSistemaDto,ProduzioneSistemaDto>
+@inject IServiceOperatori serviceOperatori
+@inject IServiceProcedureLavorazioni serviceProcedureLavorazioni
+@inject IServiceFasiLavorazioni serviceFasiLavorazioni
+@inject IServiceProduzioneSistema serviceProduzioneSistema
+
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Carica Dati Produzione</MudText>
 
@@ -182,9 +188,9 @@
                SetEditContext();
 
                // Avvia tutte le chiamate asincrone in parallelo
-               var operatoriTask = ServiceWrapper!.ServiceOperatori.GetOperatoriByUserAsync();
-               var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
-               var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+               var operatoriTask = serviceOperatori.GetOperatoriByUserAsync();
+               var lavorazioniTask = serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+               var fasiTask = serviceFasiLavorazioni.GetFasiLavorazioneAsync();
 
                await Task.WhenAll(operatoriTask, lavorazioniTask, fasiTask);
 
@@ -208,16 +214,16 @@
             UiState?.SetMenuDisabled(true);
             UiState?.ShowOverlay("Inserimento in corso...");
 
-            var res = await ServiceWrapper!.ServiceProduzioneSistema.CheckProduzioneSistemaOperatoreAsync(Model!);
+            var res = await serviceProduzioneSistema.CheckProduzioneSistemaOperatoreAsync(Model!);
             if (!res)
             {
                 Model!.DataAggiornamento = DateTime.Now.Date;
                 Model.FlagInserimentoManuale = true;
                 Model.FlagInserimentoAuto = false;
 
-                await ServiceWrapper.ServiceProduzioneSistema.AddProduzioneSistemaAsync(Model);
+                await serviceProduzioneSistema.AddProduzioneSistemaAsync(Model);
 
-                ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)Model.IdOperatore!, Model.DataLavorazione!.Value);
+                ListProduzioneSistemaDto = await serviceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)Model.IdOperatore!, Model.DataLavorazione!.Value);
 
                 Model.DataLavorazione = DateTime.Now.Date;
 
@@ -279,9 +285,9 @@
                     UiState?.ShowOverlay("Eliminazione in corso...");
                     UiState?.SetMenuDisabled(true);
 
-                    await ServiceWrapper!.ServiceProduzioneSistema.DeleteProduzioneSistemaAsync(idProduzione);
+                    await serviceProduzioneSistema.DeleteProduzioneSistemaAsync(idProduzione);
 
-                    ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync(IdOperatore, DataLavorazione);
+                    ListProduzioneSistemaDto = await serviceProduzioneSistema.GetProduzioneSistemaDtoAsync(IdOperatore, DataLavorazione);
 
                     UiState?.HideOverlay();
                     UiState?.SetMenuDisabled(false);
@@ -310,7 +316,7 @@
                 isDisableDatePicker = true;
                 isDisableOperatore = true;
 
-                ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)Model.IdOperatore!, Model.DataLavorazione!.Value);
+                ListProduzioneSistemaDto = await serviceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)Model.IdOperatore!, Model.DataLavorazione!.Value);
 
                 IsDisabledLavorazione = false;
                 IsDisabledFase = true;
@@ -350,7 +356,7 @@
                     Model.IdCentro = oper.Idcentro;
 
                     SetSelectLavorazioneDto(oper!.Idcentro);
-                    ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)base.Model.IdOperatore, base.Model.DataLavorazione!.Value);
+                    ListProduzioneSistemaDto = await serviceProduzioneSistema.GetProduzioneSistemaDtoAsync((int)base.Model.IdOperatore, base.Model.DataLavorazione!.Value);
 
                     IsDisabledLavorazione = false;
                     IsDisabledFase = true;
@@ -379,9 +385,9 @@
             if (!string.IsNullOrEmpty(item.Lavorazione))
             {
 
-                await ServiceWrapper!.ServiceProduzioneSistema.UpdateProduzioneSistemaAsync(item);
+                await serviceProduzioneSistema.UpdateProduzioneSistemaAsync(item);
 
-                ListProduzioneSistemaDto = await ServiceWrapper!.ServiceProduzioneSistema.GetProduzioneSistemaDtoAsync(item.IdOperatore, item.DataLavorazione);
+                ListProduzioneSistemaDto = await serviceProduzioneSistema.GetProduzioneSistemaDtoAsync(item.IdOperatore, item.DataLavorazione);
 
                 UiState?.ShowSnackbar("Update eseguito", Severity.Success);
             }
@@ -413,7 +419,7 @@
             Model.Lavorazione = Model.Lavorazione.ToUpper();
             Model.IdProceduraLavorazione = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.IdproceduraLavorazione;
 
-            ProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
+            ProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
             if (ProcedureLavorazioniDto != null)
             {
                 SetSelectFasi(ProcedureLavorazioniDto);

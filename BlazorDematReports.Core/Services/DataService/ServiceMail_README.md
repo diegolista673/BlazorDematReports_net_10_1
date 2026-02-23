@@ -8,32 +8,32 @@
 ### 1. Conteggio Servizi Mail
 ```csharp
 // Conta tutti i servizi mail (EmailCSV) attivi
-int count = await ServiceWrapper.ServiceMail.GetMailServicesCountAsync();
+int count = await ServiceMail.GetMailServicesCountAsync();
 
 // Conta servizi mail per una specifica procedura
-int countByProc = await ServiceWrapper.ServiceMail.GetMailServicesCountByProceduraAsync(idProcedura);
+int countByProc = await ServiceMail.GetMailServicesCountByProceduraAsync(idProcedura);
 ```
 
 ### 2. Recupero Configurazioni
 ```csharp
 // Ottieni tutte le configurazioni EmailCSV attive
-List<ConfigurazioneFontiDati> allConfigs = await ServiceWrapper.ServiceMail.GetMailServicesAsync();
+List<ConfigurazioneFontiDati> allConfigs = await ServiceMail.GetMailServicesAsync();
 
 // Ottieni configurazioni per una specifica procedura
-List<ConfigurazioneFontiDati> configsByProc = await ServiceWrapper.ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
+List<ConfigurazioneFontiDati> configsByProc = await ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
 ```
 
 ### 3. Invio Email
 ```csharp
 // Invio semplice
-bool success = await ServiceWrapper.ServiceMail.SendEmailAsync(
+bool success = await ServiceMail.SendEmailAsync(
     to: "destinatario@example.com",
     subject: "Oggetto Email",
     body: "Corpo del messaggio"
 );
 
 // Invio completo con mittente personalizzato
-bool success = await ServiceWrapper.ServiceMail.SendEmailAsync(
+bool success = await ServiceMail.SendEmailAsync(
     from: "mittente@example.com",
     to: "destinatario@example.com",
     toName: "Nome Destinatario",
@@ -99,7 +99,7 @@ private async Task InviaNotificaAsync(int idProcedura)
     try
     {
         // Verifica quanti servizi mail sono configurati
-        var count = await ServiceWrapper.ServiceMail.GetMailServicesCountByProceduraAsync(idProcedura);
+        var count = await ServiceMail.GetMailServicesCountByProceduraAsync(idProcedura);
         
         if (count == 0)
         {
@@ -108,10 +108,10 @@ private async Task InviaNotificaAsync(int idProcedura)
         }
         
         // Ottieni le configurazioni
-        var configs = await ServiceWrapper.ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
+        var configs = await ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
         
         // Invia email di notifica
-        bool success = await ServiceWrapper.ServiceMail.SendEmailAsync(
+        bool success = await ServiceMail.SendEmailAsync(
             to: "admin@example.com",
             subject: $"Notifica Procedura {idProcedura}",
             body: $"La procedura ha {count} servizi mail attivi. Configurazioni: {string.Join(", ", configs.Select(c => c.MailServiceCode))}"

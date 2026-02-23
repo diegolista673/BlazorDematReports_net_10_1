@@ -1,7 +1,7 @@
 ﻿using BlazorDematReports.Core.Application.Dto;
 using Entities.Models.DbApplication;
 
-namespace BlazorDematReports.Core.Interfaces.IDataService
+namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 {
     /// <summary>
     /// Interfaccia per il servizio di gestione delle tipologie di totali.

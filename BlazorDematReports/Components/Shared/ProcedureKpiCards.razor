@@ -1,5 +1,5 @@
-@using BlazorDematReports.Core.Interfaces.IDataService
-@inject IServiceWrapper ServiceWrapper
+@using BlazorDematReports.Core.Services.Interfaces.IDataService
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceMail ServiceMail
 
 @* KPI Cards - Statistiche Procedura *@
 <MudGrid Spacing="2" Class="mb-4">
@@ -104,7 +104,7 @@
     {
         try
         {
-            var configs = await ServiceWrapper.ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
+            var configs = await ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
             _emailConfigIds = configs
                 .Select(c => c.IdConfigurazione)
                 .ToHashSet();

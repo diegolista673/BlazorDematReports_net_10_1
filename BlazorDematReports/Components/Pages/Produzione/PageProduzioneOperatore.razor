@@ -4,7 +4,14 @@
 
 @inherits BaseComponentPage<PageProduzioneOperatore,ProduzioneOperatoriDto,ProduzioneOperatoriDto>
 
-
+@inject IServiceOperatori serviceOperatori
+@inject IServiceProcedureLavorazioni serviceProcedureLavorazioni
+@inject IServiceRepartiProduzione serviceRepartiProduzione
+@inject IServiceProduzioneOperatori serviceProduzioneOperatori
+@inject IServiceTurni serviceTurni
+@inject IServiceFasiLavorazioni serviceFasiLavorazioni
+@inject IServiceTipoTurni serviceTipoTurni
+@inject IServiceTipologieTotali serviceTipologieTotali
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Produzione operatore</MudText>
 
@@ -379,13 +386,13 @@
         {
             SetEditContext();
 
-            var operatoriTask = ServiceWrapper!.ServiceOperatori.GetOperatoriByUserAsync();
-            var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
-            var repartiTask = ServiceWrapper.ServiceRepartiProduzione.GetRepartiProduzioneAsync();
-            var turniTask = ServiceWrapper.ServiceTurni.GetTurniAsync();
-            var tipoTurniTask = ServiceWrapper.ServiceTipoTurni.GetTipoTurniAsync();
-            var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
-            var tipologieTask = ServiceWrapper.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+            var operatoriTask = serviceOperatori.GetOperatoriByUserAsync();
+            var lavorazioniTask = serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+            var repartiTask = serviceRepartiProduzione.GetRepartiProduzioneAsync();
+            var turniTask = serviceTurni.GetTurniAsync();
+            var tipoTurniTask = serviceTipoTurni.GetTipoTurniAsync();
+            var fasiTask = serviceFasiLavorazioni.GetFasiLavorazioneAsync();
+            var tipologieTask = serviceTipologieTotali.GetTipologieTotaliDtoAsync();
 
             await Task.WhenAll(operatoriTask, lavorazioniTask, repartiTask, turniTask, tipoTurniTask, fasiTask, tipologieTask);
 
@@ -443,7 +450,7 @@
     {
         await RunWithOverlay(async () =>
             {
-                ListProduzioneOperatoriDto = await ServiceWrapper!.ServiceProduzioneOperatori.GetProduzioneOperatoriDtoAsync((int)Model!.IdOperatore!, (DateTime)Model!.DataLavorazione!);
+                ListProduzioneOperatoriDto = await serviceProduzioneOperatori.GetProduzioneOperatoriDtoAsync((int)Model!.IdOperatore!, (DateTime)Model!.DataLavorazione!);
             }, "Caricamento dati...");
     }
 
@@ -456,11 +463,11 @@
             UiState?.SetMenuDisabled(true);
             UiState?.ShowOverlay("Inserimento in corso...");
 
-            var res = await ServiceWrapper!.ServiceProduzioneOperatori.CheckProduzioneOperatori(Model!);
+            var res = await serviceProduzioneOperatori.CheckProduzioneOperatori(Model!);
             if (!res)
             {
 
-                await ServiceWrapper!.ServiceProduzioneOperatori.AddProduzioneOperatoriAsync(Model!, ListTipologieTotaliDto!);
+                await serviceProduzioneOperatori.AddProduzioneOperatoriAsync(Model!, ListTipologieTotaliDto!);
                 await GetListProduzioneOperatoriAsync();
 
                 var preDataLav = Model!.DataLavorazione;
@@ -610,7 +617,7 @@
             Model.IdProceduraLavorazione = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.IdproceduraLavorazione;
             Model.IdReparti = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.Idreparti;
 
-            ProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
+            ProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
             if (ProcedureLavorazioniDto != null)
             {
                 SetSelectFasi(ProcedureLavorazioniDto);
@@ -647,7 +654,7 @@
                 Model.Fase = fase.ToUpper();
                 Model.IdFaseLavorazione = ListFasiLavorazione!.FirstOrDefault(x => x.FaseLavorazione == fase)?.IdFaseLavorazione;
 
-                ListTipologieTotali = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieAttiveByIdLavorazioneAsync((int)Model.IdProceduraLavorazione!, (int)Model.IdFaseLavorazione!);
+                ListTipologieTotali = await serviceTipologieTotali.GetTipologieAttiveByIdLavorazioneAsync((int)Model.IdProceduraLavorazione!, (int)Model.IdFaseLavorazione!);
                 if (ListTipologieTotali.Count > 0)
                 {
                     foreach (var element in ListTipologieTotaliDto!)
@@ -910,7 +917,7 @@
             {
                 Model!.IdOperatore = IdOperatore;
 
-                await ServiceWrapper!.ServiceProduzioneOperatori.DeleteProduzioneOperatoriAsync(idProduzione);
+                await serviceProduzioneOperatori.DeleteProduzioneOperatoriAsync(idProduzione);
                 await GetListProduzioneOperatoriAsync();
 
                 Model!.IdOperatore = null;
@@ -929,7 +936,7 @@
         {
             if (produzioneOperatoriDto.TempoLavOreCent >= 0)
             {
-                await ServiceWrapper!.ServiceProduzioneOperatori.UpdateProduzioneOperatoriAsync(produzioneOperatoriDto);
+                await serviceProduzioneOperatori.UpdateProduzioneOperatoriAsync(produzioneOperatoriDto);
                 UiState?.ShowSnackbar("Update eseguito", Severity.Success);
             }
             else

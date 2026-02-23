@@ -1,4 +1,6 @@
 ﻿@page "/report-completo"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceConfigReportDocumenti ServiceConfigReportDocumenti
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inherits BaseComponentPage<PageReportCompleto,ReportAnnualeDto,ReportAnnualeDto>
 
@@ -137,7 +139,7 @@
         await RunWithOverlay(async () =>
           {
               SetEditContext();
-              ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+              ListCentri = await ServiceCentri.GetCentriByUserAsync();
 
               Model!.StartDataLavorazione = DateTime.Now.Date;
               Model.EndDataLavorazione = DateTime.Now.Date;
@@ -153,7 +155,7 @@
             UiState?.SetMenuDisabled(true);
             UiState?.ShowOverlay("Ricerca in corso...");
 
-            LstReportEsportazioneOreDocumenti = await ServiceWrapper!.ServiceConfigReportDocumenti.GetReportClientiAsync(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, (int)Model.IdCentro!);
+            LstReportEsportazioneOreDocumenti = await ServiceConfigReportDocumenti.GetReportClientiAsync(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, (int)Model.IdCentro!);
             if (LstReportEsportazioneOreDocumenti.Count() > 0)
             {
                 isDisabledReport = false;
@@ -178,7 +180,7 @@
 
     protected async void CreateDocument()
     {
-        MemoryStream excelStream = ServiceWrapper!.ServiceConfigReportDocumenti.CreateExcelProduzioneCompleta(LstReportEsportazioneOreDocumenti);
+        MemoryStream excelStream = ServiceConfigReportDocumenti.CreateExcelProduzioneCompleta(LstReportEsportazioneOreDocumenti);
         string title = "ProduzioneCompleta.xlsx";
         await JSInterop!.SaveAs(title, excelStream.ToArray());
     }

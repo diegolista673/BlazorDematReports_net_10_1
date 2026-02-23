@@ -1,8 +1,9 @@
-@using BlazorDematReports.Core.Interfaces.IDataService
+@using BlazorDematReports.Core.Services.Interfaces.IDataService
 @using BlazorDematReports.Core.Services.DataService
 @using BlazorDematReports.Core.Services.Wizard
 
-@inject IConfigurazioneDataReaderService DataReaderService
+@inject IConfigurazioneDataReaderService dataReaderService
+@inject IServiceProcedureLavorazioni serviceProcedureLavorazioni
 
 <MudText Typo="Typo.h6" Class="mb-4">Seleziona la procedura di lavorazione</MudText>
 
@@ -63,14 +64,13 @@
 @code {
     [Parameter] public ConfigurationWizardState State { get; set; } = default!;
     [Parameter] public ConfigurationWizardStateService StateService { get; set; } = default!;
-    [Parameter] public IServiceWrapper ServiceWrapper { get; set; } = default!;
-    
+
     private List<ProcedureLavorazioni> _procedure = new();
-    
+
     protected override async Task OnInitializedAsync()
     {
-        // ? Fix: Usa il metodo corretto con User
-        _procedure = (await ServiceWrapper.ServiceProcedureLavorazioni
+        // DI diretta: no piu ServiceWrapper
+        _procedure = (await serviceProcedureLavorazioni
             .GetTableProcedureLavorazioniByUserAsync()).ToList();
     }
     
@@ -96,7 +96,7 @@
         if (procedura != null)
         {
             // ? Fix: Usa DataReaderService invece di ServiceWrapper per le fasi
-            var fasi = await DataReaderService.GetFasiByProceduraAsync(procedura.IdproceduraLavorazione);
+            var fasi = await dataReaderService.GetFasiByProceduraAsync(procedura.IdproceduraLavorazione);
             
             StateService.UpdateState(s => s.WithProcedura(
                 procedura.IdproceduraLavorazione,

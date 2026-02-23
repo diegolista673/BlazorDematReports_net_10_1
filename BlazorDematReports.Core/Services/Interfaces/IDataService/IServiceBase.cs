@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace BlazorDematReports.Core.Interfaces.IDataService
+namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 {
     public interface IServiceBase<T> where T : class
     {

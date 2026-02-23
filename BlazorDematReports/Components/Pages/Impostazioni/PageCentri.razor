@@ -1,6 +1,7 @@
 ﻿@page "/centri"
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageCentri,CentriLavorazioneDto>
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
 
 
 <MudText Typo="Typo.h4" Class="titolo ml-4" >Centri Lavorazione</MudText>
@@ -72,7 +73,7 @@
         await RunWithOverlay(async () =>
            {
                SetEditContext();
-               ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+               ListCentri = await ServiceCentri.GetCentriByUserAsync();
 
            }, "Caricamento dati...");
     }
@@ -88,8 +89,8 @@
                 base.UiState?.SetMenuDisabled(true);
 
                 Model!.Centro = Model!.Centro.ToUpper();
-                await ServiceWrapper!.ServiceCentri.AddCentro(Model);
-                ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+                await ServiceCentri.AddCentro(Model);
+                ListCentri = await ServiceCentri.GetCentriByUserAsync();
                 
                 ResetFormModel();
 
@@ -123,8 +124,8 @@
                 base.UiState?.ShowOverlay("Eliminazione in corso...");
                 base.UiState?.SetMenuDisabled(true);
 
-                await ServiceWrapper!.ServiceCentri.DeleteAsync(idCentro);
-                base.ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+                await ServiceCentri.DeleteAsync(idCentro);
+                base.ListCentri = await ServiceCentri.GetCentriByUserAsync();
 
                 base.UiState?.HideOverlay();
                 base.UiState?.SetMenuDisabled(false);

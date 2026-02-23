@@ -1,7 +1,7 @@
 ﻿using Entities.Models;
 using Entities.Models.DbApplication;
 
-namespace BlazorDematReports.Core.Interfaces.IDataService
+namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 {
     public interface IServiceConfigReportDocumenti : IServiceBase<ConfigReportDocumenti>
     {

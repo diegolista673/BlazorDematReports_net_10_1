@@ -1,8 +1,16 @@
 @page "/procedure-lavorazioni"
+@using BlazorDematReports.Core.Services.Interfaces.IDataService
+
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageProcedureLavorazioni,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject NavigationManager NavigationManager
 @inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
+@inject IServiceCentri serviceCentri
+@inject IServiceProcedureClienti serviceProcedureClienti
+@inject IServiceRepartiProduzione serviceRepartiProduzione
+@inject IServiceFormatoDati serviceFormatoDati
+@inject IServiceFasiLavorazioni serviceFasiLavorazioni
+@inject IServiceProcedureLavorazioni serviceProcedureLavorazioni
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Procedure Lavorazioni</MudText>
 <MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
@@ -327,12 +335,12 @@
             TitlePage = "Procedure Lavorazioni";
             
             // Avvia tutte le chiamate asincrone in parallelo
-            var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
-            var procedureClienteTask = ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteAsync();
-            var repartiTask = ServiceWrapper!.ServiceRepartiProduzione.GetRepartiProduzioneAsync();
-            var formatoDatiTask = ServiceWrapper!.ServiceFormatoDati.GetFormatoDatiAsync();
-            var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
-            var procedureLavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+            var centriTask = serviceCentri.GetCentriByUserAsync();
+            var procedureClienteTask = serviceProcedureClienti.GetProcedureClienteAsync();
+            var repartiTask = serviceRepartiProduzione.GetRepartiProduzioneAsync();
+            var formatoDatiTask = serviceFormatoDati.GetFormatoDatiAsync();
+            var fasiTask = serviceFasiLavorazioni.GetFasiLavorazioneAsync();
+            var procedureLavorazioniTask = serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
             
             await Task.WhenAll(centriTask, procedureClienteTask, repartiTask, formatoDatiTask, 
                               fasiTask,procedureLavorazioniTask);
@@ -423,7 +431,7 @@
 
                 Model.LavorazioniFasiDataReadingsDto = ListLavorazioniFasiDaAggiungere;
 
-                Model.IdproceduraLavorazione = await ServiceWrapper!.ServiceProcedureLavorazioni.AddProceduraLavorazioneAsync(Model);
+                Model.IdproceduraLavorazione = await serviceProcedureLavorazioni.AddProceduraLavorazioneAsync(Model);
 
                 // Prepara context info per i task
                 PrepareTaskContext(Model, ListPrevious);
@@ -432,7 +440,7 @@
                 await ProductionScheduler.SyncAllAsync();
 
                 //reload table
-                ListProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+                ListProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
 
                 await ResetForm();
 
@@ -459,7 +467,7 @@
     {
         try
         {
-            ProcedureLavorazioniDto? lavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni
+            ProcedureLavorazioniDto? lavorazioniDto = await serviceProcedureLavorazioni
                 .GetSingleProceduraLavorazioneDtoByIDAsync((int)item.IdproceduraLavorazione!);
 
             ValueBeforeEdit = Mapper!.Map<ProcedureLavorazioniDto>(lavorazioniDto);
@@ -497,7 +505,7 @@
                 IsVisibleDialog = true;
 
                 //ricarica l'entità completa
-                var fullItem = await ServiceWrapper!.ServiceProcedureLavorazioni
+                var fullItem = await serviceProcedureLavorazioni
                     .GetSingleProceduraLavorazioneDtoByIDAsync((int)item.IdproceduraLavorazione!);
 
                 if (fullItem != null)
@@ -520,7 +528,7 @@
                 //aggiorno formato dati produzione
                 if (!string.IsNullOrEmpty(item.FormatoDatiProduzione))
                 {
-                    var formato = await ServiceWrapper!.ServiceFormatoDati.GetFormatoDatiByTextAsync(item.FormatoDatiProduzione);
+                    var formato = await serviceFormatoDati.GetFormatoDatiByTextAsync(item.FormatoDatiProduzione);
                     if (formato != null)
                     {
                         item.IdformatoDatiProduzione = formato.IdformatoDati;
@@ -530,7 +538,7 @@
                 //aggiorno reparto
                 if (!string.IsNullOrEmpty(item.Reparto))
                 {
-                    var rep = await ServiceWrapper!.ServiceRepartiProduzione.GetRepartiProduzioneByTextAsync(item.Reparto);
+                    var rep = await serviceRepartiProduzione.GetRepartiProduzioneByTextAsync(item.Reparto);
                     if (rep != null)
                     {
                         item.Idreparti = rep.IdReparti;
@@ -545,7 +553,7 @@
                     item.LogoBase64 = (string.Format("data: {0};base64,{1}", item.LogoFile.ContentType, Convert.ToBase64String(buffers)));
                 }
                                 
-                await ServiceWrapper!.ServiceProcedureLavorazioni.UpdateProceduraLavorazioneAndFasiDataReadingASync(item);
+                await serviceProcedureLavorazioni.UpdateProceduraLavorazioneAndFasiDataReadingASync(item);
 
                 // Prepara context info per i task
                 PrepareTaskContext(item, ListPrevious);
@@ -558,7 +566,7 @@
                 ListLavorazioniFasiDaAggiungere!.Clear();
 
                 //reload table
-                ListProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+                ListProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
 
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
@@ -604,18 +612,18 @@
             {
                 try
                 {
-                    var pl = await ServiceWrapper!.ServiceProcedureLavorazioni.FindByCondition(x => x.IdproceduraLavorazione == idProceduraLavorazione).FirstOrDefaultAsync();
+                    var pl = await serviceProcedureLavorazioni.FindByCondition(x => x.IdproceduraLavorazione == idProceduraLavorazione).FirstOrDefaultAsync();
                     if (pl != null)
                     {
                         UiState?.ShowOverlay("Eliminazione in corso...");
                         UiState?.SetMenuDisabled(true);
 
-                        await ServiceWrapper.ServiceProcedureLavorazioni.DeleteProceduraLavorazioneAsync(pl.IdproceduraLavorazione);
+                        await serviceProcedureLavorazioni.DeleteProceduraLavorazioneAsync(pl.IdproceduraLavorazione);
                         
                         // Integrazione nuovo scheduler
                         await ProductionScheduler.SyncAllAsync();
                         
-                        ListProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+                        ListProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
 
                         UiState?.HideOverlay();
                         UiState?.SetMenuDisabled(false);
@@ -693,7 +701,7 @@
                     Model.Centro = centro.Centro;
                     Sigla = "_" + centro.Sigla;
 
-                    ListProcedureCliente = await ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteByCentroAsync((int)idCentro);
+                    ListProcedureCliente = await serviceProcedureClienti.GetProcedureClienteByCentroAsync((int)idCentro);
                     SetSelectProcedureClienti();
                 }
                 else

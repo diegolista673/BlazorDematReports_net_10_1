@@ -1,4 +1,7 @@
 ﻿@page "/config-grafico-documenti"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceClienti ServiceClienti
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageConfigGraficoClientiDocumenti,ReportAnnualeDto,ProcedureLavorazioniDto>
 
@@ -152,7 +155,7 @@
         await RunWithOverlay(async () =>
        {
            SetEditContext();
-           ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+           ListCentri = await ServiceCentri.GetCentriByUserAsync();
 
        }, "Caricamento dati...");
     }
@@ -167,7 +170,7 @@
                 UiState?.SetMenuDisabled(true);
                 UiState?.ShowOverlay("Recupero dati in corso...");
 
-                ListProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetProcedureLavorazioniDtoByCentroAsync((int)Model!.IdCentro);
+                ListProcedureLavorazioniDto = await ServiceProcedureLavorazioni.GetProcedureLavorazioniDtoByCentroAsync((int)Model!.IdCentro);
 
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
@@ -191,8 +194,8 @@
             UiState?.SetMenuDisabled(true);
             UiState?.ShowOverlay("Update in corso...");
 
-            await ServiceWrapper!.ServiceProcedureLavorazioni.UpdateProceduraLavorazioneAndFasiDataReadingASync(item);
-            ListProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetProcedureLavorazioniDtoByCentroAsync((int)item.Idcentro!);
+            await ServiceProcedureLavorazioni.UpdateProceduraLavorazioneAndFasiDataReadingASync(item);
+            ListProcedureLavorazioniDto = await ServiceProcedureLavorazioni.GetProcedureLavorazioniDtoByCentroAsync((int)item.Idcentro!);
 
             UiState?.SetMenuDisabled(false);
             UiState?.HideOverlay();
@@ -201,7 +204,7 @@
         }
         catch (Exception ex)
         {
-            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ListClientiDto = await ServiceClienti.GetClientiDtoByUserAsync();
             ResetFormModel();
             await HandleExceptionFormAsync(ex);
         }

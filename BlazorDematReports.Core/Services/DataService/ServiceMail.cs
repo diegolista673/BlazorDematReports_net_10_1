@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Enums;
 using Entities.Helpers;
 using Entities.Models.DbApplication;

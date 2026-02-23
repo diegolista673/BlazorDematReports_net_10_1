@@ -1,7 +1,7 @@
 ﻿using BlazorDematReports.Core.Application.Dto;
 
 
-namespace BlazorDematReports.Core.Interfaces.IDataService
+namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 {
     public interface IServiceTaskManagement
     {

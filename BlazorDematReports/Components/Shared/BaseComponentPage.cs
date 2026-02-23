@@ -3,7 +3,7 @@ using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Components.Layout;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Services;
 using Entities.Helpers;
@@ -29,7 +29,6 @@ namespace BlazorDematReports.Components.Shared
         [Inject] protected UiStateService? UiState { get; set; }
         [Inject] protected IMapper? Mapper { get; set; }
         [Inject] protected NotificationDialog? NotificationDialog { get; set; }
-        [Inject] protected IServiceWrapper? ServiceWrapper { get; set; }
         [Inject] protected ILogger<TLogger>? Logger { get; set; }
         [Inject] protected ConfigUser? ConfigUser { get; set; }
         [Inject] protected IJSRuntime? JSInterop { get; set; }
@@ -66,7 +65,6 @@ namespace BlazorDematReports.Components.Shared
         public BaseComponentPage(
             IMapper mapper,
             NotificationDialog notificationDialog,
-            IServiceWrapper serviceWrapper,
             ILogger<TLogger> logger,
             ConfigUser configUser,
             IJSRuntime jsinterop,
@@ -75,7 +73,6 @@ namespace BlazorDematReports.Components.Shared
         {
             Mapper = mapper;
             NotificationDialog = notificationDialog;
-            ServiceWrapper = serviceWrapper;
             Logger = logger;
             ConfigUser = configUser;
             JSInterop = jsinterop;

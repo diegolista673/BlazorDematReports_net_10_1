@@ -1,4 +1,7 @@
 ﻿@page "/query-lavorazioni"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceFasiLavorazioni ServiceFasiLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceQueryProcedureLavorazioni ServiceQueryProcedureLavorazioni
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 
 @inherits BaseComponentPage<PageQueryLavorazione,QueryProcedureLavorazioniDto,QueryProcedureLavorazioniDto>
@@ -200,9 +203,9 @@
             SetEditContext();
 
             // Avvia tutte le chiamate asincrone in parallelo
-            var procedureLavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
-            var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
-            var queryTask = ServiceWrapper!.ServiceQueryProcedureLavorazioni.GetAllQueryProcedureLavorazioniDtoAsync();
+            var procedureLavorazioniTask = ServiceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+            var fasiTask = ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+            var queryTask = ServiceQueryProcedureLavorazioni.GetAllQueryProcedureLavorazioniDtoAsync();
 
             await Task.WhenAll(procedureLavorazioniTask, fasiTask, queryTask);
 
@@ -219,7 +222,7 @@
 
     protected async Task GetListQuery()
     {
-        LstQueryProcedureLavorazioniDto = await ServiceWrapper!.ServiceQueryProcedureLavorazioni.GetAllQueryProcedureLavorazioniDtoAsync();
+        LstQueryProcedureLavorazioniDto = await ServiceQueryProcedureLavorazioni.GetAllQueryProcedureLavorazioniDtoAsync();
     }
 
     protected async Task DeleteRecordAsync(int idQuery, string titolo, string nomeProcedura)
@@ -240,7 +243,7 @@
                 UiState?.ShowOverlay("Eliminazione in corso...");
                 UiState?.SetMenuDisabled(true);
 
-                await ServiceWrapper!.ServiceQueryProcedureLavorazioni.DeleteQueryProcedureLavorazioniAsync(idQuery);
+                await ServiceQueryProcedureLavorazioni.DeleteQueryProcedureLavorazioniAsync(idQuery);
                 await GetListQuery();
 
                 UiState?.HideOverlay();
@@ -279,7 +282,7 @@
                 UiState?.SetMenuDisabled(true);
                 UiState?.ShowOverlay("Inserimento in corso...");
                 Model.DataCreazioneQuery = DateTime.Now;
-                await ServiceWrapper!.ServiceQueryProcedureLavorazioni.AddQueryProcedureLavorazioniAsync(Model);
+                await ServiceQueryProcedureLavorazioni.AddQueryProcedureLavorazioniAsync(Model);
                 await GetListQuery();
 
                 UiState?.SetMenuDisabled(false);
@@ -305,7 +308,7 @@
         {
             if (!string.IsNullOrEmpty(item.Descrizione) && !string.IsNullOrEmpty(item.Titolo))
             {
-                await ServiceWrapper!.ServiceQueryProcedureLavorazioni.UpdateQueryProcedureLavorazioniAsync(item);
+                await ServiceQueryProcedureLavorazioni.UpdateQueryProcedureLavorazioniAsync(item);
                 UiState?.ShowSnackbar("Query aggiornata", Severity.Success);
             }
             else

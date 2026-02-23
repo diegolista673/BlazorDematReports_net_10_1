@@ -1,7 +1,10 @@
 ﻿@page "/grafico-produzione"
 @using BlazorDematReports.Core.Application.Dto
-@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inject IJSRuntime JSRuntime
+
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceConfigReportDocumenti ServiceConfigReportDocumenti
+@attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inherits BaseComponentPage<PageGraficoClientiDocumenti,ReportAnnualeDto,ReportAnnualeDto>
 
 
@@ -129,7 +132,7 @@
 
                Model!.StartDataLavorazione = DateTime.Now.Date;
                Model!.EndDataLavorazione = DateTime.Now.Date;
-               ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+               ListCentri = await ServiceCentri.GetCentriByUserAsync();
 
            }, "Caricamento dati..."); 
     }
@@ -138,17 +141,17 @@
     {
         slider = percentuale;
 
-        var newList = ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoDocumentiModified(LstDocumenti, percentuale);
+        var newList = ServiceConfigReportDocumenti.GetGraficoDocumentiModified(LstDocumenti, percentuale);
         var volume = newList.Sum(x => x.Documenti)!.Value.ToString("N0");
         string json = JsonConvert.SerializeObject(newList);
         Task.Run(() => JSRuntime.InvokeVoidAsync("CreateEChartProduzioneDocumentiPubblicati", json, Model!.StartDataLavorazione!.Value.ToShortDateString(), Model.EndDataLavorazione!.Value.ToShortDateString(), volume)).Wait();
 
-        var newListFogli = ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoFogliModified(LstFogliScansionati, percentuale);
+        var newListFogli = ServiceConfigReportDocumenti.GetGraficoFogliModified(LstFogliScansionati, percentuale);
         var volumeFogli = newListFogli.Sum(x => x.Fogli)!.Value.ToString("N0");
         string jsonFogli = JsonConvert.SerializeObject(newListFogli);
         Task.Run(() => JSRuntime.InvokeVoidAsync("CreateEChartProduzioneFogliScansionati", jsonFogli, Model!.StartDataLavorazione!.Value.ToShortDateString(), Model.EndDataLavorazione!.Value.ToShortDateString(), volumeFogli)).Wait();
 
-        var newListOre = ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoOreModified(lstOre, slider);
+        var newListOre = ServiceConfigReportDocumenti.GetGraficoOreModified(lstOre, slider);
         var volumeOre = newListOre.Sum(x => x.TempoLavOreCent).ToString("N0");
         string jsonOre = JsonConvert.SerializeObject(newListOre);
         Task.Run(() => JSRuntime.InvokeVoidAsync("CreateEChartProduzioneOre", jsonOre, Model!.StartDataLavorazione!.Value.ToShortDateString(), Model.EndDataLavorazione!.Value.ToShortDateString(), volumeOre)).Wait();
@@ -163,38 +166,38 @@
             UiState?.ShowOverlay("Loading...");
             slider = 2;
 
-            LstDocumenti = await ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoDocumenti(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
+            LstDocumenti = await ServiceConfigReportDocumenti.GetGraficoDocumenti(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
             if (LstDocumenti != null)
             {
-                var newList = ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoDocumentiModified(LstDocumenti, slider);
+                var newList = ServiceConfigReportDocumenti.GetGraficoDocumentiModified(LstDocumenti, slider);
                 var documentiPubblicati = newList.Sum(x => x.Documenti)!.Value.ToString("N0");
                 string jsonDoc = JsonConvert.SerializeObject(newList);
                 await JSRuntime.InvokeVoidAsync("CreateEChartProduzioneDocumentiPubblicati", jsonDoc, Model.StartDataLavorazione!.Value.ToShortDateString(), Model.EndDataLavorazione!.Value.ToShortDateString(), documentiPubblicati);
             }
 
-            LstFogliScansionati = await ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoFogliScansionati(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
+            LstFogliScansionati = await ServiceConfigReportDocumenti.GetGraficoFogliScansionati(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
             if (LstFogliScansionati != null)
             {
-                var ListFogliScansionatiModified = ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoFogliModified(LstFogliScansionati, slider);
+                var ListFogliScansionatiModified = ServiceConfigReportDocumenti.GetGraficoFogliModified(LstFogliScansionati, slider);
                 var fogliScansionati = ListFogliScansionatiModified.Sum(x => x.Fogli)!.Value.ToString("N0");
                 string jsonScansionati = JsonConvert.SerializeObject(ListFogliScansionatiModified);
                 await JSRuntime.InvokeVoidAsync("CreateEChartProduzioneFogliScansionati", jsonScansionati, Model.StartDataLavorazione!.Value.ToShortDateString(), Model.EndDataLavorazione!.Value.ToShortDateString(), fogliScansionati);
             }
 
-            lstOre = await ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoOreAsync(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
+            lstOre = await ServiceConfigReportDocumenti.GetGraficoOreAsync(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
             if (lstOre != null)
             {
-                var newListOre = ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoOreModified(lstOre, slider);
+                var newListOre = ServiceConfigReportDocumenti.GetGraficoOreModified(lstOre, slider);
                 var volume = lstOre.Sum(x => x.TempoLavOreCent).ToString("N0");
                 string jsonOre = JsonConvert.SerializeObject(newListOre);
                 await JSRuntime.InvokeVoidAsync("CreateEChartProduzioneOre", jsonOre, Model.StartDataLavorazione!.Value.ToShortDateString(), Model.EndDataLavorazione!.Value.ToShortDateString(), volume);
             }
 
-            var listDocumenti = await ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoDocumentiPeriodo(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
-            var listFogli = await ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoFogliScansionatiPeriodo(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
-            var listOreLavorazioni = await ServiceWrapper!.ServiceConfigReportDocumenti.GetGraficoOreLavorazioniPeriodo(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
+            var listDocumenti = await ServiceConfigReportDocumenti.GetGraficoDocumentiPeriodo(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
+            var listFogli = await ServiceConfigReportDocumenti.GetGraficoFogliScansionatiPeriodo(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
+            var listOreLavorazioni = await ServiceConfigReportDocumenti.GetGraficoOreLavorazioniPeriodo(Model!.StartDataLavorazione!.Value, Model.EndDataLavorazione!.Value, Model.IdCentro!.Value);
 
-            var lstStacked = ServiceWrapper!.ServiceConfigReportDocumenti.GetChartStackdLine(listDocumenti, listFogli, listOreLavorazioni);
+            var lstStacked = ServiceConfigReportDocumenti.GetChartStackdLine(listDocumenti, listFogli, listOreLavorazioni);
             string json = JsonConvert.SerializeObject(lstStacked);
             // Funzione JS ora definita nel nuovo file
             await JSRuntime.InvokeVoidAsync("CreateEChartStackedLine", json, "", false);

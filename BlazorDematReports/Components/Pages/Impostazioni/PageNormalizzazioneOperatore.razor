@@ -1,4 +1,7 @@
 ﻿@page "/normalizzazione-operatore"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceOperatori ServiceOperatori
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceOperatoriNormalizzati ServiceOperatoriNormalizzati
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureClienti ServiceProcedureClienti
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 
 @inherits BaseComponentPage<PageNormalizzazioneOperatore,OperatoriNormalizzatiDto,OperatoriNormalizzatiDto>
@@ -136,10 +139,10 @@
            {
                SetEditContext();
 
-               ListOperatori = await ServiceWrapper!.ServiceOperatori.GetOperatoriByUserAsync();
+               ListOperatori = await ServiceOperatori.GetOperatoriByUserAsync();
                SetSelectOperatore();
 
-               ListOperatoriNormalizzatiDto = await ServiceWrapper!.ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
+               ListOperatoriNormalizzatiDto = await ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
 
 
            }, "Caricamento dati...");
@@ -159,9 +162,9 @@
                 Operatori? oper = GetOperatore(Model.OperatoreNormalizzato!);
                 Model.OperatoreNormalizzato = oper!.Operatore;
 
-                await ServiceWrapper!.ServiceOperatoriNormalizzati.AddOperatoriNormalizzatiAsync(Model);
+                await ServiceOperatoriNormalizzati.AddOperatoriNormalizzatiAsync(Model);
                 
-                ListOperatoriNormalizzatiDto = await ServiceWrapper!.ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
+                ListOperatoriNormalizzatiDto = await ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
 
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
@@ -199,8 +202,8 @@
                     UiState?.ShowOverlay("Eliminazione in corso...");
                     UiState?.SetMenuDisabled(true);
 
-                    await ServiceWrapper!.ServiceOperatoriNormalizzati.DeleteOperatoriNormalizzatiAsync(id);
-                    ListOperatoriNormalizzatiDto = await ServiceWrapper!.ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
+                    await ServiceOperatoriNormalizzati.DeleteOperatoriNormalizzatiAsync(id);
+                    ListOperatoriNormalizzatiDto = await ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
 
                     UiState?.HideOverlay();
                     UiState?.SetMenuDisabled(false);
@@ -225,7 +228,7 @@
         {
             if (!string.IsNullOrEmpty(item.OperatoreDaNormalizzare) & (!string.IsNullOrEmpty(item.OperatoreNormalizzato)))
             {
-                await ServiceWrapper!.ServiceOperatoriNormalizzati.UpdateOperatoriNormalizzatiAsync(item);
+                await ServiceOperatoriNormalizzati.UpdateOperatoriNormalizzatiAsync(item);
                 UiState?.ShowSnackbar("Update eseguitoo", Severity.Success);
             }
             else
@@ -237,7 +240,7 @@
         }
         catch (Exception ex)
         {
-            ListProcedureClienteDto = await ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync(); UiState?.SetMenuDisabled(false);
+            ListProcedureClienteDto = await ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync(); UiState?.SetMenuDisabled(false);
             await HandleExceptionFormAsync(ex);
         }
     }

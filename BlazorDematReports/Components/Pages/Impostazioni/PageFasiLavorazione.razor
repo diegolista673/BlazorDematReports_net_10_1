@@ -1,4 +1,6 @@
 ﻿@page "/fasi-lavorazioni"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceFasiLavorazioni ServiceFasiLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceClienti ServiceClienti
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageFasiLavorazione,FasiLavorazioneDto,FasiLavorazioneDto>
 
@@ -107,7 +109,7 @@
            {
                SetEditContext();
 
-               ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+               ListFasiLavorazioneDto = await ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
 
            }, "Caricamento dati...");
     }
@@ -121,8 +123,8 @@
                 UiState?.SetMenuDisabled(true);
                 UiState?.ShowOverlay("Inserimento in corso...");
 
-                await ServiceWrapper!.ServiceFasiLavorazioni.AddFasiLavorazioneAsync(Model);
-                ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+                await ServiceFasiLavorazioni.AddFasiLavorazioneAsync(Model);
+                ListFasiLavorazioneDto = await ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
                 
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
@@ -135,7 +137,7 @@
         }
         catch (Exception ex)
         {
-            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ListClientiDto = await ServiceClienti.GetClientiDtoByUserAsync();
             ResetFormModel();
             await HandleExceptionFormAsync(ex);
         }
@@ -149,8 +151,8 @@
 
             if (!string.IsNullOrEmpty(item.FaseLavorazione))
             {
-                await ServiceWrapper!.ServiceFasiLavorazioni.UpdateFasiLavorazioneAsync(item);
-                ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+                await ServiceFasiLavorazioni.UpdateFasiLavorazioneAsync(item);
+                ListFasiLavorazioneDto = await ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
 
                 UiState?.ShowSnackbar("Update eseguito", Severity.Success);
             }
@@ -163,7 +165,7 @@
         }
         catch (Exception ex)
         {
-            ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+            ListFasiLavorazioneDto = await ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
             ResetFormModel();
             await HandleExceptionFormAsync(ex);
         }
@@ -193,8 +195,8 @@
                     UiState?.ShowOverlay("Eliminazione in corso...");
                     UiState?.SetMenuDisabled(true);
 
-                    await ServiceWrapper!.ServiceFasiLavorazioni.DeleteFasiLavorazioneAsync(idFase);
-                    ListFasiLavorazioneDto = await ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+                    await ServiceFasiLavorazioni.DeleteFasiLavorazioneAsync(idFase);
+                    ListFasiLavorazioneDto = await ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
 
                     UiState?.HideOverlay();
                     UiState?.SetMenuDisabled(false);

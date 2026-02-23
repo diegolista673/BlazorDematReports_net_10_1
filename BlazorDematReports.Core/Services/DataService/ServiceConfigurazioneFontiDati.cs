@@ -3,7 +3,7 @@ using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.DataReading.Infrastructure;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,6 @@
 ﻿@page "/clienti"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceClienti ServiceClienti
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 
 
@@ -123,8 +125,8 @@
            {
                SetEditContext();
 
-               var clientiTask = ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
-               var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+               var clientiTask = ServiceClienti.GetClientiDtoByUserAsync();
+               var centriTask = ServiceCentri.GetCentriByUserAsync();
                await Task.WhenAll(clientiTask, centriTask);
                ListClientiDto = clientiTask.Result;
                ListCentri = centriTask.Result;
@@ -146,8 +148,8 @@
                 Model.DataCreazioneCliente = DateTime.Now;
                 Model.IdOperatore = ConfigUser!.IdUtente;
 
-                await ServiceWrapper!.ServiceClienti.AddClienteAsync(Model);
-                ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+                await ServiceClienti.AddClienteAsync(Model);
+                ListClientiDto = await ServiceClienti.GetClientiDtoByUserAsync();
                 
                 ResetFormModel();
 
@@ -159,7 +161,7 @@
         }
         catch (Exception ex)
         {
-            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ListClientiDto = await ServiceClienti.GetClientiDtoByUserAsync();
             ResetFormModel();
             await HandleExceptionFormAsync(ex);
         }
@@ -186,8 +188,8 @@
                     UiState?.ShowOverlay("Eliminazione in corso...");
                     UiState?.SetMenuDisabled(true);
 
-                    await ServiceWrapper!.ServiceClienti.DeleteClienteAsync(idCliente);
-                    ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+                    await ServiceClienti.DeleteClienteAsync(idCliente);
+                    ListClientiDto = await ServiceClienti.GetClientiDtoByUserAsync();
 
                     ResetFormModel();
 
@@ -216,7 +218,7 @@
                 UiState?.ShowEditOverlay("Update in corso...");
 
                 item.NomeCliente = item.NomeCliente.ToUpper();
-                await ServiceWrapper!.ServiceClienti.UpdateClienteAsync(item);
+                await ServiceClienti.UpdateClienteAsync(item);
 
                 ResetFormModel();
 
@@ -233,7 +235,7 @@
         }
         catch (Exception ex)
         {
-            ListClientiDto = await ServiceWrapper!.ServiceClienti.GetClientiDtoByUserAsync();
+            ListClientiDto = await ServiceClienti.GetClientiDtoByUserAsync();
             ResetFormModel();
             await HandleExceptionFormAsync(ex);
         }

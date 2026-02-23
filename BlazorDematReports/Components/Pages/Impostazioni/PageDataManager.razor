@@ -1,5 +1,9 @@
 ﻿@page "/data-manager"
 @using BlazorDematReports.Core.DataReading.Infrastructure
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceFasiLavorazioni ServiceFasiLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceTaskDataReadingAggiornamento ServiceTaskDataReadingAggiornamento
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @implements IAsyncDisposable
 @inherits BaseComponentPage<PageDataManager,TaskDataReadingAggiornamentoDto,TaskDataReadingAggiornamentoDto,SearchDataDto,SearchDataDto>
@@ -242,9 +246,9 @@
             USetEditContext();
 
             // Avvia tutte le chiamate asincrone in parallelo
-            var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
-            var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
-            var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
+            var centriTask = ServiceCentri.GetCentriByUserAsync();
+            var fasiTask = ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+            var lavorazioniTask = ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
             await Task.WhenAll(centriTask, fasiTask, lavorazioniTask);
 
             ListCentri = centriTask.Result;
@@ -324,7 +328,7 @@
         }
         finally
         {
-            ListTaskDataReadingAggiornamentoDto = await ServiceWrapper!.ServiceTaskDataReadingAggiornamento.GetAggiornamentoLavorazioneDtoByDateAsync(idProcLav, DateTime.Now.Date);
+            ListTaskDataReadingAggiornamentoDto = await ServiceTaskDataReadingAggiornamento.GetAggiornamentoLavorazioneDtoByDateAsync(idProcLav, DateTime.Now.Date);
 
             base.ResetUModel();
 
@@ -400,7 +404,7 @@
             if (procedura != null && procedura.IdproceduraLavorazione > 0)
             {
                 int idProcedura = procedura.IdproceduraLavorazione;
-                ProcedureLavorazioniDto = await ServiceWrapper!.ServiceProcedureLavorazioni.GetProceduraLavorazioneDtoAsync(idProcedura);
+                ProcedureLavorazioniDto = await ServiceProcedureLavorazioni.GetProceduraLavorazioneDtoAsync(idProcedura);
                 uModel!.IdProceduraLavorazione = idProcedura;
                 IsDisabledFase = false;
                 SetSelectFasiOnlyWithDataReading(ProcedureLavorazioniDto);
@@ -478,7 +482,7 @@
             UiState?.ShowOverlay("Ricerca in corso...");
 
             MessaggioErroreAggiornamento = "";
-            ListAggiornamento = await ServiceWrapper!.ServiceTaskDataReadingAggiornamento.GetAggiornamentoDtoByDateAsync(Model!.StartDataLavorazione!.Value.Date, Model!.EndDataLavorazione!.Value.Date);
+            ListAggiornamento = await ServiceTaskDataReadingAggiornamento.GetAggiornamentoDtoByDateAsync(Model!.StartDataLavorazione!.Value.Date, Model!.EndDataLavorazione!.Value.Date);
 
             UiState?.SetMenuDisabled(false);
             UiState?.HideOverlay();

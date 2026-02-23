@@ -1,4 +1,7 @@
 ﻿@page "/operatori"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceOperatori ServiceOperatori
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceRuoli ServiceRuoli
 
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageOperatori,OperatoriDto,OperatoriDto>
@@ -220,10 +223,10 @@
             SetEditContext();
 
             // Avvia tutte le chiamate asincrone in parallelo
-            var centriVisibiliTask = ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
-            var operatoriTask = ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
-            var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
-            var ruoliTask = ServiceWrapper!.ServiceRuoli.GetRuoliByUserAsync();
+            var centriVisibiliTask = ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+            var operatoriTask = ServiceOperatori.GetOperatoriDtoAsync();
+            var centriTask = ServiceCentri.GetCentriByUserAsync();
+            var ruoliTask = ServiceRuoli.GetRuoliByUserAsync();
 
             await Task.WhenAll(centriVisibiliTask, operatoriTask, centriTask, ruoliTask);
 
@@ -249,15 +252,15 @@
                 UiState?.ShowOverlay("Inserimento in corso...");
 
                 Model.FlagOperatoreAttivo = true;
-                await ServiceWrapper!.ServiceOperatori.AddOperatoreAsync(Model);
-                ListOperatoriDto = await ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
+                await ServiceOperatori.AddOperatoreAsync(Model);
+                ListOperatoriDto = await ServiceOperatori.GetOperatoriDtoAsync();
 
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
                 UiState?.ShowSnackbar("Nuovo Operatore inserit", Severity.Success);
 
                 base.ResetFormModel();
-                Model!.CentriVisibiliDto = await ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+                Model!.CentriVisibiliDto = await ServiceCentri.GetCentriVisibiliDtoByUserAsync();
 
                 base.ErrorMessage = "";
             }
@@ -265,7 +268,7 @@
         catch (Exception ex)
         {
             ResetFormModel();
-            Model!.CentriVisibiliDto = await ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+            Model!.CentriVisibiliDto = await ServiceCentri.GetCentriVisibiliDtoByUserAsync();
             await HandleExceptionFormAsync(ex);
         }
 
@@ -291,10 +294,10 @@
                     UiState?.ShowOverlay("Eliminazione in corso...");
                     UiState?.SetMenuDisabled(true);
 
-                    await ServiceWrapper!.ServiceOperatori.DeleteOperatoreAsync(idOperatore);
-                    ListOperatoriDto = await ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
+                    await ServiceOperatori.DeleteOperatoreAsync(idOperatore);
+                    ListOperatoriDto = await ServiceOperatori.GetOperatoriDtoAsync();
                 
-                    Model!.CentriVisibiliDto = await ServiceWrapper!.ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+                    Model!.CentriVisibiliDto = await ServiceCentri.GetCentriVisibiliDtoByUserAsync();
 
                     UiState?.HideOverlay();
                     UiState?.SetMenuDisabled(false);
@@ -321,8 +324,8 @@
 
             if (!string.IsNullOrEmpty(item.Operatore))
             {
-                await ServiceWrapper!.ServiceOperatori.UpdateOperatoreAsync(item);
-                ListOperatoriDto = await ServiceWrapper!.ServiceOperatori.GetOperatoriDtoAsync();
+                await ServiceOperatori.UpdateOperatoreAsync(item);
+                ListOperatoriDto = await ServiceOperatori.GetOperatoriDtoAsync();
 
                 UiState?.ShowSnackbar("Update eseguito", Severity.Success);
 

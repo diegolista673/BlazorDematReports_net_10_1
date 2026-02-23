@@ -1,6 +1,6 @@
 @page "/configura-fonte-dati-wizard"
 @page "/configura-fonte-dati-wizard/{IdConfigurazione:int}"
-@using BlazorDematReports.Core.Interfaces.IDataService
+@using BlazorDematReports.Core.Services.Interfaces.IDataService
 @using BlazorDematReports.Core.Services.DataService
 @using BlazorDematReports.Core.Services.Validation
 @using BlazorDematReports.Core.Services.Wizard
@@ -9,12 +9,13 @@
 
 @inject ConfigurationWizardStateService WizardState
 @inject ConfigurationStepValidator StepValidator
-@inject IServiceWrapper ServiceWrapper
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IConfiguration Configuration
 @inject ITaskGenerationService TaskGenerationService
 @inject IProductionJobScheduler JobScheduler
+@inject IServiceProcedureLavorazioni serviceProcedureLavorazioni
+@inject IServiceConfigurazioneFontiDati serviceConfigurazioneFontiDati
 
 @attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
 
@@ -52,8 +53,7 @@
                 <MudStep Title="Procedura">
                     <ChildContent>
                         <Step3_SelezioneProcedura State="@_wizardState" 
-                                                  StateService="@WizardState"
-                                                  ServiceWrapper="@ServiceWrapper" />
+                                                  StateService="@WizardState" />
                     </ChildContent>
                 </MudStep>
                 
@@ -167,7 +167,7 @@
                         var idCentro = firstMapping.IdCentro;
                     
                         // Carica procedura
-                        var procedura = await ServiceWrapper.ServiceProcedureLavorazioni.GetProceduraLavorazioneByIdAsync(idProcedura);
+                        var procedura = await serviceProcedureLavorazioni.GetProceduraLavorazioneByIdAsync(idProcedura);
                         var nomeProcedura = procedura?.NomeProcedura ?? $"Procedura {idProcedura}";
                     
                         // Carica fasi disponibili
@@ -300,7 +300,7 @@
             if (_wizardState.IsEditMode)
             {
                 // UPDATE
-                await ServiceWrapper!.ServiceConfigurazioneFontiDati.UpdateConfigurazioneFontiDatiAsync(
+                await serviceConfigurazioneFontiDati.UpdateConfigurazioneFontiDatiAsync(
                     config, mappings, ConfigUser!.Utente);
                 
                 // Genera task per nuovi mapping
@@ -318,7 +318,7 @@
             else
             {
                 // CREATE
-                await ServiceWrapper!.ServiceConfigurazioneFontiDati.AddConfigurazioneFontiDatiAsync(
+                await serviceConfigurazioneFontiDati.AddConfigurazioneFontiDatiAsync(
                     config, mappings, ConfigUser!.Utente);
                 
                 // Genera task

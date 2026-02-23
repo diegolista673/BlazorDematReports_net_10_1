@@ -1,4 +1,8 @@
 ﻿@page "/associazione-fase-totale"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceLavorazioniFasiTipoTotale ServiceLavorazioniFasiTipoTotale
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceFasiLavorazioni ServiceFasiLavorazioni
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceTipologieTotali ServiceTipologieTotali
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageAssociazioneLavorazioneFaseTotale,LavorazioniFasiTipoTotaleDto,LavorazioniFasiTipoTotaleDto>
 
@@ -153,10 +157,10 @@
                SetEditContext();
 
                // Avvia tutte le chiamate asincrone in parallelo
-               var listDtoTask = ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
-               var lavorazioniTask = ServiceWrapper!.ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
-               var fasiTask = ServiceWrapper!.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
-               var tipologieTask = ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliAsync();
+               var listDtoTask = ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+               var lavorazioniTask = ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
+               var fasiTask = ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+               var tipologieTask = ServiceTipologieTotali.GetTipologieTotaliAsync();
 
                // Attendi che tutte le chiamate siano completate
                await Task.WhenAll(listDtoTask, lavorazioniTask, fasiTask, tipologieTask);
@@ -188,8 +192,8 @@
                 Model.IdFase = ListFasiLavorazione!.Where(x=> x.FaseLavorazione == Model.Fase).First().IdFaseLavorazione;
                 Model.IdTipologiaTotale = ListTipologieTotali!.Where(x=> x.TipoTotale == Model.TipologiaTotale).First().IdTipoTotale;
 
-                await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.AddLavorazioniFasiTipoTotaleAsync(Model);
-                ListLavorazioniFasiTipoTotaleDto = await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+                await ServiceLavorazioniFasiTipoTotale.AddLavorazioniFasiTipoTotaleAsync(Model);
+                ListLavorazioniFasiTipoTotaleDto = await ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
 
                 ResetFormModel();
 
@@ -221,8 +225,8 @@
                 item.IdFase = idFase;
                 item.IdTipologiaTotale = IdTipoTotale;
 
-                await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.UpdateLavorazioniFasiTipoTotaleAsync(item);
-                ListLavorazioniFasiTipoTotaleDto = await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+                await ServiceLavorazioniFasiTipoTotale.UpdateLavorazioniFasiTipoTotaleAsync(item);
+                ListLavorazioniFasiTipoTotaleDto = await ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
 
                 UiState?.ShowSnackbar("Update eseguito", Severity.Success);
 
@@ -262,8 +266,8 @@
                     UiState?.ShowOverlay("Eliminazione in corso...");
                     UiState?.SetMenuDisabled(true);
 
-                    await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.DeleteLavorazioniFasiTipoTotaleAsync((int)IdLavorazioneFaseTipoTotale!);
-                    ListLavorazioniFasiTipoTotaleDto = await ServiceWrapper!.ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
+                    await ServiceLavorazioniFasiTipoTotale.DeleteLavorazioniFasiTipoTotaleAsync((int)IdLavorazioneFaseTipoTotale!);
+                    ListLavorazioniFasiTipoTotaleDto = await ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
 
                     UiState?.HideOverlay();
                     UiState?.SetMenuDisabled(false);

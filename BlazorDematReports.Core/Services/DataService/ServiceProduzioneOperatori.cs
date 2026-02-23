@@ -2,7 +2,7 @@
 using AutoMapper.QueryableExtensions;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using ClosedXML.Excel;
 using Entities.Helpers;
 using Entities.Models;

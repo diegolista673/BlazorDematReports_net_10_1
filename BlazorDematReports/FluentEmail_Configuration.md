@@ -95,7 +95,7 @@ dotnet add package FluentEmail.Smtp
 
 private async Task TestEmailAsync()
 {
-    bool success = await ServiceWrapper.ServiceMail.SendEmailAsync(
+    bool success = await ServiceMail.SendEmailAsync(
         to: "test@example.com",
         subject: "Test Email da BlazorDematReports",
         body: "Questo è un test di invio email."
@@ -111,7 +111,7 @@ private async Task TestEmailAsync()
 ### Test con mittente personalizzato
 
 ```csharp
-bool success = await ServiceWrapper.ServiceMail.SendEmailAsync(
+bool success = await ServiceMail.SendEmailAsync(
     from: "custom@postel.it",
     to: "test@example.com",
     toName: "Destinatario Test",
@@ -156,13 +156,13 @@ Conta servizi mail configurati:
 
 ```csharp
 // Totale servizi EmailCSV attivi
-int totalServices = await ServiceWrapper.ServiceMail.GetMailServicesCountAsync();
+int totalServices = await ServiceMail.GetMailServicesCountAsync();
 
 // Servizi per procedura specifica
-int procServices = await ServiceWrapper.ServiceMail.GetMailServicesCountByProceduraAsync(idProcedura);
+int procServices = await ServiceMail.GetMailServicesCountByProceduraAsync(idProcedura);
 
 // Configurazioni complete
-List<ConfigurazioneFontiDati> configs = await ServiceWrapper.ServiceMail.GetMailServicesAsync();
+List<ConfigurazioneFontiDati> configs = await ServiceMail.GetMailServicesAsync();
 ```
 
 ## ?? Configurazioni Avanzate

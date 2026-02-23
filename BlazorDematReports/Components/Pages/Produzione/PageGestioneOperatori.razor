@@ -4,6 +4,10 @@
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
 @inherits BaseComponentPage<PageGestioneOperatori,ReportAnnualeDto,ReportProduzioneCompleta>
 
+@inject IServiceCentri serviceCentri
+@inject IServiceProduzioneOperatori serviceProduzioneOperatori
+@inject IServiceProduzioneSistema serviceProduzioneSistema
+
 <MudText Typo="Typo.h4" Class="titolo ml-4">Gestione operatori</MudText>
 
 <MudDivider Class="border-solid border-1 mud-border-primary "></MudDivider>
@@ -375,7 +379,7 @@
                SetEditContext();
 
                // Avvia il caricamento dei centri in parallelo
-               var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+               var centriTask = serviceCentri.GetCentriByUserAsync();
 
                // Prepara i parametri e le chiamate ai report solo se richiesto
                Task<List<ReportProduzioneCompleta>>? reportGiornalieroTask = null;
@@ -390,10 +394,10 @@
                    IsFormValid = true;
 
                    // Avvia le chiamate ai report in parallelo
-                   reportGiornalieroTask = ServiceWrapper!.ServiceProduzioneOperatori
+                   reportGiornalieroTask = serviceProduzioneOperatori
                        .GetReportProduzioneCompletaGiornalieraAsync(Model.StartDataLavorazione!.Value.Date, Model.EndDataLavorazione!.Value.Date, (int)Model.IdCentro!);
 
-                   totaliDedicatiTask = ServiceWrapper.ServiceProduzioneOperatori
+                   totaliDedicatiTask = serviceProduzioneOperatori
                        .GetReportTotaliDedicatiPeriodoAsync(Model);
                }
                else
@@ -446,62 +450,6 @@
             }
 
 
-            // int days = (Model!.EndDataLavorazione!.Value.Date - Model.StartDataLavorazione!.Value.Date).Days;
-
-            // if (days > 366)
-            // {
-            //     message = "Range max 1 year";
-            //     return;
-            // }
-
-
-            // if (days < 0)
-            // {
-            //     message = "Data inizio maggiore di data fine";
-            //     return;
-            // }
-
-
-            // message = "";
-            // LoadTotaliDedicati = false;
-            // ErrorMessage = "";
-
-            // UiState?.SetMenuDisabled(true);
-            // UiState?.ShowOverlay("Ricerca in corso...");
-
-            // // Avvia tutte le chiamate in parallelo
-            // var reportGiornalieroTask = ServiceWrapper!.ServiceProduzioneOperatori
-            //     .GetReportProduzioneCompletaGiornalieraAsync(Model.StartDataLavorazione!.Value.Date, Model.EndDataLavorazione!.Value.Date, (int)Model.IdCentro!);
-
-            // var totaliDedicatiTask = ServiceWrapper.ServiceProduzioneOperatori
-            //     .GetReportTotaliDedicatiPeriodoAsync(Model);
-
-
-            // var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
-
-            // // Attendi tutte le chiamate
-            // await Task.WhenAll(reportGiornalieroTask, totaliDedicatiTask, centriTask);
-
-            // // Assegna i risultati
-            // LstReportGiornaliero = reportGiornalieroTask.Result;
-            // LstReportTotaliDedicatiGiornaliero = totaliDedicatiTask.Result;
-            // ListCentri = centriTask.Result;
-
-            // LstReportGiornalieroView = LstReportGiornaliero.OrderBy(x => x.DataLavorazione).ThenBy(x => x.Operatore).ToList();
-            // LstReportTotaliDedicatiGiornalieroView = LstReportTotaliDedicatiGiornaliero.ToList();
-
-            // isDisabledReport = !(LstReportGiornalieroView.Any() || LstReportTotaliDedicatiGiornalieroView.Any());
-            // isSelectReportValid = !LstReportGiornalieroView.Any();
-
-            // LoadTotaliDedicati = true;
-            // ErrorMessage = "";
-
-            // Layout!.UpdateFooter();
-            // UiState?.HideOverlay();
-            // UiState?.SetMenuDisabled(false);
-            // Reset dello stato
-
-
             message = "";
             LoadTotaliDedicati = false;
             ErrorMessage = "";
@@ -544,7 +492,7 @@
 
     private async Task LoadReportProduzioneAsync()
     {
-        LstReportGiornaliero = await ServiceWrapper!.ServiceProduzioneOperatori
+        LstReportGiornaliero = await serviceProduzioneOperatori
             .GetReportProduzioneCompletaGiornalieraAsync(
                 Model!.StartDataLavorazione!.Value.Date,
                 Model.EndDataLavorazione!.Value.Date,
@@ -553,13 +501,13 @@
 
     private async Task LoadTotaliDedicatiAsync()
     {
-        LstReportTotaliDedicatiGiornaliero = await ServiceWrapper!.ServiceProduzioneOperatori
+        LstReportTotaliDedicatiGiornaliero = await serviceProduzioneOperatori
             .GetReportTotaliDedicatiPeriodoAsync(Model!);
     }
 
     private async Task RefreshCentriAsync()
     {
-        ListCentri = await ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
+        ListCentri = await serviceCentri.GetCentriByUserAsync();
     }
 
     private void PrepareViewData()
@@ -616,17 +564,17 @@
                 ProduzioneSistemaDto.IdCentro = Model!.IdCentro!.Value;
 
                 ////Update or Insert tabella produzione sistema                
-                var res = await ServiceWrapper!.ServiceProduzioneSistema.CheckProduzioneSistemaOperatoreAsync(ProduzioneSistemaDto);
+                var res = await serviceProduzioneSistema.CheckProduzioneSistemaOperatoreAsync(ProduzioneSistemaDto);
 
                 //update
                 if (res)
                 {
-                    await ServiceWrapper.ServiceProduzioneSistema.UpdateProduzioneSistemaAsync(ProduzioneSistemaDto);
+                    await serviceProduzioneSistema.UpdateProduzioneSistemaAsync(ProduzioneSistemaDto);
                 }
                 //insert
                 else
                 {
-                    await ServiceWrapper.ServiceProduzioneSistema.AddProduzioneSistemaAsync(ProduzioneSistemaDto);
+                    await serviceProduzioneSistema.AddProduzioneSistemaAsync(ProduzioneSistemaDto);
                 }
             }
             catch (Exception ex)
@@ -644,14 +592,14 @@
     {
         if (SelectOption.Type == 1)
         {
-            MemoryStream excelStream = ServiceWrapper!.ServiceProduzioneOperatori.CreateExcelProduzioneGiornalieraCompleta(LstReportGiornalieroView, LstReportTotaliDedicatiGiornalieroView);
+            MemoryStream excelStream = serviceProduzioneOperatori.CreateExcelProduzioneGiornalieraCompleta(LstReportGiornalieroView, LstReportTotaliDedicatiGiornalieroView);
             string title = "ProduzioneGiornaliera" + ".xlsx";
             await JSInterop!.SaveAs(title, excelStream.ToArray());
         }
 
         if (SelectOption.Type == 2)
         {
-            MemoryStream excelStream = ServiceWrapper!.ServiceProduzioneOperatori.CreateExcelProduzioneGiornalieraCompleta(LstReportGiornalieroView, Enumerable.Empty<ReportGiornalieroTotaliDedicati>());
+            MemoryStream excelStream = serviceProduzioneOperatori.CreateExcelProduzioneGiornalieraCompleta(LstReportGiornalieroView, Enumerable.Empty<ReportGiornalieroTotaliDedicati>());
             string title = "ProduzioneNonConforme" + ".xlsx";
             await JSInterop!.SaveAs(title, excelStream.ToArray());
         }

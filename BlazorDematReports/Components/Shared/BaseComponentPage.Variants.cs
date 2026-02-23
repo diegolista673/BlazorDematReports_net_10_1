@@ -1,7 +1,7 @@
 using AutoMapper;
 using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Core.Application;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Services;
 using Microsoft.AspNetCore.Components.Forms;
@@ -22,13 +22,12 @@ namespace BlazorDematReports.Components.Shared
         public BaseComponentPage(
             IMapper mapper,
             NotificationDialog notificationDialog,
-            IServiceWrapper serviceWrapper,
             ILogger<TLogger> logger,
             ConfigUser configUser,
             IJSRuntime jsinterop,
             IDialogService dialogService,
             ILavorazioniConfigManager lavorazioniConfigManager)
-            : base(mapper, notificationDialog, serviceWrapper, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
+            : base(mapper, notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
         { }
 
         /// <summary>
@@ -83,13 +82,12 @@ namespace BlazorDematReports.Components.Shared
         public BaseComponentPage(
             IMapper mapper,
             NotificationDialog notificationDialog,
-            IServiceWrapper serviceWrapper,
             ILogger<TLogger> logger,
             ConfigUser configUser,
             IJSRuntime jsinterop,
             IDialogService dialogService,
             ILavorazioniConfigManager lavorazioniConfigManager)
-            : base(mapper, notificationDialog, serviceWrapper, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
+            : base(mapper, notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
         { }
 
         /// <summary>
@@ -172,13 +170,12 @@ namespace BlazorDematReports.Components.Shared
         public BaseComponentPage(
             IMapper mapper,
             NotificationDialog notificationDialog,
-            IServiceWrapper serviceWrapper,
             ILogger<TLogger> logger,
             ConfigUser configUser,
             IJSRuntime jsinterop,
             IDialogService dialogService,
             ILavorazioniConfigManager lavorazioniConfigManager)
-            : base(mapper, notificationDialog, serviceWrapper, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
+            : base(mapper, notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
         { }
 
         /// <summary>

@@ -1,4 +1,5 @@
 ﻿@page "/tipologie-totali"
+@inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceTipologieTotali ServiceTipologieTotali
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageTipoTotali,TipologieTotaliDto,TipologieTotaliDto>
 
@@ -95,7 +96,7 @@
            {
                UiState?.SetMenuDisabled(true);
                SetEditContext();
-               ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+               ListTipologieTotaliDto = await ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
 
                ErrorMessage = "";
                Layout!.ResetFooter();
@@ -115,8 +116,8 @@
                 UiState?.SetMenuDisabled(true);
                 UiState?.ShowOverlay("Inserimento in corso...");
 
-                await ServiceWrapper!.ServiceTipologieTotali.AddTipologieTotaliAsync(Model);
-                ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+                await ServiceTipologieTotali.AddTipologieTotaliAsync(Model);
+                ListTipologieTotaliDto = await ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
 
 
                 UiState?.SetMenuDisabled(false);
@@ -161,8 +162,8 @@
         {
             if (!string.IsNullOrEmpty(item.TipoTotale))
             {
-                await ServiceWrapper!.ServiceTipologieTotali.UpdateTipologieTotaliAsync(item);
-                ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+                await ServiceTipologieTotali.UpdateTipologieTotaliAsync(item);
+                ListTipologieTotaliDto = await ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
 
                 Snackbar!.Clear();
                 Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomCenter;
@@ -180,14 +181,14 @@
         {
             IsFormValid = false;
             Logger!.LogError(ex.Message.ToString());
-            ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+            ListTipologieTotaliDto = await ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
             await NotificationDialog!.ShowNotification("Tipologia duplicata", "OK", Color.Error, "Error");
         }
         catch (Exception ex)
         {
             IsFormValid = false;
             Logger!.LogError(ex.Message.ToString());
-            ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+            ListTipologieTotaliDto = await ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
             await NotificationDialog!.ShowNotification("Error on Update", "OK", Color.Error, "Error");
         }
     }
@@ -212,8 +213,8 @@
                 UiState?.ShowOverlay("Eliminazione in corso...");
                 UiState?.SetMenuDisabled(true);
 
-                await ServiceWrapper!.ServiceTipologieTotali.DeleteTipologieTotaliAsync(IdTipoTotale);
-                ListTipologieTotaliDto = await ServiceWrapper!.ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
+                await ServiceTipologieTotali.DeleteTipologieTotaliAsync(IdTipoTotale);
+                ListTipologieTotaliDto = await ServiceTipologieTotali.GetTipologieTotaliDtoAsync();
 
                 UiState?.HideOverlay();
                  UiState?.SetMenuDisabled(false);

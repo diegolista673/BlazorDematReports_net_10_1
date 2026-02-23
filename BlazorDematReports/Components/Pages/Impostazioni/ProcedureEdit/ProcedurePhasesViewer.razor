@@ -1,10 +1,11 @@
 @using BlazorDematReports.Core.DataReading.Dto
-@using BlazorDematReports.Core.Interfaces.IDataService
+@using BlazorDematReports.Core.Services.Interfaces.IDataService
 @using Entities.Models.DbApplication
 
-@inject IServiceWrapper ServiceWrapper
 @inject IDialogService DialogService
 @inject ILogger<ProcedurePhasesViewer> Logger
+@inject IServiceFasiLavorazioni serviceFasiLavorazioni
+
 
 <div class="pa-4">
     
@@ -199,7 +200,7 @@
     {
         try
         {
-            _availablePhases = await ServiceWrapper.ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
+            _availablePhases = await serviceFasiLavorazioni.GetFasiLavorazioneAsync();
         }
         catch (Exception ex)
         {

@@ -1,6 +1,6 @@
 ﻿using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Constants;
-using BlazorDematReports.Core.Interfaces.IDataService;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Services.DataService.Queries;
 using Entities.Enums;
 using Entities.Models.DbApplication;

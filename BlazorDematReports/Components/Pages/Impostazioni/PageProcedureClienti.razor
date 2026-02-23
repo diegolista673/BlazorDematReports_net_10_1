@@ -2,6 +2,9 @@
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
 @inherits BaseComponentPage<PageProcedureClienti,ProcedureClienteDto,ProcedureClienteDto>
 
+@inject IServiceProcedureClienti serviceProcedureClienti
+@inject IServiceCentri serviceCentri
+@inject IServiceClienti serviceClienti
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Procedure Clienti</MudText>
 
@@ -221,8 +224,8 @@
              SetEditContext();
 
             // Avvia le chiamate asincrone in parallelo
-            var centriTask = ServiceWrapper!.ServiceCentri.GetCentriByUserAsync();
-            var procedureTask = ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync();
+            var centriTask = serviceCentri.GetCentriByUserAsync();
+            var procedureTask = serviceProcedureClienti.GetProcedureClienteDtoByUserAsync();
 
             await Task.WhenAll(centriTask, procedureTask);
 
@@ -258,12 +261,12 @@
                 Model!.DataInserimento = DateTime.Now;
                 Model!.Idoperatore = ConfigUser.IdUtente;
 
-                var cliente = await ServiceWrapper!.ServiceClienti.FindByCondition(x => x.NomeCliente == Model!.Cliente).FirstAsync();
+                var cliente = await serviceClienti.FindByCondition(x => x.NomeCliente == Model!.Cliente).FirstAsync();
                 Model!.Idcliente = cliente.IdCliente;
                 Model!.Idcentro = cliente.IdCentroLavorazione;
 
-                await ServiceWrapper.ServiceProcedureClienti.AddProceduraClienteAsync(Model!);
-                ListProcedureClienteDto = await ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync();
+                await serviceProcedureClienti.AddProceduraClienteAsync(Model!);
+                ListProcedureClienteDto = await serviceProcedureClienti.GetProcedureClienteDtoByUserAsync();
 
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
@@ -297,8 +300,8 @@
                 UiState?.ShowOverlay("Eliminazione in corso...");
                 UiState?.SetMenuDisabled(true);
 
-                await ServiceWrapper!.ServiceProcedureClienti.DeleteProceduraClienteAsync(IdproceduraCliente);
-                ListProcedureClienteDto = await ServiceWrapper!.ServiceProcedureClienti.GetProcedureClienteDtoByUserAsync();
+                await serviceProcedureClienti.DeleteProceduraClienteAsync(IdproceduraCliente);
+                ListProcedureClienteDto = await serviceProcedureClienti.GetProcedureClienteDtoByUserAsync();
 
                 UiState?.HideOverlay();
                 UiState?.SetMenuDisabled(false);
@@ -320,7 +323,7 @@
         {
             if (!string.IsNullOrEmpty(item.ProceduraCliente))
             {
-                await ServiceWrapper!.ServiceProcedureClienti.UpdateProcedureClienteAsync(item);
+                await serviceProcedureClienti.UpdateProcedureClienteAsync(item);
                 UiState?.ShowSnackbar("Update eseguito", Severity.Success);
             }
             else
@@ -353,7 +356,7 @@
             try
             {
                 isDisableCliente = false;
-                ListClienti = await ServiceWrapper!.ServiceClienti.GetClientiByIDCentroAsync((int)idCentro);
+                ListClienti = await serviceClienti.GetClientiByIDCentroAsync((int)idCentro);
                 SetSelectCliente();
 
                 Sigla = "_" + ListCentri!.Where(x => x.Idcentro == idCentro).First().Sigla;

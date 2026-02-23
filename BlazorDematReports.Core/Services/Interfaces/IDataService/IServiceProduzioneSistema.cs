@@ -3,7 +3,7 @@
 using Entities.Models;
 using Entities.Models.DbApplication;
 
-namespace BlazorDematReports.Core.Interfaces.IDataService
+namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 {
     /// <summary>
     /// Interfaccia per la gestione della produzione di sistema e delle relative operazioni sui dati.

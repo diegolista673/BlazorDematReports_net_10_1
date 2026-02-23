@@ -2,7 +2,7 @@
 using BlazorDematReports.Core.Application.Dto;
 using Entities.Models.DbApplication;
 
-namespace BlazorDematReports.Core.Interfaces.IDataService
+namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 {
     public interface IServiceFasiLavorazioni : IServiceBase<FasiLavorazione>
     {

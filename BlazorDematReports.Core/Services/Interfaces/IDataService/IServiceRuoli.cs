@@ -1,7 +1,7 @@
 ﻿using BlazorDematReports.Core.Application.Dto;
 using Entities.Models.DbApplication;
 
-namespace BlazorDematReports.Core.Interfaces.IDataService
+namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 {
     /// <summary>
     /// Interfaccia per la gestione dei ruoli e delle relative operazioni sui dati.
