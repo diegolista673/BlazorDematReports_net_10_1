@@ -24,13 +24,13 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
     /// </summary>
     public sealed class ProductionJobScheduler : IProductionJobScheduler
     {
-        private readonly DematReportsContext _db;
+        private readonly IDbContextFactory<DematReportsContext> _contextFactory;
         private readonly IRecurringJobManagerAdapter _adapter;
         private readonly ILogger<ProductionJobScheduler>? _logger;
 
-        public ProductionJobScheduler(DematReportsContext db, IRecurringJobManagerAdapter adapter, ILogger<ProductionJobScheduler>? logger = null)
+        public ProductionJobScheduler(IDbContextFactory<DematReportsContext> contextFactory, IRecurringJobManagerAdapter adapter, ILogger<ProductionJobScheduler>? logger = null)
         {
-            _db = db;
+            _contextFactory = contextFactory;
             _adapter = adapter;
             _logger = logger;
         }
@@ -119,15 +119,17 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
             try
             {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+
                 // Recupera il task con tutte le relazioni necessarie
-                var task = await GetTaskWithRelationsAsync(idTaskDaEseguire);
+                var task = await GetTaskWithRelationsAsync(context, idTaskDaEseguire);
 
                 // Genera chiave e configurazione
                 var hangfireKey = BuildHangfireKey(task);
                 var cronExpression = ResolveCron(task);
 
                 // Aggiorna il task nel database
-                await UpdateTaskInDatabaseAsync(task, hangfireKey, cronExpression);
+                await UpdateTaskInDatabaseAsync(context, task, hangfireKey, cronExpression);
 
                 // Registra il job in Hangfire
                 _adapter.AddOrUpdate(hangfireKey, task.IdTaskDaEseguire, cronExpression);
@@ -155,9 +157,9 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <param name="idTaskDaEseguire">ID del task da recuperare</param>
         /// <returns>Task con tutte le relazioni caricate</returns>
         /// <exception cref="InvalidOperationException">Se il task non viene trovato</exception>
-        private async Task<TaskDaEseguire> GetTaskWithRelationsAsync(int idTaskDaEseguire)
+        private async Task<TaskDaEseguire> GetTaskWithRelationsAsync(DematReportsContext context, int idTaskDaEseguire)
         {
-            var task = await _db.TaskDaEseguires
+            var task = await context.TaskDaEseguires
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!
                     .ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!
@@ -186,7 +188,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <param name="task">Task da aggiornare</param>
         /// <param name="hangfireKey">Nuova chiave Hangfire</param>
         /// <param name="cronExpression">Espressione cron calcolata</param>
-        private async Task UpdateTaskInDatabaseAsync(TaskDaEseguire task, string hangfireKey, string cronExpression)
+        private async Task UpdateTaskInDatabaseAsync(DematReportsContext context, TaskDaEseguire task, string hangfireKey, string cronExpression)
         {
             var changes = new List<string>();
 
@@ -216,7 +218,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             // Salva solo se ci sono modifiche
             if (changes.Any())
             {
-                await _db.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 _logger?.LogDebug("Task {TaskId} aggiornato: {Changes}",
                     task.IdTaskDaEseguire, string.Join(", ", changes));
             }
@@ -229,12 +231,13 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>Disabilita un task e rimuove il relativo recurring job (se presente).</summary>
         public async Task DisableAsync(int idTaskDaEseguire)
         {
-            var task = await _db.TaskDaEseguires.FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var task = await context.TaskDaEseguires.FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
             if (task == null)
                 return;
 
             task.Enabled = false;
-            await _db.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             if (!string.IsNullOrEmpty(task.IdTaskHangFire))
                 _adapter.RemoveIfExists(task.IdTaskHangFire);
@@ -255,7 +258,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// </summary>
         public async Task SyncAllAsync()
         {
-            var enabled = await _db.TaskDaEseguires
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var enabled = await context.TaskDaEseguires
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(t => t.IdConfigurazioneDatabaseNavigation)
@@ -287,7 +291,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             }
 
             // Le entità sono già tracciate dalla query: SaveChanges persiste tutte le modifiche
-            await _db.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
         /// <summary>
@@ -297,9 +301,10 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// </summary>
         public async Task<int> CleanupOrphansAsync()
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
             var existingKeys = _adapter.GetRecurringJobKeys().ToHashSet();
 
-            var enabledTasks = await _db.TaskDaEseguires
+            var enabledTasks = await context.TaskDaEseguires
                 .AsSplitQuery()
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
@@ -360,7 +365,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             }
 
             if (removed > 0 || added > 0)
-                await _db.SaveChangesAsync();
+                await context.SaveChangesAsync();
 
             return removed + added;
         }
@@ -379,14 +384,33 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
     /// including data acquisition, processing, and persistence.</remarks>
     public static class ProductionJobRunner
     {
-        /// <summary>Factory DI per la creazione di scope per ogni job Hangfire.</summary>
-        public static IServiceScopeFactory ScopeFactory { get; set; } = default!;
+        private static IServiceScopeFactory? _scopeFactory;
+
+        /// <summary>
+        /// Inizializza il runner con la factory DI. Deve essere chiamato una sola volta all'avvio dell'applicazione.
+        /// Lancia <see cref="InvalidOperationException"/> se chiamato più di una volta.
+        /// </summary>
+        /// <param name="factory">Factory per la creazione di scope DI per ogni job Hangfire.</param>
+        /// <exception cref="ArgumentNullException">Se <paramref name="factory"/> è null.</exception>
+        /// <exception cref="InvalidOperationException">Se già inizializzato.</exception>
+        public static void Initialize(IServiceScopeFactory factory)
+        {
+            ArgumentNullException.ThrowIfNull(factory);
+
+            if (_scopeFactory is not null)
+                throw new InvalidOperationException("ProductionJobRunner è già stato inizializzato.");
+
+            _scopeFactory = factory;
+        }
 
         /// <summary>Entry point Hangfire: carica il task, verifica lo stato e delega l'esecuzione.</summary>
         public static async Task RunAsync(int idTaskDaEseguire, CancellationToken cancellationToken = default)
         {
+            if (_scopeFactory is null)
+                throw new InvalidOperationException("ProductionJobRunner non è stato inizializzato. Chiamare Initialize() all'avvio dell'applicazione.");
+
             // Crea un nuovo scope DI per ogni esecuzione del job
-            using var scope = ScopeFactory.CreateScope();
+            using var scope = _scopeFactory.CreateScope();
             var db     = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
                              .CreateLogger("ProductionJobRunner");

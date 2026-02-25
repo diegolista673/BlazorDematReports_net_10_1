@@ -147,6 +147,11 @@ namespace BlazorDematReports.Components.Shared
             {
                 EditContext.OnFieldChanged -= EditContext_HandleFieldChanged!;
             }
+
+            if (uEditContext is not null)
+            {
+                uEditContext.OnFieldChanged -= UEditContext_HandleFieldChanged!;
+            }
         }
     }
 }

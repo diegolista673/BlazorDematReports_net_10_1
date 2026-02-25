@@ -1,4 +1,4 @@
-Ôªøusing AutoMapper;
+using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using ClosedXML.Excel;
@@ -16,7 +16,7 @@ namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
     /// Servizio che gestisce la configurazione e la generazione di report e grafici per documenti lavorati.
-    /// Fornisce funzionalit√† per l'aggregazione dei dati di produzione, la visualizzazione grafica
+    /// Fornisce funzionalit‡ per l'aggregazione dei dati di produzione, la visualizzazione grafica
     /// e l'esportazione in formato Excel dei report generati.
     /// </summary>
     public class ServiceConfigReportDocumenti : ServiceBase<ConfigReportDocumenti>, IServiceConfigReportDocumenti
@@ -25,7 +25,7 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <summary>
         /// Inizializza una nuova istanza del servizio di configurazione report documenti.
         /// </summary>
-        /// <param name="mapper">Servizio di mapping tra entit√† e DTO utilizzato per trasformare i dati tra diversi modelli.</param>
+        /// <param name="mapper">Servizio di mapping tra entit‡ e DTO utilizzato per trasformare i dati tra diversi modelli.</param>
         /// <param name="configUser">Configurazione dell'utente corrente con informazioni su permessi e centro di appartenenza.</param>
         /// <param name="contextFactory">Factory per la creazione di istanze del contesto database DematReports.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
@@ -52,7 +52,7 @@ namespace BlazorDematReports.Core.Services.DataService
             if (startDate > endDate)
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL e join appropriati
             string sql = @"
@@ -156,7 +156,7 @@ namespace BlazorDematReports.Core.Services.DataService
             if (startDate > endDate)
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL e join appropriati
             string sql = @"
@@ -264,7 +264,7 @@ namespace BlazorDematReports.Core.Services.DataService
             if (startDate > endDate)
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Ottimizza la query utilizzando una CTE (Common Table Expression) per migliorare le prestazioni
             string sql = @"
@@ -357,7 +357,7 @@ namespace BlazorDematReports.Core.Services.DataService
             if (startDate > endDate)
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             string sql = @"
                 SELECT 
@@ -464,7 +464,7 @@ namespace BlazorDematReports.Core.Services.DataService
             if (startDate > endDate)
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL e join appropriati
             string sql = @"
@@ -510,12 +510,12 @@ namespace BlazorDematReports.Core.Services.DataService
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
             if (idProceduraLavorazione == null)
-                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non pu√≤ essere null");
+                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non puÚ essere null");
 
             if (idFaseLavorazione == null)
-                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non pu√≤ essere null");
+                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non puÚ essere null");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL per sicurezza e prestazioni
             string sql = @"
@@ -563,7 +563,7 @@ namespace BlazorDematReports.Core.Services.DataService
             if (startDate > endDate)
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL e join appropriati
             string sql = @"
@@ -614,12 +614,12 @@ namespace BlazorDematReports.Core.Services.DataService
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
             if (idProceduraLavorazione == null)
-                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non pu√≤ essere null");
+                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non puÚ essere null");
 
             if (idFaseLavorazione == null)
-                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non pu√≤ essere null");
+                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non puÚ essere null");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL per sicurezza e prestazioni
             string sql = @"
@@ -666,7 +666,7 @@ namespace BlazorDematReports.Core.Services.DataService
             if (startDate > endDate)
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL e join appropriati
             string sql = @"
@@ -713,12 +713,12 @@ namespace BlazorDematReports.Core.Services.DataService
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
             if (idProceduraLavorazione == null)
-                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non pu√≤ essere null");
+                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non puÚ essere null");
 
             if (idFaseLavorazione == null)
-                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non pu√≤ essere null");
+                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non puÚ essere null");
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             // Query ottimizzata con parametrizzazione SQL per sicurezza e prestazioni
             string sql = @"

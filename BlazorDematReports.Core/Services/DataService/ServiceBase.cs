@@ -21,30 +21,13 @@ namespace BlazorDematReports.Core.Services.DataService
         protected readonly IDbContextFactory<DematReportsContext> contextFactory;
 
         /// <summary>Logger per il tracking delle operazioni.</summary>
-        protected readonly ILogger? logger;
+        protected readonly ILogger logger;
 
         /// <summary>Mapper AutoMapper per la conversione tra entità e DTO.</summary>
-        protected readonly IMapper? mapper;
+        protected readonly IMapper mapper;
 
         /// <summary>Configurazione utente corrente (ruolo, centro di origine).</summary>
-        protected readonly ConfigUser? configUser;
-
-        /// <summary>
-        /// Costruttore minimale — solo contextFactory.
-        /// </summary>
-        public ServiceBase(IDbContextFactory<DematReportsContext> contextFactory)
-        {
-            this.contextFactory = contextFactory;
-        }
-
-        /// <summary>
-        /// Costruttore con contextFactory e logger.
-        /// </summary>
-        public ServiceBase(IDbContextFactory<DematReportsContext> contextFactory, ILogger logger)
-        {
-            this.contextFactory = contextFactory;
-            this.logger = logger;
-        }
+        protected readonly ConfigUser configUser;
 
         /// <summary>
         /// Costruttore completo — tutti i campi condivisi.
@@ -59,6 +42,11 @@ namespace BlazorDematReports.Core.Services.DataService
             IMapper mapper,
             ConfigUser configUser)
         {
+            ArgumentNullException.ThrowIfNull(contextFactory);
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(mapper);
+            ArgumentNullException.ThrowIfNull(configUser);
+
             this.contextFactory = contextFactory;
             this.logger = logger;
             this.mapper = mapper;
@@ -66,36 +54,30 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <summary>
-        /// Restituisce una query per tutte le entità del tipo specificato.
-        /// Ogni chiamata crea un nuovo contesto dati per garantire la thread safety.
+        /// Restituisce tutte le entità materializzate come lista read-only.
+        /// Il contesto viene creato e disposto internamente per garantire la corretta gestione delle risorse.
         /// </summary>
-        /// <returns>IQueryable di T.</returns>
-        public IQueryable<T> FindAll()
+        /// <returns>Lista read-only di tutte le entità.</returns>
+        public async Task<IReadOnlyList<T>> FindAllAsync()
         {
-            if (logger != null)
-            {
-                QueryLoggingHelper.LogQueryExecution(logger: logger);
-            }
+            QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            var context = contextFactory.CreateDbContext();
-            return context.Set<T>().AsNoTracking();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.Set<T>().AsNoTracking().ToListAsync();
         }
 
         /// <summary>
-        /// Restituisce una query filtrata tramite espressione lambda.
-        /// Ogni chiamata crea un nuovo contesto dati per garantire la thread safety.
+        /// Restituisce le entità filtrate tramite espressione lambda, materializzate come lista read-only.
+        /// Il contesto viene creato e disposto internamente per garantire la corretta gestione delle risorse.
         /// </summary>
         /// <param name="expression">Espressione di filtro.</param>
-        /// <returns>IQueryable di T filtrato.</returns>
-        public IQueryable<T> FindByCondition(Expression<Func<T, bool>> expression)
+        /// <returns>Lista read-only delle entità filtrate.</returns>
+        public async Task<IReadOnlyList<T>> FindByConditionAsync(Expression<Func<T, bool>> expression)
         {
-            if (logger != null)
-            {
-                QueryLoggingHelper.LogQueryExecution(logger: logger);
-            }
+            QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            var context = contextFactory.CreateDbContext();
-            return context.Set<T>().Where(expression).AsNoTracking();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.Set<T>().Where(expression).AsNoTracking().ToListAsync();
         }
 
         /// <summary>
@@ -106,12 +88,9 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <returns>Task asincrono.</returns>
         public async Task CreateAsync(T entity)
         {
-            if (logger != null)
-            {
-                QueryLoggingHelper.LogQueryExecution(logger: logger);
-            }
+            QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.Set<T>().Add(entity);
             await context.SaveChangesAsync();
         }
@@ -124,13 +103,10 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <returns>Task asincrono.</returns>
         public async Task DeleteAsync(int id)
         {
-            if (logger != null)
-            {
-                QueryLoggingHelper.LogQueryExecution(logger: logger);
-            }
+            QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
-            T? existing = context.Set<T>().Find(id);
+            await using var context = await contextFactory.CreateDbContextAsync();
+            T? existing = await context.Set<T>().FindAsync(id);
             if (existing != null)
             {
                 context.Set<T>().Remove(existing);

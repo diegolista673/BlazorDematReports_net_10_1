@@ -4,6 +4,7 @@
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceFasiLavorazioni ServiceFasiLavorazioni
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceTipologieTotali ServiceTipologieTotali
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageAssociazioneLavorazioneFaseTotale,LavorazioniFasiTipoTotaleDto,LavorazioniFasiTipoTotaleDto>
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Associazione Lavorazione - Fase - Totale</MudText>
@@ -149,6 +150,8 @@
     MudAutocomplete<string>? RefFase;
     MudAutocomplete<string>? RefTipologia;
 
+    private readonly CancellationTokenSource _cts = new();
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -163,7 +166,7 @@
                var tipologieTask = ServiceTipologieTotali.GetTipologieTotaliAsync();
 
                // Attendi che tutte le chiamate siano completate
-               await Task.WhenAll(listDtoTask, lavorazioniTask, fasiTask, tipologieTask);
+               await Task.WhenAll(listDtoTask, lavorazioniTask, fasiTask, tipologieTask).WaitAsync(_cts.Token);
 
                // Assegna i risultati
                ListLavorazioniFasiTipoTotaleDto = listDtoTask.Result;
@@ -284,5 +287,11 @@
 
     }
 
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
+    }
 
 }

@@ -32,7 +32,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.Ruolis.ToListAsync();
         }
 
@@ -40,7 +40,7 @@ namespace BlazorDematReports.Core.Services.DataService
         public async Task<List<Ruoli>> GetRuoliByUserAsync()
         {
             QueryLoggingHelper.LogQueryExecution(logger);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
                 return await context.Ruolis.ToListAsync();
@@ -55,7 +55,7 @@ namespace BlazorDematReports.Core.Services.DataService
         public async Task<Ruoli?> GetRuoliByIdAsync(int IdRuolo)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.Ruolis.FirstOrDefaultAsync(x => x.IdRuolo == IdRuolo);
         }
 
@@ -64,7 +64,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             List<Ruoli> lst = await context.Ruolis.ToListAsync();
             var LstRuoli = mapper.Map<List<Ruoli>, List<RuoliDto>>(lst);
             LstRuoli = LstRuoli.OrderBy(x => x.IdRuolo).ToList();
@@ -77,7 +77,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<Ruoli>(ruoliDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.Ruolis.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -87,7 +87,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.Ruolis.FindAsync(idRuolo);
             if (entity != null)
             {
@@ -101,7 +101,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var ruolo = await context.Ruolis.FirstOrDefaultAsync(x => x.IdRuolo.Equals(arg.IdRuolo));
             if (ruolo != null)
             {

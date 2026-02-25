@@ -216,6 +216,7 @@
 
 @code {
 
+    private readonly CancellationTokenSource _cts = new();
     private CancellationTokenSource? _queryCts;
 
     protected MudSelect<int?>? RefCentro;
@@ -249,7 +250,7 @@
             var centriTask = ServiceCentri.GetCentriByUserAsync();
             var fasiTask = ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
             var lavorazioniTask = ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
-            await Task.WhenAll(centriTask, fasiTask, lavorazioniTask);
+            await Task.WhenAll(centriTask, fasiTask, lavorazioniTask).WaitAsync(_cts.Token);
 
             ListCentri = centriTask.Result;
             ListFasiLavorazione = fasiTask.Result;
@@ -500,11 +501,12 @@
     /// <summary>
     /// Rilascia le risorse e cancella eventuali query in esecuzione.
     /// </summary>
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
+        _cts.Cancel();
         _queryCts?.Cancel();
         _queryCts?.Dispose();
-        await ValueTask.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
 }

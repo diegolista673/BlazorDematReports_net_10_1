@@ -2,6 +2,7 @@
 @page "/gestione-operatori/{StartDataLavorazioneParam:datetime}/{EndDataLavorazioneParam:datetime}/{IdCentroParam:int}/{TipoReportParam:int}"
 
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageGestioneOperatori,ReportAnnualeDto,ReportProduzioneCompleta>
 
 @inject IServiceCentri serviceCentri
@@ -361,6 +362,8 @@
 
     string message = "";
 
+    private readonly CancellationTokenSource _cts = new();
+
     Option SelectOption { get; set; } = new Option(1, "Elenco completo");
     List<Option> Options { get; set; } = new List<Option>()
     {
@@ -410,7 +413,7 @@
                // Attendi tutte le chiamate in parallelo
                if (reportGiornalieroTask != null && totaliDedicatiTask != null)
                {
-                   await Task.WhenAll(centriTask, reportGiornalieroTask, totaliDedicatiTask);
+                   await Task.WhenAll(centriTask, reportGiornalieroTask, totaliDedicatiTask).WaitAsync(_cts.Token);
 
                    ListCentri = centriTask.Result;
                    LstReportGiornaliero = reportGiornalieroTask.Result;
@@ -627,5 +630,11 @@
     }
 
 
- 
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
+    }
+
+
 }

@@ -33,7 +33,8 @@ namespace BlazorDematReports.Services
         {
             _isOverlayVisible = true;
             _overlayMessage = message;
-            OnOverlayChanged?.Invoke(_isOverlayVisible, _overlayMessage);
+            var handler = OnOverlayChanged;
+            handler?.Invoke(_isOverlayVisible, _overlayMessage);
         }
 
         /// <summary>
@@ -43,7 +44,8 @@ namespace BlazorDematReports.Services
         {
             _isOverlayVisible = false;
             _overlayMessage = null;
-            OnOverlayChanged?.Invoke(_isOverlayVisible, _overlayMessage);
+            var handler = OnOverlayChanged;
+            handler?.Invoke(_isOverlayVisible, _overlayMessage);
         }
 
         // Menu
@@ -64,7 +66,8 @@ namespace BlazorDematReports.Services
         public void SetMenuDisabled(bool disabled)
         {
             _isMenuDisabled = disabled;
-            OnMenuDisabledChanged?.Invoke(_isMenuDisabled);
+            var handler = OnMenuDisabledChanged;
+            handler?.Invoke(_isMenuDisabled);
         }
 
         /// <summary>
@@ -79,7 +82,8 @@ namespace BlazorDematReports.Services
         /// <param name="severity">Severità dello snackbar.</param>
         public void ShowSnackbar(string message, Severity severity = Severity.Normal)
         {
-            OnSnackbarRequested?.Invoke(message, severity);
+            var handler = OnSnackbarRequested;
+            handler?.Invoke(message, severity);
         }
 
         // Overlay Edit
@@ -108,7 +112,8 @@ namespace BlazorDematReports.Services
         {
             _isVisibleEditing = true;
             _textEditOverlay = message;
-            OnEditOverlayChanged?.Invoke(_isVisibleEditing, _textEditOverlay);
+            var handler = OnEditOverlayChanged;
+            handler?.Invoke(_isVisibleEditing, _textEditOverlay);
         }
 
         /// <summary>
@@ -118,7 +123,8 @@ namespace BlazorDematReports.Services
         {
             _isVisibleEditing = false;
             _textEditOverlay = null;
-            OnEditOverlayChanged?.Invoke(_isVisibleEditing, _textEditOverlay);
+            var handler = OnEditOverlayChanged;
+            handler?.Invoke(_isVisibleEditing, _textEditOverlay);
         }
     }
 }

@@ -227,9 +227,9 @@ public static class Program
         //Check diagnostico utilizzato solo all'avvio per verificare la connettività e lo stato di Hangfire,
         //non è un servizio utilizzato direttamente nei job o nelle operazioni quotidiane
         builder.Services.AddSingleton<IHangfireHealthService, HangfireHealthService>();
-        builder.Services.AddSingleton<UiStateService>();
         builder.Services.AddSingleton<ILavorazioniConfigManager, LavorazioniConfigManager>();
 
+        builder.Services.AddScoped<UiStateService>();
         builder.Services.AddScoped<ConfigUser>();
         builder.Services.AddScoped<INormalizzatoreOperatori, NormalizzatoreOperatori>();
         builder.Services.AddScoped<IGestoreOperatoriDatiLavorazione, GestoreOperatoriDatiLavorazione>();
@@ -367,7 +367,7 @@ public static class Program
         QueryLoggingHelper.Initialize(loggerFactory, "LibraryLavorazioni.SqlQueries", "BlazorDematReports");
 
         //class statica per eseguire i job di produzione, necessita di un IServiceScopeFactory per creare scope nei job
-        ProductionJobRunner.ScopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
+        ProductionJobRunner.Initialize(app.Services.GetRequiredService<IServiceScopeFactory>());
     }
 
     private static async Task RunStartupDiagnosticsAsync(WebApplication app, NLog.Logger bootstrapLogger)

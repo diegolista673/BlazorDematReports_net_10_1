@@ -48,7 +48,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var rec = await context.ProduzioneSistemas
                 .Where(x => x.IdProceduraLavorazione == produzioneSistemaDto.IdProceduraLavorazione &&
                             x.IdFaseLavorazione == produzioneSistemaDto.IdFaseLavorazione &&
@@ -63,7 +63,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.ProduzioneSistemas
                 .Where(x => x.DataLavorazione == startDate.Date && x.IdOperatore == idOperatore)
                 .Include(x => x.IdProceduraLavorazioneNavigation)
@@ -77,7 +77,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.ProduzioneSistemas
                 .Include(x => x.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdFaseLavorazioneNavigation)
@@ -92,7 +92,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             if (reportAnnualeDto != null)
             {
                 //chiamata singola
@@ -121,7 +121,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var produzioneSistema = await context.ProduzioneSistemas
                 .Where(x => x.IdProceduraLavorazione == arg.IdProceduraLavorazione &&
                             x.IdFaseLavorazione == arg.IdFaseLavorazione &&
@@ -148,7 +148,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             ProduzioneSistema produzioneSistema = mapper.Map<ProduzioneSistema>(produzioneSistemaDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.ProduzioneSistemas.Add(produzioneSistema);
             await context.SaveChangesAsync();
         }
@@ -158,7 +158,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.ProduzioneSistemas.FindAsync(idProduzione);
             if (entity != null)
             {
@@ -172,7 +172,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             string sql = @"SELECT IdProduzioneSistema,DataLavorazione, ps.IdOperatore, Operatore, OperatoreNonRiconosciuto, ps.IdFaseLavorazione, ps.IdProceduraLavorazione, pl.NomeProcedura, fl.FaseLavorazione, Documenti,Fogli, Pagine, Scarti, PagineSenzaBianco, null as TempoLavOreCent
                            FROM [ProduzioneGed].[dbo].[ProduzioneSistema] as ps
                            left join ProcedureLavorazioni as pl on ps.IdProceduraLavorazione = pl.IDProceduraLavorazione
@@ -187,7 +187,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.ProduzioneSistemas
                 .Include(x => x.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdFaseLavorazioneNavigation)
@@ -199,21 +199,21 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <inheritdoc/>
-        public Task<string?> GetPrimaDataInseritaAsync(int idProceduraLavorazione, int idFaseLavorazione)
+        public async Task<string?> GetPrimaDataInseritaAsync(int idProceduraLavorazione, int idFaseLavorazione)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var minDate = _getMinDateCompiled(context, idProceduraLavorazione, idFaseLavorazione);
-            return Task.FromResult(minDate?.ToShortDateString());
+            return minDate?.ToShortDateString();
         }
 
         /// <inheritdoc/>
-        public Task<string?> GetUltimaDataInseritaAsync(int idProceduraLavorazione, int idFaseLavorazione)
+        public async Task<string?> GetUltimaDataInseritaAsync(int idProceduraLavorazione, int idFaseLavorazione)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var maxDate = _getMaxDateCompiled(context, idProceduraLavorazione, idFaseLavorazione);
-            return Task.FromResult(maxDate?.ToShortDateString());
+            return maxDate?.ToShortDateString();
         }
     }
 }

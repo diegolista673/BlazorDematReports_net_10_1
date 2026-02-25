@@ -38,7 +38,7 @@ namespace BlazorDematReports.Core.Services.DataService
         public async Task<List<CentriLavorazione>> GetCentriByUserAsync()
         {
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             List<CentriLavorazione> result;
 
             if (configUser.IsAdminRole)
@@ -62,7 +62,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             List<CentriLavorazione> lstCentri;
             if (configUser.IsAdminRole)
             {
@@ -87,7 +87,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<CentriLavorazione>(CentriLavorazioneDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.CentriLavoraziones.Add(entity);
             await context.SaveChangesAsync();
         }

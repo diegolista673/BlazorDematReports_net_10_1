@@ -32,7 +32,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.LavorazioniFasiTipoTotales
                 .Include(x => x.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdTipologiaTotaleNavigation)
@@ -45,7 +45,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var result = await context.LavorazioniFasiTipoTotales
                 .Select(x => new LavorazioniFasiTipoTotaleDto
                 {
@@ -67,7 +67,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.LavorazioniFasiTipoTotales.FindAsync(IdtipologieTotaliLavorazioneFase);
             if (entity != null)
             {
@@ -82,7 +82,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<LavorazioniFasiTipoTotale>(arg);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.LavorazioniFasiTipoTotales.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -92,7 +92,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var lav = await context.LavorazioniFasiTipoTotales.FirstOrDefaultAsync(x => x.IdLavorazioneFaseTipoTotale.Equals(arg.IdLavorazioneFaseTipoTotale));
             if (lav != null)
             {

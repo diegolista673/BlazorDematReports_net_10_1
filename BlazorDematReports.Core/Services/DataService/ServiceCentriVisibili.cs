@@ -31,7 +31,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.CentriVisibilis
                     .Include(x => x.IdCentroNavigation)
                     .Include(x => x.IdOperatoreNavigation)
@@ -43,7 +43,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var ListOperatori = await context.Operatoris.ToListAsync();
             for (var i = 1; i <= 4; i++)
             {

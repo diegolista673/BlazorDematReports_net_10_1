@@ -8,8 +8,6 @@
 @inject NavigationManager NavManager
 @inject IJSRuntime JSRuntime
 @inject ProcedureEditStateService StateService
-@inject IDbContextFactory<DematReportsContext> DbFactory
-@implements IDisposable
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Scheda Lavorazione</MudText>
 
@@ -385,6 +383,7 @@ else
     }
 }
 
+
 @code {
     [Parameter] public int? IdproceduraLavorazione { get; set; }
     
@@ -595,20 +594,6 @@ else
             UiState?.ShowSnackbar($"Errore: {ex.Message}", Severity.Error);
         }
     }
-    
-    // Classe per deserializzare il risultato JavaScript
-    private class ClipboardResult
-    {
-        public bool Success { get; set; }
-        public string? Method { get; set; }
-        public string? Error { get; set; }
-        public string? Details { get; set; }
+
     }
-    
-    public new void Dispose()
-    {
-        _currentModel = null;
-        _selectedLavorazione = null;
-    }
-}
 

@@ -2,6 +2,7 @@
 @using BlazorDematReports.Core.Services.Interfaces.IDataService
 
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageProcedureLavorazioni,ProcedureLavorazioniDto,ProcedureLavorazioniDto>
 @inject NavigationManager NavigationManager
 @inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
@@ -244,6 +245,8 @@
     /// Opzioni del dialog per la configurazione della larghezza massima.
     /// </summary>
     DialogOptions maxWidth = new DialogOptions() { MaxWidth = MaxWidth.Large };
+
+    private readonly CancellationTokenSource _cts = new();
     
     /// <summary>
     /// Riferimento al componente MudSelect per la selezione del centro.
@@ -341,9 +344,9 @@
             var formatoDatiTask = serviceFormatoDati.GetFormatoDatiAsync();
             var fasiTask = serviceFasiLavorazioni.GetFasiLavorazioneAsync();
             var procedureLavorazioniTask = serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
-            
-            await Task.WhenAll(centriTask, procedureClienteTask, repartiTask, formatoDatiTask, 
-                              fasiTask,procedureLavorazioniTask);
+
+            await Task.WhenAll(centriTask, procedureClienteTask, repartiTask, formatoDatiTask,
+                              fasiTask,procedureLavorazioniTask).WaitAsync(_cts.Token);
             
             // Assegnazione risultati
             ListCentri = centriTask.Result;
@@ -517,10 +520,6 @@
                     fullItem.Note = item.Note;
                     fullItem.LogoFile = item.LogoFile;
 
-                    // ? SINCRONIZZA LE FASI CON I TASK AGGIUNTI DAL DIALOG
-                    // Le fasi vengono già sincronizzate automaticamente nel dialog
-                    // Il componente child gestisce già l'aggiornamento delle fasi
-
                     // Usa fullItem per il resto del processo
                     item = fullItem;
                 }
@@ -612,7 +611,7 @@
             {
                 try
                 {
-                    var pl = await serviceProcedureLavorazioni.FindByCondition(x => x.IdproceduraLavorazione == idProceduraLavorazione).FirstOrDefaultAsync();
+                    var pl = (await serviceProcedureLavorazioni.FindByConditionAsync(x => x.IdproceduraLavorazione == idProceduraLavorazione)).FirstOrDefault();
                     if (pl != null)
                     {
                         UiState?.ShowOverlay("Eliminazione in corso...");
@@ -820,5 +819,11 @@
         NavigationManager!.NavigateTo($"/procedure-lavorazioni/edit/{idProcedura}");
     }
     #endregion
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
+    }
 }
 

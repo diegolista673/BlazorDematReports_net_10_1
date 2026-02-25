@@ -1,5 +1,6 @@
 ﻿@page "/totali-lavorazione-fasi"
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO")]
+@implements IAsyncDisposable
 @using BlazorDematReports.Components.Pages.ReportsLavorazioni.Components
 @using BlazorDematReports.Core.DataReading.Dto
 @using BlazorDematReports.Core.Application.Dto
@@ -123,6 +124,8 @@
     private int TotaleOre = 0;
     private double TotaleFTE = 0;
 
+    private readonly CancellationTokenSource _cts = new();
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -143,6 +146,7 @@
         Model!.Anno = year?.Year ?? 0;
         _submitForm = false;
     }
+
 
     private async Task OnValueChangedLavorazioneAsync(string? lavorazione)
     {
@@ -194,6 +198,10 @@
             await LoadAllFasiDataAsync();
             await LoadDateInformazioniAsync();
             await FinalizeSuccessfulLoadAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            Logger?.LogDebug("Caricamento report annullato per navigazione");
         }
         catch (Exception ex)
         {
@@ -274,7 +282,7 @@
                 var ultimaDataTask = ServiceProduzioneSistema.GetUltimaDataInseritaAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
                 var aggiornatoTask = ServiceTaskDataReadingAggiornamento.GetUltimoAggiornamentoAsync((int)Model.IdProceduraLavorazione, primaFase.IdFaseLavorazione);
 
-                await Task.WhenAll(primaDataTask, ultimaDataTask, aggiornatoTask);
+                await Task.WhenAll(primaDataTask, ultimaDataTask, aggiornatoTask).WaitAsync(_cts.Token);
 
                 PrimaDataInserita = await primaDataTask ?? "N/A";
                 UltimaDataInserita = await ultimaDataTask ?? "N/A";
@@ -282,6 +290,10 @@
             }
             else
             { PrimaDataInserita = UltimaDataInserita = AggiornatoAl = "N/A"; }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger?.LogDebug("Caricamento date informazioni annullato per navigazione");
         }
         catch (Exception ex)
         {
@@ -337,7 +349,7 @@
         var last5YearsTask = ServiceProduzioneOperatori.GetReportLast5YearsAsync((int)Model.IdProceduraLavorazione!, (int)Model.IdCentro!);
         var totaliDedicatiTask = ServiceProduzioneOperatori.GetReportTotaliDedicatiAsync((int)Model.IdProceduraLavorazione!, (int)Model.Anno!, (int)Model.IdCentro!);
 
-        await Task.WhenAll(allMonthlyTask, last5YearsTask, totaliDedicatiTask);
+        await Task.WhenAll(allMonthlyTask, last5YearsTask, totaliDedicatiTask).WaitAsync(_cts.Token);
         var allMonthly = await allMonthlyTask;
         var last5Years = await last5YearsTask;
         var totaliDedicati = await totaliDedicatiTask; 
@@ -379,7 +391,7 @@
             CalculateFaseTotals(faseReport);
             return faseReport;
         });
-        _fasiReportData.AddRange(await Task.WhenAll(phaseTasks));
+        _fasiReportData.AddRange(await Task.WhenAll(phaseTasks).WaitAsync(_cts.Token));
 
         // Calcolo aggregati su tutte le fasi
         TotaleOre = _fasiReportData.Sum(f => f.TotaleOre);
@@ -396,14 +408,17 @@
         faseReportData.TotaleFteMese = Math.Round(faseReportData.ReportData.Sum(r => r.FteMese ?? 0d), 2);
     }
 
+   
     private List<LavorazioniFasiDataReadingDto> GetValidFasiFromProcedura() =>
         _proceduraDto!.LavorazioniFasiDataReadingsDto?
             .Where(f => f.IdFaseLavorazione != 0)
             .OrderBy(f => f.FaseLavorazione)
             .ToList() ?? new List<LavorazioniFasiDataReadingDto>();
 
+
     private bool HasSignificantData(List<ReportOreDocumenti>? reportData) =>
         reportData != null && reportData.Any(r => (r.Documenti ?? 0) > 0 || (r.Fogli ?? 0) > 0 || (r.Pagine ?? 0) > 0);
+
 
     private async Task HandleLoadErrorAsync(Exception ex)
     {
@@ -414,6 +429,13 @@
         _fasiReportData = null;
         TotaleOre = 0;
         TotaleFTE = 0;
+    }
+
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
     }
 }
 

@@ -37,21 +37,21 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <inheritdoc/>
-        public IQueryable<RepartiProduzione> FindAll()
+        public async Task<IReadOnlyList<RepartiProduzione>> FindAllAsync()
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var context = contextFactory.CreateDbContext();
-            return context.RepartiProduziones.AsNoTracking();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.RepartiProduziones.AsNoTracking().ToListAsync();
         }
 
         /// <inheritdoc/>
-        public IQueryable<RepartiProduzione> FindByCondition(Expression<Func<RepartiProduzione, bool>> expression)
+        public async Task<IReadOnlyList<RepartiProduzione>> FindByConditionAsync(Expression<Func<RepartiProduzione, bool>> expression)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var context = contextFactory.CreateDbContext();
-            return context.RepartiProduziones.Where(expression).AsNoTracking();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.RepartiProduziones.Where(expression).AsNoTracking().ToListAsync();
         }
 
         /// <inheritdoc/>
@@ -59,7 +59,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.RepartiProduziones.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -69,7 +69,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.RepartiProduziones.FindAsync(id);
             if (entity != null)
             {
@@ -84,7 +84,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<RepartiProduzione>(repartiProduzioneDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.RepartiProduziones.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -94,7 +94,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.RepartiProduziones.FindAsync(IdReparto);
             if (entity != null)
             {
@@ -108,7 +108,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.RepartiProduziones.OrderBy(x => x.Reparti).ToListAsync();
         }
 
@@ -117,7 +117,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.RepartiProduziones.FirstOrDefaultAsync(c => c.IdReparti.Equals(IdReparto));
         }
 
@@ -126,7 +126,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.RepartiProduziones.FirstOrDefaultAsync(x => x.Reparti == reparto);
         }
     }

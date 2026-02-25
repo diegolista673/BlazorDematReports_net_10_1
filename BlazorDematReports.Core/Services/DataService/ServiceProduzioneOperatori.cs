@@ -41,7 +41,11 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll().Include(x => x.IdProceduraLavorazioneNavigation).ToListAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.ProduzioneOperatoris
+                .Include(x => x.IdProceduraLavorazioneNavigation)
+                .AsNoTracking()
+                .ToListAsync();
         }
 
         /// <summary>
@@ -54,14 +58,16 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindByCondition(x => x.IdOperatore.Equals(IdOperatore) && x.DataLavorazione.Date == startDataLavorazione.Date)
-                            .Include(x => x.IdRepartiNavigation)
-                            .Include(x => x.TipologieTotaliProduziones)
-                            .Include(x => x.IdOperatoreNavigation)
-                            .Include(x => x.IdTurnoNavigation)
-                            .AsNoTracking()
-                            .ProjectTo<ProduzioneOperatoriDto>(mapper.ConfigurationProvider)
-                            .ToListAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.ProduzioneOperatoris
+                .Where(x => x.IdOperatore.Equals(IdOperatore) && x.DataLavorazione.Date == startDataLavorazione.Date)
+                .Include(x => x.IdRepartiNavigation)
+                .Include(x => x.TipologieTotaliProduziones)
+                .Include(x => x.IdOperatoreNavigation)
+                .Include(x => x.IdTurnoNavigation)
+                .AsNoTracking()
+                .ProjectTo<ProduzioneOperatoriDto>(mapper.ConfigurationProvider)
+                .ToListAsync();
         }
 
         /// <summary>
@@ -73,20 +79,12 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var rec = await FindByCondition(x => x.IdProceduraLavorazione == produzioneOperatoriDto.IdProceduraLavorazione &&
-                                                    x.IdFaseLavorazione == produzioneOperatoriDto.IdFaseLavorazione &&
-                                                    x.IdTurno == produzioneOperatoriDto.IdTurno &&
-                                                    x.IdOperatore == produzioneOperatoriDto.IdOperatore &&
-                                                    x.DataLavorazione.Date == produzioneOperatoriDto.DataLavorazione!.Value.Date).FirstOrDefaultAsync();
-
-            if (rec != null)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            var result = await FindByConditionAsync(x => x.IdProceduraLavorazione == produzioneOperatoriDto.IdProceduraLavorazione &&
+                                                         x.IdFaseLavorazione == produzioneOperatoriDto.IdFaseLavorazione &&
+                                                         x.IdTurno == produzioneOperatoriDto.IdTurno &&
+                                                         x.IdOperatore == produzioneOperatoriDto.IdOperatore &&
+                                                         x.DataLavorazione.Date == produzioneOperatoriDto.DataLavorazione!.Value.Date);
+            return result.Count > 0;
         }
 
         /// <summary>
@@ -98,20 +96,17 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using (var context = contextFactory.CreateDbContext())
-            {
+            await using var context = await contextFactory.CreateDbContextAsync();
 
-                var ProduzioneOperatori = await context.ProduzioneOperatoris.Where(x => x.IdProceduraLavorazione == ProduzioneOperatoriDto.IdProceduraLavorazione &
-                                                                                        x.IdFaseLavorazione == ProduzioneOperatoriDto.IdFaseLavorazione &
-                                                                                        x.IdTurno == ProduzioneOperatoriDto.IdTurno &
-                                                                                        x.IdOperatore == ProduzioneOperatoriDto.IdOperatore &
-                                                                                        x.DataLavorazione == ProduzioneOperatoriDto.DataLavorazione).FirstOrDefaultAsync();
+            var ProduzioneOperatori = await context.ProduzioneOperatoris.Where(x => x.IdProceduraLavorazione == ProduzioneOperatoriDto.IdProceduraLavorazione &
+                                                                                    x.IdFaseLavorazione == ProduzioneOperatoriDto.IdFaseLavorazione &
+                                                                                    x.IdTurno == ProduzioneOperatoriDto.IdTurno &
+                                                                                    x.IdOperatore == ProduzioneOperatoriDto.IdOperatore &
+                                                                                    x.DataLavorazione == ProduzioneOperatoriDto.DataLavorazione).FirstOrDefaultAsync();
 
-                ProduzioneOperatori!.TempoLavOreCent = ProduzioneOperatoriDto.TempoLavOreCent;
+            ProduzioneOperatori!.TempoLavOreCent = ProduzioneOperatoriDto.TempoLavOreCent;
 
-                await context.SaveChangesAsync();
-
-            }
+            await context.SaveChangesAsync();
         }
 
         #region PageGestioneOperatori
@@ -131,7 +126,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
             try
             {
-                using var context = contextFactory.CreateDbContext();
+                await using var context = await contextFactory.CreateDbContextAsync();
 
                 string sql = @"
                     SELECT 
@@ -314,7 +309,7 @@ namespace BlazorDematReports.Core.Services.DataService
             DateTime startDate,
             DateTime endDate)
         {
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
             var aggiornamenti = await context.TaskDataReadingAggiornamentos
                 .Where(x => x.DataInizioLavorazione.Date >= startDate.Date &&
@@ -376,9 +371,8 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             List<ReportGiornalieroTotaliDedicati> lstReportTotaliAnnuale = new List<ReportGiornalieroTotaliDedicati>();
-            using (var context = contextFactory.CreateDbContext())
-            {
-                string sql = @"SELECT CONVERT(date,dataLavorazione) AS DataLavorazione,op.Operatore,pl.NomeProcedura as Lavorazione, fl.FaseLavorazione as FaseLavorazione ,tt.TipoTotale, Sum(ttp.totale) as Totale
+            await using var context = await contextFactory.CreateDbContextAsync();
+            string sql = @"SELECT CONVERT(date,dataLavorazione) AS DataLavorazione,op.Operatore,pl.NomeProcedura as Lavorazione, fl.FaseLavorazione as FaseLavorazione ,tt.TipoTotale, Sum(ttp.totale) as Totale
                                FROM TipologieTotaliProduzione as ttp 
                                LEFT JOIN TipologieTotali as tt on ttp.IDTipologiaTotale = tt.IdTipoTotale
                                LEFT JOIN ProduzioneOperatori as po on ttp.IDProduzioneOperatore = po.IdProduzione 
@@ -389,10 +383,9 @@ namespace BlazorDematReports.Core.Services.DataService
                                GROUP BY po.DataLavorazione,tt.TipoTotale, Operatore, pl.NomeProcedura,fl.FaseLavorazione
                                ORDER BY po.DataLavorazione,op.Operatore";
 
-                lstReportTotaliAnnuale = await context.Set<ReportGiornalieroTotaliDedicati>().FromSqlRaw(sql, reportAnnualeDto.IdCentro!,
-                                                                                                              reportAnnualeDto.StartDataLavorazione!,
-                                                                                                              reportAnnualeDto.EndDataLavorazione!).ToListAsync();
-            }
+            lstReportTotaliAnnuale = await context.Set<ReportGiornalieroTotaliDedicati>().FromSqlRaw(sql, reportAnnualeDto.IdCentro!,
+                                                                                                          reportAnnualeDto.StartDataLavorazione!,
+                                                                                                          reportAnnualeDto.EndDataLavorazione!).ToListAsync();
 
             return lstReportTotaliAnnuale;
         }
@@ -407,10 +400,9 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             List<ReportAnnuale> lstReportAnnuale = new List<ReportAnnuale>();
-            using (var context = contextFactory.CreateDbContext())
-            {
+            await using var context = await contextFactory.CreateDbContextAsync();
 
-                string sql = @"SELECT month(DataLavorazione) AS Mese, round(SUM(TempoLavOreCent), 2) as TotaleOreUomo, 
+            string sql = @"SELECT month(DataLavorazione) AS Mese, round(SUM(TempoLavOreCent), 2) as TotaleOreUomo, 
                                round((SUM(TempoLavOreCent) / 160), 1) as FteMese,  YEAR([DataLavorazione]) AS Anno 
                                FROM ProduzioneOperatori as pro 
                                LEFT JOIN ProcedureLavorazioni as pl on pro.IdProceduraLavorazione = pl.IdproceduraLavorazione 
@@ -418,11 +410,10 @@ namespace BlazorDematReports.Core.Services.DataService
                                GROUP BY MONTH([DataLavorazione]), YEAR([DataLavorazione]),datename(month, DataLavorazione) 
                                ORDER BY YEAR([DataLavorazione]) DESC, MONTH([DataLavorazione])";
 
-                lstReportAnnuale = await context.Set<ReportAnnuale>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
-                                                                                      reportAnnualeDto.IdProceduraLavorazione!,
-                                                                                      reportAnnualeDto.Anno!,
-                                                                                      reportAnnualeDto.IdCentro!).ToListAsync();
-            }
+            lstReportAnnuale = await context.Set<ReportAnnuale>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
+                                                                                   reportAnnualeDto.IdProceduraLavorazione!,
+                                                                                   reportAnnualeDto.Anno!,
+                                                                                   reportAnnualeDto.IdCentro!).ToListAsync();
 
 
             return lstReportAnnuale;
@@ -440,9 +431,8 @@ namespace BlazorDematReports.Core.Services.DataService
 
             List<ReportAnnualeSistema> lstReportSistemaAnnuale = new List<ReportAnnualeSistema>();
 
-            using (var context = contextFactory.CreateDbContext())
-            {
-                string sql = @"SELECT month(DataLavorazione) AS Mese, Sum(ps.Documenti) AS Documenti, Sum(ps.Fogli) AS Fogli, Sum(ps.Pagine) AS Pagine,
+            await using var context = await contextFactory.CreateDbContextAsync();
+            string sql = @"SELECT month(DataLavorazione) AS Mese, Sum(ps.Documenti) AS Documenti, Sum(ps.Fogli) AS Fogli, Sum(ps.Pagine) AS Pagine,
                                Sum(ps.Scarti) AS Scarti, Sum(pagineSenzaBianco) as pagineSenzaBianco
                                FROM ProduzioneSistema as ps
                                LEFT JOIN ProcedureLavorazioni as pl on ps.IdProceduraLavorazione = pl.IdproceduraLavorazione
@@ -451,11 +441,10 @@ namespace BlazorDematReports.Core.Services.DataService
                                GROUP BY MONTH([DataLavorazione]), YEAR([DataLavorazione]),datename(month, DataLavorazione)
                                ORDER BY YEAR([DataLavorazione]) DESC, MONTH([DataLavorazione])";
 
-                lstReportSistemaAnnuale = await context.Set<ReportAnnualeSistema>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
-                                                                                                    reportAnnualeDto.IdProceduraLavorazione!,
-                                                                                                    reportAnnualeDto.Anno!,
-                                                                                                    reportAnnualeDto.IdCentro!).ToListAsync();
-            }
+            lstReportSistemaAnnuale = await context.Set<ReportAnnualeSistema>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
+                                                                                                reportAnnualeDto.IdProceduraLavorazione!,
+                                                                                                reportAnnualeDto.Anno!,
+                                                                                                reportAnnualeDto.IdCentro!).ToListAsync();
 
 
             return lstReportSistemaAnnuale;
@@ -470,9 +459,8 @@ namespace BlazorDematReports.Core.Services.DataService
 
             List<ReportAnniSistema> lstReportAnniSistema = new List<ReportAnniSistema>();
 
-            using (var context = contextFactory.CreateDbContext())
-            {
-                string sql = @"SELECT year(DataLavorazione) AS Anno, Sum(ps.Documenti) AS Documenti, Sum(ps.Fogli) AS Fogli, Sum(ps.Pagine) AS Pagine
+            await using var context = await contextFactory.CreateDbContextAsync();
+            string sql = @"SELECT year(DataLavorazione) AS Anno, Sum(ps.Documenti) AS Documenti, Sum(ps.Fogli) AS Fogli, Sum(ps.Pagine) AS Pagine
                                FROM ProduzioneSistema as ps
                                LEFT JOIN ProcedureLavorazioni as pl on ps.IdProceduraLavorazione = pl.IdproceduraLavorazione
                                LEFT JOIN FasiLavorazione as fl on ps.IdFaseLavorazione = fl.IdFaseLavorazione
@@ -480,10 +468,9 @@ namespace BlazorDematReports.Core.Services.DataService
                                GROUP BY YEAR([DataLavorazione])
                                ORDER BY YEAR([DataLavorazione]) asc";
 
-                lstReportAnniSistema = await context.Set<ReportAnniSistema>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
-                                                                                              reportAnnualeDto.IdProceduraLavorazione!,
-                                                                                              reportAnnualeDto.IdCentro!).ToListAsync();
-            }
+            lstReportAnniSistema = await context.Set<ReportAnniSistema>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
+                                                                                          reportAnnualeDto.IdProceduraLavorazione!,
+                                                                                          reportAnnualeDto.IdCentro!).ToListAsync();
 
             // Gestione del caso in cui la lista � vuota o nulla
             if (lstReportAnniSistema == null || !lstReportAnniSistema.Any())
@@ -502,9 +489,8 @@ namespace BlazorDematReports.Core.Services.DataService
 
             List<ReportAnniSistema> lstReportAnniSistema = new List<ReportAnniSistema>();
 
-            using (var context = contextFactory.CreateDbContext())
-            {
-                string sql = @"SELECT year(DataLavorazione) AS Anno, ps.IdFaseLavorazione,Sum(ps.Documenti) AS Documenti, Sum(ps.Fogli) AS Fogli, Sum(ps.Pagine) AS Pagine
+            await using var context = await contextFactory.CreateDbContextAsync();
+            string sql = @"SELECT year(DataLavorazione) AS Anno, ps.IdFaseLavorazione,Sum(ps.Documenti) AS Documenti, Sum(ps.Fogli) AS Fogli, Sum(ps.Pagine) AS Pagine
                                FROM ProduzioneSistema as ps
                                LEFT JOIN ProcedureLavorazioni as pl on ps.IdProceduraLavorazione = pl.IdproceduraLavorazione
                                LEFT JOIN FasiLavorazione as fl on ps.IdFaseLavorazione = fl.IdFaseLavorazione
@@ -512,8 +498,7 @@ namespace BlazorDematReports.Core.Services.DataService
                                GROUP BY YEAR([DataLavorazione]),ps.IdFaseLavorazione
                                ORDER BY YEAR([DataLavorazione]),ps.IdFaseLavorazione asc";
 
-                lstReportAnniSistema = await context.Set<ReportAnniSistema>().FromSqlRaw(sql, IdProceduraLavorazione, IdCentro).ToListAsync();
-            }
+            lstReportAnniSistema = await context.Set<ReportAnniSistema>().FromSqlRaw(sql, IdProceduraLavorazione, IdCentro).ToListAsync();
 
             // Gestione del caso in cui la lista � vuota o nulla
             if (lstReportAnniSistema == null || !lstReportAnniSistema.Any())
@@ -537,7 +522,7 @@ namespace BlazorDematReports.Core.Services.DataService
         public async Task<List<ReportAnnualeTotaliDedicati>> GetReportTotaliDedicatiAsync(int idProceduraLavorazione, int anno, int idCentro)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             string sql = @"SET LANGUAGE Italian
                             SELECT YEAR(po.DataLavorazione) AS Anno,
                                    MONTH(po.DataLavorazione) AS Mese,
@@ -602,10 +587,9 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             List<ReportOreDocumenti> reportAnnuale = new List<ReportOreDocumenti>();
-            using (var context = contextFactory.CreateDbContext())
-            {
+            await using var context = await contextFactory.CreateDbContextAsync();
 
-                string sql = @$"WITH Months AS (
+            string sql = @$"WITH Months AS (
                                     SELECT 1 AS Mese
                                     UNION ALL 
                                     SELECT Mese + 1 
@@ -677,14 +661,13 @@ namespace BlazorDematReports.Core.Services.DataService
                                 ORDER BY m.Mese, cd.IdFaseLavorazione
                                 OPTION (MAXRECURSION 12);";
 
-                reportAnnuale = await context.Set<ReportOreDocumenti>()
-                    .FromSqlRaw(sql, anno, IDProceduraLavorazione, IDCentro)
-                    .AsNoTracking()
-                    .ToListAsync();
-            }
+                    reportAnnuale = await context.Set<ReportOreDocumenti>()
+                            .FromSqlRaw(sql, anno, IDProceduraLavorazione, IDCentro)
+                            .AsNoTracking()
+                            .ToListAsync();
 
-            return reportAnnuale;
-        }
+                    return reportAnnuale;
+                }
 
 
         #endregion
@@ -698,9 +681,8 @@ namespace BlazorDematReports.Core.Services.DataService
 
             if (reportAnnualeDto != null)
             {
-                using (var context = contextFactory.CreateDbContext())
-                {
-                    string sql = @"SELECT po.DataLavorazione, op.Operatore, pl.NomeProcedura as Lavorazione, fl.FaseLavorazione, tt.TipoTotale,ttp.Totale
+                await using var context = await contextFactory.CreateDbContextAsync();
+                string sql = @"SELECT po.DataLavorazione, op.Operatore, pl.NomeProcedura as Lavorazione, fl.FaseLavorazione, tt.TipoTotale,ttp.Totale
                                FROM TipologieTotaliProduzione as ttp 
                                LEFT JOIN TipologieTotali as tt on ttp.IDTipologiaTotale = tt.IdTipoTotale
                                LEFT JOIN ProduzioneOperatori as po on ttp.IDProduzioneOperatore = po.IdProduzione 
@@ -709,13 +691,10 @@ namespace BlazorDematReports.Core.Services.DataService
                                Left join Operatori as op on po.IdOperatore = op.IDOperatore 
                                WHERE po.IdFaseLavorazione = {0} and po.IdProceduraLavorazione = {1} and convert(date,po.DataLavorazione) = {2} and pl.Idcentro = {3} ";
 
-                    return await context.Set<ReportGiornalieroTotaliDedicati>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
-                                                                                                reportAnnualeDto.IdProceduraLavorazione!,
-                                                                                                reportAnnualeDto.DataLavorazione!,
-                                                                                                reportAnnualeDto.IdCentro!).ToListAsync();
-                }
-
-
+                return await context.Set<ReportGiornalieroTotaliDedicati>().FromSqlRaw(sql, reportAnnualeDto.IdFaseLavorazione!,
+                                                                                            reportAnnualeDto.IdProceduraLavorazione!,
+                                                                                            reportAnnualeDto.DataLavorazione!,
+                                                                                            reportAnnualeDto.IdCentro!).ToListAsync();
             }
             else
             {

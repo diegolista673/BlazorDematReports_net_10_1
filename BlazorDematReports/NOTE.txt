@@ -15,14 +15,14 @@ with (firstrow = 170,
       esempio :
 
 
+controllare i dispose nelle pagine blazor e nei servizi, soprattutto per i servizi che usano dbcontext e mail
+chiedere se il cancellation token deve essere implementeato nei servizi e nelle pagine blazor
 
-
-completare lettura alleagti e poi la notitfica via mail della lettura avvenuta?
+completare lettura allegati e poi la notitfica via mail della lettura avvenuta?
 scrivere documentazione per la crazione dei task e di tutte le operazioni 
 scrivere documentazione completa del progetto , aggiungere note create in instructions per miglioare la documentazione
 
-spiegare funzionamento degli handler e le inrterfacce
-
+spiegare funzionamento degli handler e le interfacce
 
 
 fare guida per developer per aggiungere un nuovo handler passo passo
@@ -56,11 +56,7 @@ Per quando programma è pronto per la produzione
     modificare documenti isoledigitali ge 2024 2025
     aggiungere colonna [UtilizzataDaSistema] in tabella fasi lavorazione per distinguere fasi create dal sistema e non modificabili
     (tutte a false di default tranne procedura completa e no_fase_lavorazione)
-
-
  
-
-
 
 
 controllare il funzinamento in lettore dati, job mail e job lavorazioni

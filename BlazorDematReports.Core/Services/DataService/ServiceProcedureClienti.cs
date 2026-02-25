@@ -31,7 +31,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.ProcedureClientes
                 .Include(x => x.IdoperatoreNavigation)
                 .Include(x => x.IdclienteNavigation).ThenInclude(x => x!.IdCentroLavorazioneNavigation)
@@ -43,7 +43,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
                 return await context.ProcedureClientes
@@ -66,7 +66,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             List<ProcedureCliente> lst;
             if (configUser.IsAdminRole)
             {
@@ -93,7 +93,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.ProcedureClientes
                 .Include(x => x.IdoperatoreNavigation)
                 .Include(x => x.IdclienteNavigation).ThenInclude(x => x!.IdCentroLavorazioneNavigation)
@@ -106,7 +106,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.ProcedureClientes.FindAsync(idProceduraCliente);
             if (entity != null)
             {
@@ -121,7 +121,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<ProcedureCliente>(procedureClienteDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.ProcedureClientes.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -131,7 +131,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var proCliente = await context.ProcedureClientes.Where(x => x.IdproceduraCliente.Equals(procedureClienteDto.IdproceduraCliente)).FirstOrDefaultAsync();
             if (proCliente != null)
             {

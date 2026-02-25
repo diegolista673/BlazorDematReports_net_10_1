@@ -26,6 +26,16 @@ namespace BlazorDematReports.Components.Shared
 
                 await action();
             }
+            catch (OperationCanceledException)
+            {
+                // Componente dismesso durante il caricamento (navigazione): abort silenzioso
+                Logger?.LogDebug("Operazione annullata per navigazione del componente");
+            }
+            catch (ObjectDisposedException)
+            {
+                // CancellationTokenSource già dismesso (race condition con DisposeAsync): abort silenzioso
+                Logger?.LogDebug("Operazione interrotta: componente dismesso durante il caricamento");
+            }
             catch (Exception ex)
             {
                 await HandleExceptionFormAsync(ex);

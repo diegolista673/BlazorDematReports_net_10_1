@@ -1,6 +1,7 @@
 ﻿@page "/carica-dati"
 
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO, USER")]
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageCaricaDati,ProduzioneSistemaDto,ProduzioneSistemaDto>
 @inject IServiceOperatori serviceOperatori
 @inject IServiceProcedureLavorazioni serviceProcedureLavorazioni
@@ -171,7 +172,7 @@
 @code {
 
 
-    CancellationToken CancellationToken { get; set; }
+    private readonly CancellationTokenSource _cts = new();
 
     bool IsDisabledLavorazione { get; set; } = true;
     bool IsDisabledFase { get; set; } = true;
@@ -192,7 +193,7 @@
                var lavorazioniTask = serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
                var fasiTask = serviceFasiLavorazioni.GetFasiLavorazioneAsync();
 
-               await Task.WhenAll(operatoriTask, lavorazioniTask, fasiTask);
+               await Task.WhenAll(operatoriTask, lavorazioniTask, fasiTask).WaitAsync(_cts.Token);
 
                ListOperatori = operatoriTask.Result;
                SetSelectOperatore();
@@ -525,5 +526,11 @@
         StateHasChanged();
     }
 
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
+    }
 
 }

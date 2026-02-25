@@ -42,7 +42,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.Operatoris.Include(x => x.IdcentroNavigation).ToListAsync();
         }
 
@@ -54,7 +54,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
                 return await context.Operatoris.Include(x => x.IdcentroNavigation)
@@ -80,7 +80,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.Operatoris.Where(c => c.Idcentro.Equals(iDcentro)).Include(x => x.IdcentroNavigation).ToListAsync();
         }
 
@@ -93,7 +93,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.Operatoris.Where(x => x.Idoperatore.Equals(idOperatore)).Include(x => x.IdcentroNavigation).FirstOrDefaultAsync();
         }
 
@@ -114,7 +114,7 @@ namespace BlazorDematReports.Core.Services.DataService
             operatore.Password = hash;
             List<CentriVisibili> lst = mapper.Map<List<CentriVisibili>>(oper.CentriVisibiliDto);
             operatore.CentriVisibilis = lst;
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.Operatoris.Add(operatore);
             await context.SaveChangesAsync();
         }
@@ -134,7 +134,7 @@ namespace BlazorDematReports.Core.Services.DataService
             var passwordHasher = new PasswordHasher<string>();
             var hash = passwordHasher.HashPassword(operatore.Operatore, pwd);
             operatore.Password = hash;
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.Operatoris.Add(operatore);
             await context.SaveChangesAsync();
         }
@@ -148,7 +148,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.Operatoris.FindAsync(idOperatore);
             if (entity != null)
             {
@@ -166,7 +166,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var operatoreOriginal = await context.Operatoris.Where(x => x.Idoperatore.Equals(oper.Idoperatore)).Include(x => x.IdcentroNavigation).Include(p => p.CentriVisibilis).FirstOrDefaultAsync();
             if (operatoreOriginal != null)
             {
@@ -190,7 +190,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
                 return await context.Operatoris

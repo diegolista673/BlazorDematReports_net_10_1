@@ -3,7 +3,7 @@
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceQueryProcedureLavorazioni ServiceQueryProcedureLavorazioni
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
-
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageQueryLavorazione,QueryProcedureLavorazioniDto,QueryProcedureLavorazioniDto>
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Archivio Query SQL</MudText>
@@ -195,6 +195,8 @@
     protected IEnumerable<QueryProcedureLavorazioniDto> LstQueryProcedureLavorazioniDto { get; set; } = Enumerable.Empty<QueryProcedureLavorazioniDto>();
     protected DialogOptions maxWidth = new DialogOptions() { MaxWidth = MaxWidth.Large };
 
+    private readonly CancellationTokenSource _cts = new();
+
     protected override async Task OnInitializedAsync()
     {
         await RunWithOverlay(async () =>
@@ -207,7 +209,7 @@
             var fasiTask = ServiceFasiLavorazioni.GetFasiLavorazioneAsync();
             var queryTask = ServiceQueryProcedureLavorazioni.GetAllQueryProcedureLavorazioniDtoAsync();
 
-            await Task.WhenAll(procedureLavorazioniTask, fasiTask, queryTask);
+            await Task.WhenAll(procedureLavorazioniTask, fasiTask, queryTask).WaitAsync(_cts.Token);
 
             ListProcedureLavorazioniDto = procedureLavorazioniTask.Result;
             SetSelectLavorazione(ListProcedureLavorazioniDto!);
@@ -362,6 +364,12 @@
 
         // Aggiorna lo stato del pulsante
         IsFormValid = isValid && (EditContext?.Validate() ?? false);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
     }
 
 }

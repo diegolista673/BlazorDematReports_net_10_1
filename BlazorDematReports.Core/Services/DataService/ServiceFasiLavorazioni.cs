@@ -35,7 +35,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.FasiLavoraziones.Where(x => x.UtilizzataDaSistema == false).ToListAsync();
         }
 
@@ -47,7 +47,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var lstFasi = await context.FasiLavoraziones.ToListAsync();
             var LstFasiLavorazione = mapper.Map<List<FasiLavorazione>, List<FasiLavorazioneDto>>(lstFasi);
             LstFasiLavorazione = LstFasiLavorazione.OrderBy(x => x.FaseLavorazione).ToList();
@@ -64,7 +64,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.FasiLavoraziones.FindAsync(idFase);
             if (entity != null)
             {
@@ -83,7 +83,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<FasiLavorazione>(arg);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.FasiLavoraziones.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -97,7 +97,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var faseLavorazione = await context.FasiLavoraziones.Where(x => x.IdFaseLavorazione == arg.IdFaseLavorazione).FirstOrDefaultAsync();
             if (faseLavorazione != null)
             {

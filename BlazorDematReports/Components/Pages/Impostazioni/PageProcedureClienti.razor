@@ -1,5 +1,6 @@
 ﻿@page "/procedure-clienti"
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageProcedureClienti,ProcedureClienteDto,ProcedureClienteDto>
 
 @inject IServiceProcedureClienti serviceProcedureClienti
@@ -217,6 +218,8 @@
     bool isDisableCliente { get; set; } = false;
     string? Sigla { get; set; }
 
+    private readonly CancellationTokenSource _cts = new();
+
     protected override async Task OnInitializedAsync()
     {
         await RunWithOverlay(async () =>
@@ -227,7 +230,7 @@
             var centriTask = serviceCentri.GetCentriByUserAsync();
             var procedureTask = serviceProcedureClienti.GetProcedureClienteDtoByUserAsync();
 
-            await Task.WhenAll(centriTask, procedureTask);
+            await Task.WhenAll(centriTask, procedureTask).WaitAsync(_cts.Token);
 
             ListCentri = centriTask.Result;
             ListProcedureClienteDto = procedureTask.Result;
@@ -261,7 +264,7 @@
                 Model!.DataInserimento = DateTime.Now;
                 Model!.Idoperatore = ConfigUser.IdUtente;
 
-                var cliente = await serviceClienti.FindByCondition(x => x.NomeCliente == Model!.Cliente).FirstAsync();
+                var cliente = (await serviceClienti.FindByConditionAsync(x => x.NomeCliente == Model!.Cliente)).First();
                 Model!.Idcliente = cliente.IdCliente;
                 Model!.Idcentro = cliente.IdCentroLavorazione;
 
@@ -376,6 +379,12 @@
         Sigla = "";
         StateHasChanged();
 
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
     }
 
 }

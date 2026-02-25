@@ -33,7 +33,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<FormatoDati>(formatoDatiDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.FormatoDatis.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -43,7 +43,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.FormatoDatis.FindAsync(IdFormatoDati);
             if (entity != null)
             {
@@ -57,7 +57,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.FormatoDatis.ToListAsync();
         }
 
@@ -66,7 +66,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.FormatoDatis.FirstOrDefaultAsync(c => c.IdformatoDati.Equals(IdFormatoDati));
         }
 
@@ -75,7 +75,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.FormatoDatis.FirstOrDefaultAsync(c => c.FormatoDatiProduzione == formatoDati);
         }
     }

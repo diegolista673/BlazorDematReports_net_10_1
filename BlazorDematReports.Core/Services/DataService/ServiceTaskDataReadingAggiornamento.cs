@@ -44,7 +44,11 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindByCondition(x => x.DataAggiornamento >= startDate.Date && x.DataAggiornamento <= endDate.Date).OrderByDescending(x => x.DataAggiornamento).ToListAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.TaskDataReadingAggiornamentos
+                .Where(x => x.DataAggiornamento >= startDate.Date && x.DataAggiornamento <= endDate.Date)
+                .OrderByDescending(x => x.DataAggiornamento)
+                .ToListAsync();
         }
 
         /// <summary>
@@ -57,9 +61,11 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var lstTask = await FindByCondition(x => x.IdLavorazione == IdProceduraLavorazione && x.DataAggiornamento.Date == dataAggiornamento.Date)
-                                .OrderBy(x => x.DataAggiornamento)
-                                .ToListAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var lstTask = await context.TaskDataReadingAggiornamentos
+                .Where(x => x.IdLavorazione == IdProceduraLavorazione && x.DataAggiornamento.Date == dataAggiornamento.Date)
+                .OrderBy(x => x.DataAggiornamento)
+                .ToListAsync();
 
             var listTaskDto = mapper.Map<List<TaskDataReadingAggiornamento>, List<TaskDataReadingAggiornamentoDto>>(lstTask);
 
@@ -76,7 +82,11 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var lstTask = await FindByCondition(x => x.DataAggiornamento.Date >= startDate.Date && x.DataAggiornamento.Date <= endDate.Date).OrderBy(x => x.DataAggiornamento).ToListAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var lstTask = await context.TaskDataReadingAggiornamentos
+                .Where(x => x.DataAggiornamento.Date >= startDate.Date && x.DataAggiornamento.Date <= endDate.Date)
+                .OrderBy(x => x.DataAggiornamento)
+                .ToListAsync();
             var listTaskDto = mapper.Map<List<TaskDataReadingAggiornamento>, List<TaskDataReadingAggiornamentoDto>>(lstTask);
 
             return listTaskDto;
@@ -92,7 +102,9 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindByCondition(x => x.IdLavorazione.Equals(IdProceduraLavorazione) && x.IdFase.Equals(IdFase))
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.TaskDataReadingAggiornamentos
+                .Where(x => x.IdLavorazione.Equals(IdProceduraLavorazione) && x.IdFase.Equals(IdFase))
                 .OrderByDescending(x => x.DataAggiornamento)
                 .FirstOrDefaultAsync();
         }
@@ -103,12 +115,12 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <param name="IdProceduraLavorazione">Identificativo della procedura di lavorazione.</param>
         /// <param name="idFaseLavorazione">Identificativo della fase di lavorazione.</param>
         /// <returns>Data dell'ultimo aggiornamento in formato stringa o null se non trovato.</returns>
-        public Task<string?> GetUltimoAggiornamentoAsync(int IdProceduraLavorazione, int idFaseLavorazione)
+        public async Task<string?> GetUltimoAggiornamentoAsync(int IdProceduraLavorazione, int idFaseLavorazione)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var lastDate = _getLastAggiornamentoCompiled(context, IdProceduraLavorazione, idFaseLavorazione);
-            return Task.FromResult(lastDate?.ToShortDateString());
+            return lastDate?.ToShortDateString();
         }
     }
 }

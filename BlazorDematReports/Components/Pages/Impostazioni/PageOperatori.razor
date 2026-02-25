@@ -4,6 +4,7 @@
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceRuoli ServiceRuoli
 
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
+@implements IAsyncDisposable
 @inherits BaseComponentPage<PageOperatori,OperatoriDto,OperatoriDto>
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Operatori</MudText>
@@ -216,6 +217,8 @@
 
     DialogOptions maxWidth = new DialogOptions() { MaxWidth = MaxWidth.Medium };
 
+    private readonly CancellationTokenSource _cts = new();
+
     protected override async Task OnInitializedAsync()
     {
         await RunWithOverlay(async () =>
@@ -228,7 +231,7 @@
             var centriTask = ServiceCentri.GetCentriByUserAsync();
             var ruoliTask = ServiceRuoli.GetRuoliByUserAsync();
 
-            await Task.WhenAll(centriVisibiliTask, operatoriTask, centriTask, ruoliTask);
+            await Task.WhenAll(centriVisibiliTask, operatoriTask, centriTask, ruoliTask).WaitAsync(_cts.Token);
 
             Model!.CentriVisibiliDto = centriVisibiliTask.Result;
             ListOperatoriDto = operatoriTask.Result;
@@ -344,6 +347,12 @@
         {
             await HandleExceptionFormAsync(ex);
         }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
     }
 
 }

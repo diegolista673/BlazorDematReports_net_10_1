@@ -2,7 +2,7 @@
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceClienti ServiceClienti
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
-
+@implements IAsyncDisposable
 
 @inherits BaseComponentPage<PageClienti,ClientiDto,ClientiDto>
 
@@ -119,6 +119,8 @@
     string? Sigla { get; set; }
     MudSelect<int?>? RefCentro;
 
+    private readonly CancellationTokenSource _cts = new();
+
     protected override async Task OnInitializedAsync()
     {
         await RunWithOverlay(async () =>
@@ -127,7 +129,7 @@
 
                var clientiTask = ServiceClienti.GetClientiDtoByUserAsync();
                var centriTask = ServiceCentri.GetCentriByUserAsync();
-               await Task.WhenAll(clientiTask, centriTask);
+               await Task.WhenAll(clientiTask, centriTask).WaitAsync(_cts.Token);
                ListClientiDto = clientiTask.Result;
                ListCentri = centriTask.Result;
 
@@ -264,6 +266,12 @@
             await HandleExceptionFormAsync(ex);
         }
 
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
     }
 
 }

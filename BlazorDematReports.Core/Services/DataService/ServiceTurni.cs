@@ -34,8 +34,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var result = await FindAll().ToListAsync();
-            return result;
+            return (await FindAllAsync()).ToList();
         }
 
         /// <summary>

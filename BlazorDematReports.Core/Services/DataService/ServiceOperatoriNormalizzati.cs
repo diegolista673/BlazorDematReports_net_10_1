@@ -32,7 +32,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.OperatoriNormalizzatis.ToListAsync();
         }
 
@@ -41,7 +41,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var lstOper = await context.OperatoriNormalizzatis.ToListAsync();
             var listOperatoriNormalizzati = mapper.Map<List<OperatoriNormalizzati>, List<OperatoriNormalizzatiDto>>(lstOper);
             listOperatoriNormalizzati = listOperatoriNormalizzati.OrderBy(x => x.OperatoreNormalizzato).ToList();
@@ -54,7 +54,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<OperatoriNormalizzati>(operatoriNormalizzatiDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.OperatoriNormalizzatis.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -64,7 +64,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.OperatoriNormalizzatis.FindAsync(idOper);
             if (entity != null)
             {
@@ -78,7 +78,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var oper = await context.OperatoriNormalizzatis.FirstOrDefaultAsync(x => x.IdNorm.Equals(operatoriNormalizzatiDto.IdNorm));
             if (oper != null)
             {

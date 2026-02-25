@@ -5,33 +5,25 @@ namespace BlazorDematReports.Core.Services.Interfaces.IDataService
     public interface IServiceBase<T> where T : class
     {
         /// <summary>
-        /// Find ALL from this.context.Set<T>().AsNoTracking();
+        /// Restituisce tutte le entità materializzate come lista read-only.
+        /// Il contesto viene creato e disposto internamente.
         /// </summary>
-        /// <returns></returns>
-        IQueryable<T> FindAll();
+        Task<IReadOnlyList<T>> FindAllAsync();
 
         /// <summary>
-        /// Find by condition from this.context.Set<T>().Where(expression).AsNoTracking();
+        /// Restituisce le entità filtrate tramite espressione lambda, materializzate come lista read-only.
+        /// Il contesto viene creato e disposto internamente.
         /// </summary>
-        /// <param name="expression"></param>
-        /// <returns></returns>
-        IQueryable<T> FindByCondition(Expression<Func<T, bool>> expression);
+        Task<IReadOnlyList<T>> FindByConditionAsync(Expression<Func<T, bool>> expression);
 
         /// <summary>
-        /// Add object and Save Db
+        /// Aggiunge una nuova entità e salva le modifiche nel database.
         /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
         Task CreateAsync(T entity);
 
-
         /// <summary>
-        /// Delete object by ID and Save Database
+        /// Elimina un'entità tramite identificativo e salva le modifiche nel database.
         /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
         Task DeleteAsync(int id);
-
-
     }
 }

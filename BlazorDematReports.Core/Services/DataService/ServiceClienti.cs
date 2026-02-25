@@ -37,7 +37,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = mapper.Map<Clienti>(clienteDto);
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             context.Clientis.Add(entity);
             await context.SaveChangesAsync();
         }
@@ -51,7 +51,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var entity = await context.Clientis.FindAsync(idcliente);
             if (entity != null)
             {
@@ -68,7 +68,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
                 return await context.Clientis.Include(x => x.IdCentroLavorazioneNavigation).ToListAsync();
@@ -88,7 +88,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.Clientis.Include(x => x.IdCentroLavorazioneNavigation).Where(x => x.IdCentroLavorazione == idCentro).ToListAsync();
         }
 
@@ -100,7 +100,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var query = context.Clientis.AsQueryable();
             if (!configUser.IsAdminRole)
             {
@@ -129,7 +129,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             return await context.Clientis.Where(x => x.IdCliente == IdCliente).FirstOrDefaultAsync();
         }
 
@@ -142,7 +142,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var context = contextFactory.CreateDbContext();
+            await using var context = await contextFactory.CreateDbContextAsync();
             var cliente = await context.Clientis.Where(x => x.IdCliente.Equals(arg.IdCliente)).Include(x => x.IdCentroLavorazioneNavigation).FirstOrDefaultAsync();
             if (cliente != null)
             {

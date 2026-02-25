@@ -34,7 +34,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll().ToListAsync();
+            return (await FindAllAsync()).ToList();
         }
 
         /// <summary>
@@ -72,14 +72,12 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var lstTipologie = new List<TipologieTotali>();
-
-            lstTipologie = await (from tipo in FindAll()
-                                  where tipo.LavorazioniFasiTipoTotales.Any(c => c.IdProceduraLavorazione == IDProceduraLavorazione &&
-                                                                                 c.IdFase == IDFase)
-                                  select tipo).ToListAsync();
-
-            return lstTipologie;
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.TipologieTotalis
+                .Where(tipo => tipo.LavorazioniFasiTipoTotales.Any(c => c.IdProceduraLavorazione == IDProceduraLavorazione &&
+                                                                        c.IdFase == IDFase))
+                .AsNoTracking()
+                .ToListAsync();
         }
 
         /// <summary>
@@ -90,7 +88,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var lstTipologie = await FindAll().ToListAsync();
+            var lstTipologie = (await FindAllAsync()).ToList();
             var lstTipologieDto = mapper.Map<List<TipologieTotali>, List<TipologieTotaliDto>>(lstTipologie);
             return lstTipologieDto;
         }
@@ -104,13 +102,11 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using (var context = contextFactory.CreateDbContext())
-            {
-                var tipologia = await context.TipologieTotalis.Where(x => x.IdTipoTotale == arg.IdTipoTotale).FirstOrDefaultAsync();
-                tipologia!.TipoTotale = arg.TipoTotale!.ToUpper();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var tipologia = await context.TipologieTotalis.Where(x => x.IdTipoTotale == arg.IdTipoTotale).FirstOrDefaultAsync();
+            tipologia!.TipoTotale = arg.TipoTotale!.ToUpper();
 
-                await context.SaveChangesAsync();
-            }
+            await context.SaveChangesAsync();
         }
     }
 }

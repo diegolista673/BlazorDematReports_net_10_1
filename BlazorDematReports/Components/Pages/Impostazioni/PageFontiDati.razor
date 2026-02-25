@@ -3,11 +3,10 @@
 @using Entities.Models.DbApplication
 @using Entities.Enums
 
-@inject IDbContextFactory<DematReportsContext> DbFactory
 @inject NavigationManager Navigation
-@inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @attribute [Authorize(Roles = "ADMIN,SUPERVISOR")]
+@implements IAsyncDisposable
+@inherits BaseComponentPage<PageFontiDati>
 
 @inject IServiceConfigurazioneFontiDati serviceConfigurazioneFontiDati
 @inject IServiceTaskDaEseguire serviceTaskDaEseguire
@@ -56,11 +55,7 @@
 
         @*table*@
         <MudItem xs="12" sm="12" md="12" lg="12" xl="12">
-            @if (_loading)
-            {
-                <MudProgressLinear Color="Color.Primary" Indeterminate />
-            }
-            else if (!_configurazioni.Any())
+            @if (!_configurazioni.Any())
             {
                 <MudAlert Severity="Severity.Info" Class="my-4">
                     <MudText>Nessuna configurazione presente. Clicca su "Nuova Configurazione" per iniziare.</MudText>
@@ -176,20 +171,22 @@
 
 @code {
 
-    private bool _loading = true;
     private bool _bulkActionInProgress = false;
     private List<ConfigurazioneRiepilogoDto> _configurazioni = new();
 
+    private readonly CancellationTokenSource _cts = new();
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadConfigurazioniAsync();
+        await RunWithOverlay(async () =>
+        {
+            _configurazioni = await serviceConfigurazioneFontiDati.GetConfigurazioneFontiDatiDtoAsync();
+        }, "Caricamento configurazioni...");
     }
 
     private async Task LoadConfigurazioniAsync()
     {
-        _loading = true;
         _configurazioni = await serviceConfigurazioneFontiDati.GetConfigurazioneFontiDatiDtoAsync();
-        _loading = false;
     }
 
     private async Task DisableAllTasksAsync()
@@ -201,7 +198,7 @@
             ["Color"] = Color.Warning
         };
 
-        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Disabilitazione", parameters);
+        var dialog = await DialogService!.ShowAsync<DialogConfirm>("Conferma Disabilitazione", parameters);
         var result = await dialog.Result;
         if (result.Canceled)
             return;
@@ -209,17 +206,23 @@
         _bulkActionInProgress = true;
         try
         {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Disabilitazione task in corso...");
+
             var count = await serviceTaskDaEseguire.DisableAllTasksAsync();
             await LoadConfigurazioniAsync();
-            Snackbar.Add($"Disabilitati {count} task", Severity.Success);
+            UiState?.ShowSnackbar($"Disabilitati {count} task", Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Errore disabilitazione: {ex.Message}", Severity.Error);
+            Logger?.LogError(ex, "Errore disabilitazione task");
+            UiState?.ShowSnackbar($"Errore disabilitazione: {ex.Message}", Severity.Error);
         }
         finally
         {
             _bulkActionInProgress = false;
+            UiState?.HideOverlay();
+            UiState?.SetMenuDisabled(false);
         }
     }
 
@@ -232,7 +235,7 @@
             ["Color"] = Color.Success
         };
 
-        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Abilitazione", parameters);
+        var dialog = await DialogService!.ShowAsync<DialogConfirm>("Conferma Abilitazione", parameters);
         var result = await dialog.Result;
         if (result.Canceled)
             return;
@@ -240,17 +243,23 @@
         _bulkActionInProgress = true;
         try
         {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Abilitazione task in corso...");
+
             var count = await serviceTaskDaEseguire.EnableAllTasksAsync();
             await LoadConfigurazioniAsync();
-            Snackbar.Add($"Abilitati {count} task", Severity.Success);
+            UiState?.ShowSnackbar($"Abilitati {count} task", Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Errore abilitazione: {ex.Message}", Severity.Error);
+            Logger?.LogError(ex, "Errore abilitazione task");
+            UiState?.ShowSnackbar($"Errore abilitazione: {ex.Message}", Severity.Error);
         }
         finally
         {
             _bulkActionInProgress = false;
+            UiState?.HideOverlay();
+            UiState?.SetMenuDisabled(false);
         }
     }
 
@@ -280,7 +289,7 @@
             ["Color"] = Color.Error
         };
 
-        var dialog = await DialogService.ShowAsync<DialogConfirm>("Conferma Eliminazione Definitiva", parameters);
+        var dialog = await DialogService!.ShowAsync<DialogConfirm>("Conferma Eliminazione Definitiva", parameters);
         var result = await dialog.Result;
 
         if (result.Canceled)
@@ -288,13 +297,22 @@
 
         try
         {
+            UiState?.SetMenuDisabled(true);
+            UiState?.ShowOverlay("Eliminazione in corso...");
+
             await serviceConfigurazioneFontiDati.DeleteConfigurazioneFontiDatiAsync(config.IdConfigurazione);
             await LoadConfigurazioniAsync();
-            Snackbar.Add("Configurazione eliminata definitivamente", Severity.Success);
+            UiState?.ShowSnackbar("Configurazione eliminata definitivamente", Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Errore eliminazione definitiva: {ex.Message}", Severity.Error);
+            Logger?.LogError(ex, "Errore eliminazione configurazione {Id}", config.IdConfigurazione);
+            UiState?.ShowSnackbar($"Errore eliminazione definitiva: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            UiState?.HideOverlay();
+            UiState?.SetMenuDisabled(false);
         }
     }
 
@@ -305,34 +323,32 @@
             ["IdConfigurazione"] = config.IdConfigurazione,
             ["CodiceConfigurazione"] = config.CodiceConfigurazione
         };
-        
-        var options = new DialogOptions 
-        { 
-            MaxWidth = MaxWidth.Large, 
-            FullWidth = true,
-            CloseButton = true 
-        };
-        
-        var dialog = await DialogService.ShowAsync<DialogGestioneTask>(
-            "Gestione Task", 
-            parameters,
-            options);
-        
-        var result = await dialog.Result;
-        if (!result.Canceled)
+
+        var options = new DialogOptions
         {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        var dialog = await DialogService!.ShowAsync<DialogGestioneTask>("Gestione Task", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
             await LoadConfigurazioniAsync();
-        }
     }
 
     private Color GetTipoColor(string tipoFonte)
     {
         if (Enum.TryParse<TipoFonteData>(tipoFonte, out var tipo))
-        {
             return TipoFonteDataHelper.GetColor(tipo);
-        }
         return Color.Default;
     }
 
+    public ValueTask DisposeAsync()
+    {
+        _cts.Cancel();
+        return ValueTask.CompletedTask;
+    }
 
 }

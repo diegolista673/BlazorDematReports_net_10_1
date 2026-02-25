@@ -33,9 +33,12 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll().Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                                  .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                                  .AsNoTracking().ToListAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.TaskDaEseguires
+                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
+                .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
+                .AsNoTracking()
+                .ToListAsync();
         }
 
         /// <summary>
@@ -47,13 +50,15 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll()
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.TaskDaEseguires
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!
                 .ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!
                 .ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Where(x => x.IdLavorazioneFaseDateReadingNavigation.IdProceduraLavorazione == idProceduraLavorazione)
-                .AsNoTracking().ToListAsync();
+                .AsNoTracking()
+                .ToListAsync();
         }
 
 
@@ -67,7 +72,8 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll()
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.TaskDaEseguires
                 .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
                 .Where(t => t.IdConfigurazioneDatabase.HasValue &&
@@ -85,7 +91,8 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll()
+            await using var context = await contextFactory.CreateDbContextAsync();
+            return await context.TaskDaEseguires
                 .Include(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
@@ -103,7 +110,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var ctx = contextFactory.CreateDbContext();
+            await using var ctx = await contextFactory.CreateDbContextAsync();
 
             if (task.IdTaskDaEseguire == 0)
             {
@@ -129,7 +136,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            using var ctx = contextFactory.CreateDbContext();
+            await using var ctx = await contextFactory.CreateDbContextAsync();
             var task = await ctx.TaskDaEseguires.FindAsync(taskId);
 
             if (task != null)

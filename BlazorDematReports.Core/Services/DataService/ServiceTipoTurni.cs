@@ -32,7 +32,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            return await FindAll().ToListAsync();
+            return (await FindAllAsync()).ToList();
         }
     }
 
