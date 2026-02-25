@@ -730,7 +730,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 .Include(x => x.IdrepartiNavigation!)
                 .Include(x => x.IdformatoDatiProduzioneNavigation!)
                 .Include(x => x.QueryProcedureLavorazionis!)
-                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires)
+                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires).ThenInclude(t => t.IdConfigurazioneDatabaseNavigation)
                 .Include(x => x.IdproceduraClienteNavigation!).ThenInclude(p => p.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                 .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
                 .FirstOrDefaultAsync(x => x.IdproceduraLavorazione == idProceduraLavorazione);

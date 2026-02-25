@@ -406,6 +406,23 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>Entry point Hangfire: carica il task, verifica lo stato e delega l'esecuzione.</summary>
         public static async Task RunAsync(int idTaskDaEseguire, CancellationToken cancellationToken = default)
         {
+            await RunAsync(idTaskDaEseguire, startDate: null, endDate: null, cancellationToken);
+        }
+
+        /// <summary>
+        /// Entry point per esecuzione manuale con range date custom.
+        /// Se startDate/endDate sono null, usa GiorniPrecedenti del task.
+        /// </summary>
+        /// <param name="idTaskDaEseguire">ID del task da eseguire.</param>
+        /// <param name="startDate">Data inizio custom (null = usa GiorniPrecedenti).</param>
+        /// <param name="endDate">Data fine custom (null = usa DateTime.Now).</param>
+        /// <param name="cancellationToken">Token per cancellazione.</param>
+        public static async Task RunAsync(
+            int idTaskDaEseguire, 
+            DateTime? startDate, 
+            DateTime? endDate, 
+            CancellationToken cancellationToken = default)
+        {
             if (_scopeFactory is null)
                 throw new InvalidOperationException("ProductionJobRunner non è stato inizializzato. Chiamare Initialize() all'avvio dell'applicazione.");
 
@@ -437,7 +454,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
             try
             {
-                await ExecuteProductionTaskAsync(scope, entity, cancellationToken);
+                await ExecuteProductionTaskAsync(scope, entity, startDate, endDate, cancellationToken);
                 MarkSuccess(entity);
                 logger.LogInformation("Task {TaskId} completato", idTaskDaEseguire);
             }
@@ -461,7 +478,11 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// Pipeline: Acquire → Elaborate → Persist (comune per SQL e HandlerIntegrato).
         /// </summary>
         private static async Task ExecuteProductionTaskAsync(
-            IServiceScope scope, TaskDaEseguire entity, CancellationToken ct)
+            IServiceScope scope, 
+            TaskDaEseguire entity, 
+            DateTime? startDate, 
+            DateTime? endDate, 
+            CancellationToken ct)
         {
             var db          = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
             var elaboratore = scope.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
@@ -484,7 +505,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
 
             // STRATEGY: Acquisisce dati in base al TipoFonte
             var datiLavorazione = await AcquireDatiLavorazioneAsync(
-                scope, entity, config, mapping, ct);
+                scope, entity, config, mapping, startDate, endDate, ct);
 
             if (datiLavorazione.Count == 0)
             {
@@ -505,6 +526,9 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             // Persiste con strategia delete-then-reinsert
             int saved = await PersistProduzioneSistemaAsync(db, datiElaborati, ct);
 
+            // Log audit: registra esecuzione in TaskDataReadingAggiornamento
+            await LogTaskExecutionAsync(db, entity, fase, datiElaborati, startDate, endDate, saved, ct);
+
             logger.LogInformation(
                 "Task {TaskId}: {Saved} record salvati in ProduzioneSistema su {Total} elaborati",
                 entity.IdTaskDaEseguire, saved, datiElaborati.Count);
@@ -519,12 +543,14 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             TaskDaEseguire entity,
             ConfigurazioneFontiDati config,
             ConfigurazioneFaseCentro mapping,
+            DateTime? startDate,
+            DateTime? endDate,
             CancellationToken ct)
         {
             return config.TipoFonte switch
             {
-                TipoFonteData.SQL              => AcquireFromSqlAsync(scope, entity, config, mapping, ct),
-                TipoFonteData.HandlerIntegrato => AcquireFromHandlerAsync(scope, entity, config, mapping, ct),
+                TipoFonteData.SQL              => AcquireFromSqlAsync(scope, entity, config, mapping, startDate, endDate, ct),
+                TipoFonteData.HandlerIntegrato => AcquireFromHandlerAsync(scope, entity, config, mapping, startDate, endDate, ct),
                 _ => throw new InvalidOperationException(
                     $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
             };
@@ -536,6 +562,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             TaskDaEseguire entity,
             ConfigurazioneFontiDati config,
             ConfigurazioneFaseCentro mapping,
+            DateTime? startDate,
+            DateTime? endDate,
             CancellationToken ct)
         {
             var queryService      = scope.ServiceProvider.GetRequiredService<IQueryService>();
@@ -558,14 +586,15 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     $"Connection string '{config.ConnectionStringName}' non trovata in appsettings.");
             }
 
-            var startDate = DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti));
-            var dataTable = await queryService.ExecuteQueryAsync(connectionString, query, startDate, DateTime.Now, ct);
+            var effectiveStartDate = startDate ?? DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti));
+            var effectiveEndDate = endDate ?? DateTime.Now;
+            var dataTable = await queryService.ExecuteQueryAsync(connectionString, query, effectiveStartDate, effectiveEndDate, ct);
 
             if (dataTable.Rows.Count == 0)
             {
                 logger.LogInformation(
                     "Task {TaskId}: nessun dato dalla query SQL per periodo {Start:d}-{End:d}",
-                    entity.IdTaskDaEseguire, startDate, DateTime.Now);
+                    entity.IdTaskDaEseguire, effectiveStartDate, effectiveEndDate);
                 return new List<DatiLavorazione>();
             }
 
@@ -578,6 +607,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             TaskDaEseguire entity,
             ConfigurazioneFontiDati config,
             ConfigurazioneFaseCentro mapping,
+            DateTime? startDate,
+            DateTime? endDate,
             CancellationToken ct)
         {
             var unifiedService = scope.ServiceProvider.GetRequiredService<IUnifiedHandlerService>();
@@ -592,6 +623,9 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     $"HandlerClassName mancante nella configurazione {config.IdConfigurazione}");
             }
 
+            var effectiveStartDate = startDate ?? DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti));
+            var effectiveEndDate = endDate ?? DateTime.Now;
+
             var context = new UnifiedExecutionContext
             {
                 IDProceduraLavorazione = fase.IdProceduraLavorazione,
@@ -601,8 +635,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     { "IDFaseLavorazione",        fase.IdFaseLavorazione },
                     { "IDCentro",                 mapping.IdCentro },
                     { "NomeProcedura",            fase.IdProceduraLavorazioneNavigation?.NomeProceduraProgramma ?? "UNKNOWN" },
-                    { "StartDataLavorazione",     DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti)) },
-                    { "EndDataLavorazione",       DateTime.Now },
+                    { "StartDataLavorazione",     effectiveStartDate },
+                    { "EndDataLavorazione",       effectiveEndDate },
                     { "TaskId",                   entity.IdTaskDaEseguire },
                     { "IdConfigurazioneDatabase", entity.IdConfigurazioneDatabase ?? 0 }
                 }
@@ -712,7 +746,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 .ToHashSet();
 
             // 3. Inserisce i record aggiornati dalla query sorgente
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             int inserted = 0;
 
             foreach (var dato in datiElaborati)
@@ -748,6 +782,40 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             await db.SaveChangesAsync(ct);
 
             return inserted;
+        }
+
+        /// <summary>
+        /// Registra l'esecuzione del task nella tabella di audit TaskDataReadingAggiornamento.
+        /// </summary>
+        private static async Task LogTaskExecutionAsync(
+            DematReportsContext db,
+            TaskDaEseguire entity,
+            LavorazioniFasiDataReading fase,
+            List<DatiElaborati> datiElaborati,
+            DateTime? startDate,
+            DateTime? endDate,
+            int recordsSaved,
+            CancellationToken ct)
+        {
+            var effectiveStartDate = startDate ?? DateTime.Now.AddDays(-(entity.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti));
+            var effectiveEndDate = endDate ?? DateTime.Now;
+
+            var auditLog = new TaskDataReadingAggiornamento
+            {
+                Lavorazione = fase.IdProceduraLavorazioneNavigation?.NomeProcedura ?? "UNKNOWN",
+                IdLavorazione = fase.IdProceduraLavorazione,
+                FaseLavorazione = fase.IdFaseLavorazioneNavigation?.FaseLavorazione ?? "UNKNOWN",
+                IdFase = fase.IdFaseLavorazione,
+                DataInizioLavorazione = effectiveStartDate.Date,
+                DataFineLavorazione = effectiveEndDate.Date,
+                DataAggiornamento = DateTime.Now,
+                Risultati = recordsSaved,
+                EsitoLetturaDato = true,
+                DescrizioneEsito = $"Task {entity.IdTaskDaEseguire}: {recordsSaved} record salvati su {datiElaborati.Count} elaborati"
+            };
+
+            db.TaskDataReadingAggiornamentos.Add(auditLog);
+            await db.SaveChangesAsync(ct);
         }
 
         /// <summary>

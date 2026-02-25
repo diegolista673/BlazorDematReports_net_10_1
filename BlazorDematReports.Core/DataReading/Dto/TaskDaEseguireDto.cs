@@ -135,5 +135,11 @@
         /// Contiene la configurazione completa per SQL, Email, Handler o Pipeline.
         /// </summary>
         public int? IdConfigurazioneDatabase { get; set; }
+
+        /// <summary>
+        /// Tipo di fonte dati (SQL, HandlerIntegrato).
+        /// Mappato da IdConfigurazioneDatabaseNavigation.TipoFonte.
+        /// </summary>
+        public string? TipoFonte { get; set; }
     }
 }

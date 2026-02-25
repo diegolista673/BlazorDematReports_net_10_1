@@ -1,5 +1,6 @@
 ﻿@page "/data-manager"
 @using BlazorDematReports.Core.DataReading.Infrastructure
+@using Entities.Enums
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceCentri ServiceCentri
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceFasiLavorazioni ServiceFasiLavorazioni
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceProcedureLavorazioni ServiceProcedureLavorazioni
@@ -83,12 +84,11 @@
 
                                                 @foreach (var item in LavorazioniFasiDataReadingDto!.TaskDaEseguireDto)
                                                 {
-                                                    @* NUOVO SISTEMA: Mostra tipo da ConfigurazioneFontiDati *@
                                                     <MudSelectItem T=int? Value="item.IdTaskDaEseguire">
                                                         @item.TaskName - @item.Descrizione
-                                                        @if (item.IdConfigurazioneDatabase.HasValue)
+                                                        @if (!string.IsNullOrEmpty(item.TipoFonte))
                                                         {
-                                                            <text> (Configurazione Unificata)</text>
+                                                            <text> (@GetTipoFonteLabel(item.TipoFonte))</text>
                                                         }
                                                     </MudSelectItem>
                                                 }
@@ -168,8 +168,6 @@
 
                                         </div>
 
-                                        <p style="color:red;" >@MessaggioErroreAggiornamento</p>
-
                                     </EditForm>
                                 </MudCardContent>
                             </MudCard>
@@ -228,7 +226,6 @@
     protected bool IsDisabledLavorazione { get; set; } = true;
     protected bool IsDisabledTask { get; set; } = true;
     protected string MessaggioErrore { get; set; } = string.Empty;
-    protected string MessaggioErroreAggiornamento { get; set; } = string.Empty;
 
     protected List<TaskDataReadingAggiornamentoDto>? ListAggiornamento { get; set; } = new();
 
@@ -306,8 +303,12 @@
                 if (IdTaskDaEseguire == null)
                     throw new NullReferenceException("Errore manca Task/Query da eseguire");
 
-                // Esegui task con token cancellabile
-                await ProductionJobRunner.RunAsync((int)IdTaskDaEseguire, _queryCts.Token);
+                // Esegui task con date selezionate e token cancellabile
+                await ProductionJobRunner.RunAsync(
+                    (int)IdTaskDaEseguire, 
+                    uModel.StartDate, 
+                    uModel.EndDate, 
+                    _queryCts.Token);
 
                 IsFormValid = false;
                 IsDisabledLavorazione = false;
@@ -329,7 +330,12 @@
         }
         finally
         {
-            ListTaskDataReadingAggiornamentoDto = await ServiceTaskDataReadingAggiornamento.GetAggiornamentoLavorazioneDtoByDateAsync(idProcLav, DateTime.Now.Date);
+            // Ricarica report aggiornamento solo se il task è stato eseguito (idProcLav valido)
+            if (idProcLav > 0 && uModel?.StartDate != null && uModel?.EndDate != null)
+            {
+                ListTaskDataReadingAggiornamentoDto = await ServiceTaskDataReadingAggiornamento
+                    .GetAggiornamentoLavorazioneDtoByDateAsync(idProcLav, uModel.StartDate.Value.Date, uModel.EndDate.Value.Date);
+            }
 
             base.ResetUModel();
 
@@ -477,26 +483,34 @@
 
     protected async Task HandleSubmitAggiornamentoAsync()
     {
-        try
+        await RunWithOverlay(async () =>
         {
-            UiState?.SetMenuDisabled(true);
-            UiState?.ShowOverlay("Ricerca in corso...");
+            ListAggiornamento = await ServiceTaskDataReadingAggiornamento
+                .GetAggiornamentoDtoByDateAsync(Model!.StartDataLavorazione!.Value.Date);
 
-            MessaggioErroreAggiornamento = "";
-            ListAggiornamento = await ServiceTaskDataReadingAggiornamento.GetAggiornamentoDtoByDateAsync(Model!.StartDataLavorazione!.Value.Date, Model!.EndDataLavorazione!.Value.Date);
+            if (ListAggiornamento.Count == 0)
+            {
+                UiState?.ShowSnackbar("Nessun aggiornamento trovato per il periodo selezionato", Severity.Info);
+            }
+            else
+            {
+                UiState?.ShowSnackbar($"Trovati {ListAggiornamento.Count} aggiornamenti", Severity.Success);
+            }
 
-            UiState?.SetMenuDisabled(false);
-            UiState?.HideOverlay();
-        }
-        catch (Exception ex)
-        {
-            MessaggioErroreAggiornamento = ex.Message.ToString();
-            await HandleExceptionFormAsync(ex);
-        }
-
+        }, "Caricamento report aggiornamento...");
     }
 
     #endregion
+
+    /// <summary>
+    /// Restituisce label leggibile per il tipo di fonte dati.
+    /// </summary>
+    private static string GetTipoFonteLabel(string tipoFonte) => tipoFonte switch
+    {
+        nameof(TipoFonteData.SQL) => TipoFonteData.SQL.GetDescription(),
+        nameof(TipoFonteData.HandlerIntegrato) => TipoFonteData.HandlerIntegrato.GetDescription(),
+        _ => tipoFonte
+    };
 
     /// <summary>
     /// Rilascia le risorse e cancella eventuali query in esecuzione.

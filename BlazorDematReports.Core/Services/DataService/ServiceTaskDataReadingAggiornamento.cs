@@ -73,20 +73,47 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <summary>
-        /// Restituisce la lista degli aggiornamenti task data reading per intervallo di date e li mappa su DTO.
+        /// Restituisce la lista degli aggiornamenti task data reading per procedura e range di date specifiche e li mappa su DTO.
         /// </summary>
-        /// <param name="startDate">Data di inizio del periodo di ricerca.</param>
-        /// <param name="endDate">Data di fine del periodo di ricerca.</param>
-        /// <returns>Lista di oggetti <see cref="TaskDataReadingAggiornamentoDto"/> ordinata per data aggiornamento.</returns>
-        public async Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoDtoByDateAsync(DateTime startDate, DateTime endDate)
+        /// <param name="IdProceduraLavorazione">Identificativo della procedura di lavorazione.</param>
+        /// <param name="startDate">Data inizio del periodo di ricerca.</param>
+        /// <param name="endDate">Data fine del periodo di ricerca.</param>
+        /// <returns>Lista di oggetti <see cref="TaskDataReadingAggiornamentoDto"/> ordinata per data aggiornamento decrescente.</returns>
+        public async Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoLavorazioneDtoByDateAsync(
+            int IdProceduraLavorazione, 
+            DateTime startDate, 
+            DateTime endDate)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
             var lstTask = await context.TaskDataReadingAggiornamentos
-                .Where(x => x.DataAggiornamento.Date >= startDate.Date && x.DataAggiornamento.Date <= endDate.Date)
+                .Where(x => x.IdLavorazione == IdProceduraLavorazione 
+                         && x.DataInizioLavorazione.Date == startDate.Date 
+                         && x.DataFineLavorazione!.Value.Date == endDate.Date
+                         && x.DataAggiornamento.Date == DateTime.Now.Date)
+                .OrderByDescending(x => x.DataAggiornamento)
+                .ToListAsync();
+
+            return mapper.Map<List<TaskDataReadingAggiornamento>, List<TaskDataReadingAggiornamentoDto>>(lstTask);
+        }
+
+        /// <summary>
+        /// Restituisce la lista degli aggiornamenti task data reading per intervallo di date e li mappa su DTO.
+        /// </summary>
+        /// <param name="startDate">Data di inizio del periodo di ricerca.</param>
+        /// <param name="endDate">Data di fine del periodo di ricerca.</param>
+        /// <returns>Lista di oggetti <see cref="TaskDataReadingAggiornamentoDto"/> ordinata per data aggiornamento.</returns>
+        public async Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoDtoByDateAsync(DateTime dataAggiornamento)
+        {
+            QueryLoggingHelper.LogQueryExecution(logger);
+
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var lstTask = await context.TaskDataReadingAggiornamentos
+                .Where(x => x.DataAggiornamento.Date == dataAggiornamento.Date)
                 .OrderBy(x => x.DataAggiornamento)
                 .ToListAsync();
+
             var listTaskDto = mapper.Map<List<TaskDataReadingAggiornamento>, List<TaskDataReadingAggiornamentoDto>>(lstTask);
 
             return listTaskDto;

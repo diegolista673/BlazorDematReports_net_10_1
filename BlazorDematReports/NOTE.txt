@@ -15,26 +15,21 @@ with (firstrow = 170,
       esempio :
 
 
-controllare i dispose nelle pagine blazor e nei servizi, soprattutto per i servizi che usano dbcontext e mail
-chiedere se il cancellation token deve essere implementeato nei servizi e nelle pagine blazor
 
 completare lettura allegati e poi la notitfica via mail della lettura avvenuta?
+
 scrivere documentazione per la crazione dei task e di tutte le operazioni 
-scrivere documentazione completa del progetto , aggiungere note create in instructions per miglioare la documentazione
+
+scrivere documentazione completa del progetto , aggiungere note create in instructions per miglioare la documentazione aggiungere grafico delle attivita /sequenze
 
 spiegare funzionamento degli handler e le interfacce
 
-
 fare guida per developer per aggiungere un nuovo handler passo passo
-
-testare iserimento dati in produzione sistema con dati a 10 giorni e verificare se elimina incogreunze
-
-
-implemtare gli handler via mail e testare letture allegati e inserimento dati in produzione
 
 come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
 
 va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo
+
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
 
@@ -60,14 +55,5 @@ Per quando programma è pronto per la produzione
 
 
 controllare il funzinamento in lettore dati, job mail e job lavorazioni
-
-scrivere documetazione per aggiungere servizi via mail per programmatore eventaulmente aggiungere grafico delle attivita /sequenze
-
-creareservizio mail per ader 4 verona e genova
-
-
-
-
-
 
 

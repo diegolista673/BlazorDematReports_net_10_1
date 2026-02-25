@@ -5,7 +5,7 @@
 <MudGrid Spacing="2" Class="mb-4">
     @if (ShowFasiTotali)
     {
-        <MudItem xs="12" sm="6" md="3">
+        <MudItem xs="12" sm="6" md="4">
             <MudPaper Class="pa-3" Elevation="3">
                 <div class="d-flex align-center gap-2">
                     <MudIcon Icon="@Icons.Material.Filled.Timeline" Color="Color.Primary" Size="Size.Large" />
@@ -20,7 +20,7 @@
     
     @if (ShowTaskConfigurati)
     {
-        <MudItem xs="12" sm="6" md="3">
+        <MudItem xs="12" sm="6" md="4">
             <MudPaper Class="pa-3" Elevation="3">
                 <div class="d-flex align-center gap-2">
                     <MudIcon Icon="@Icons.Material.Filled.Task" Color="Color.Info" Size="Size.Large" />
@@ -33,24 +33,10 @@
         </MudItem>
     }
     
-    @if (ShowServiziMail)
-    {
-        <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-3" Elevation="3">
-                <div class="d-flex align-center gap-2">
-                    <MudIcon Icon="@Icons.Material.Filled.Email" Color="Color.Secondary" Size="Size.Large" />
-                    <div>
-                        <MudText Typo="Typo.caption" Class="text-muted">Servizi Mail</MudText>
-                        <MudText Typo="Typo.h4">@GetMailServicesCount()</MudText>
-                    </div>
-                </div>
-            </MudPaper>
-        </MudItem>
-    }
     
     @if (ShowQueryPersonalizzate)
     {
-        <MudItem xs="12" sm="6" md="3">
+        <MudItem xs="12" sm="6" md="4">
             <MudPaper Class="pa-3" Elevation="3">
                 <div class="d-flex align-center gap-2">
                     <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Tertiary" Size="Size.Large" />
@@ -80,40 +66,13 @@
     /// </summary>
     [Parameter] public bool ShowTaskConfigurati { get; set; } = true;
     
-    /// <summary>
-    /// Mostra KPI Servizi Mail
-    /// </summary>
-    [Parameter] public bool ShowServiziMail { get; set; } = true;
     
     /// <summary>
     /// Mostra KPI Query Personalizzate
     /// </summary>
     [Parameter] public bool ShowQueryPersonalizzate { get; set; } = true;
     
-    private HashSet<int> _emailConfigIds = new();
-    
-    protected override async Task OnParametersSetAsync()
-    {
-        if (Model?.IdproceduraLavorazione != null)
-        {
-            await LoadEmailConfigIdsAsync((int)Model.IdproceduraLavorazione);
-        }
-    }
-    
-    private async Task LoadEmailConfigIdsAsync(int idProcedura)
-    {
-        try
-        {
-            var configs = await ServiceMail.GetMailServicesByProceduraAsync(idProcedura);
-            _emailConfigIds = configs
-                .Select(c => c.IdConfigurazione)
-                .ToHashSet();
-        }
-        catch
-        {
-            _emailConfigIds.Clear();
-        }
-    }
+
     
     private int GetFasiCount() => 
         Model?.LavorazioniFasiDataReadingsDto?.Count(f => f.IdFaseLavorazione != 0) ?? 0;
@@ -123,11 +82,6 @@
             .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
             .Count() ?? 0;
     
-    private int GetMailServicesCount() => 
-        Model?.LavorazioniFasiDataReadingsDto?
-            .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
-            .Count(t => t.IdConfigurazioneDatabase.HasValue && 
-                        _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value)) ?? 0;
     
     private int GetQueryCount() => 
         Model?.QueryProcedureLavorazioniDto?.Count ?? 0;

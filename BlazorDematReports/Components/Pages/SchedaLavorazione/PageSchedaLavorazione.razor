@@ -283,100 +283,6 @@ else
                     </ChildContent>
                 </MudExpansionPanel>
                 
-                @* Servizi Mail Unificati Expansion Panel *@
-                <MudExpansionPanel Text="Servizi Mail" Expanded="false">
-                    <TitleContent>
-                        <div class="d-flex align-center gap-2">
-                            <MudIcon Icon="@Icons.Material.Filled.Email" />
-                            <MudText>Servizi Mail</MudText>
-                            @{
-                                var allMailTasks = _currentModel?.LavorazioniFasiDataReadingsDto?
-                                    .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
-                                    .Where(t => t.IdConfigurazioneDatabase.HasValue && _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value))
-                                    .ToList();
-                                var enabledMailCount = allMailTasks?.Count(t => t.Enabled) ?? 0;
-                                var disabledMailCount = allMailTasks?.Count(t => !t.Enabled) ?? 0;
-                                var totalMailCount = allMailTasks?.Count ?? 0;
-                            }
-                            <MudChip T="int" Size="Size.Small" Color="Color.Info">
-                                @totalMailCount
-                            </MudChip>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">
-                                @enabledMailCount Attivi
-                            </MudChip>
-                            @if (disabledMailCount > 0)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
-                                    @disabledMailCount Disabilitati
-                                </MudChip>
-                            }
-                        </div>
-                    </TitleContent>
-                    <ChildContent>
-                        @{
-
-                            var mailServices = _currentModel.LavorazioniFasiDataReadingsDto?
-                                .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
-                                .Where(t => t.IdConfigurazioneDatabase.HasValue && _emailConfigIds.Contains(t.IdConfigurazioneDatabase.Value))
-                                .ToList();
-                        }
-                        @if (mailServices?.Any() == true)
-                        {
-                            <MudAlert Severity="Severity.Info" Class="ma-2 mb-3">
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
-                                <strong>Elaborazione Unificata:</strong> Questi servizi elaborano dati per tutte le fasi della procedura
-                            </MudAlert>
-                            
-                            <MudGrid Spacing="2" Class="pa-2">
-                                @foreach (var service in mailServices)
-                                {
-                                    <MudItem xs="12" sm="6" md="4" lg="3">
-                                        <MudCard Elevation="1" Style="height:100%;">
-                                            <MudCardHeader>
-                                                <CardHeaderContent>
-                                                    <div class="d-flex align-center gap-2">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Primary" />
-                                                        <MudText Typo="Typo.h6">Config ID: @service.IdConfigurazioneDatabase</MudText>
-                                                    </div>
-                                                </CardHeaderContent>
-                                                <CardHeaderActions>
-                                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(service.Stato)">
-                                                        @(service.Stato ?? "CONFIGURED")
-                                                    </MudChip>
-                                                </CardHeaderActions>
-                                            </MudCardHeader>
-                                            <MudCardContent>
-                                                <MudText Typo="Typo.body2" Class="mb-2">@service.Descrizione</MudText>
-                                                <MudDivider Class="my-2" />
-                                                <div class="d-flex flex-column gap-1">
-                                                    <div class="d-flex align-center">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Task" Size="Size.Small" Class="mr-1" />
-                                                        <MudText Typo="Typo.caption">Task: @service.TaskName</MudText>
-                                                    </div>
-                                                    @if (service.TimeTask.HasValue)
-                                                    {
-                                                        <div class="d-flex align-center">
-                                                            <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Class="mr-1" />
-                                                            <MudText Typo="Typo.caption">Orario: @service.TimeTask.Value.ToString(@"hh\:mm")</MudText>
-                                                        </div>
-                                                    }
-                                                    <div class="d-flex align-center">
-                                                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Class="mr-1" />
-                                                        <MudText Typo="Typo.caption">Giorni precedenti: @service.GiorniPrecedenti</MudText>
-                                                    </div>
-                                                </div>
-                                            </MudCardContent>
-                                        </MudCard>
-                                    </MudItem>
-                                }
-                            </MudGrid>
-                        }
-                        else
-                        {
-                            <MudAlert Severity="Severity.Info" Class="ma-2">Nessun servizio mail unificato configurato</MudAlert>
-                        }
-                    </ChildContent>
-                </MudExpansionPanel>
                 
             </MudExpansionPanels>
         </MudContainer>
@@ -392,8 +298,6 @@ else
     private bool _isLoading = false;
     private bool _initializing = true;
     private int? _lastLoadedId;
-    private HashSet<int> _emailConfigIds = new();
-
 
 
     protected override async Task OnInitializedAsync()
@@ -545,7 +449,6 @@ else
         _currentModel = null;
         _selectedLavorazione = null;
         _lastLoadedId = null;
-        _emailConfigIds.Clear();
     }
     
 

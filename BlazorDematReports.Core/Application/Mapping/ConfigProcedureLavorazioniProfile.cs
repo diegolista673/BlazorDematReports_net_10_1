@@ -25,7 +25,8 @@ namespace BlazorDematReports.Core.Application.Mapping
                 .ForMember(dest => dest.LastRunUtc, opt => opt.MapFrom(src => src.LastRunUtc))
                 .ForMember(dest => dest.LastError, opt => opt.MapFrom(src => src.LastError))
                 .ForMember(dest => dest.ConsecutiveFailures, opt => opt.MapFrom(src => src.ConsecutiveFailures))
-                .ForMember(dest => dest.IdConfigurazioneDatabase, opt => opt.MapFrom(src => src.IdConfigurazioneDatabase));
+                .ForMember(dest => dest.IdConfigurazioneDatabase, opt => opt.MapFrom(src => src.IdConfigurazioneDatabase))
+                .ForMember(dest => dest.TipoFonte, opt => opt.MapFrom(src => src.IdConfigurazioneDatabaseNavigation != null ? src.IdConfigurazioneDatabaseNavigation.TipoFonte.ToString() : null));
 
 
             CreateMap<LavorazioniFasiDataReading, LavorazioniFasiDataReadingDto>()
