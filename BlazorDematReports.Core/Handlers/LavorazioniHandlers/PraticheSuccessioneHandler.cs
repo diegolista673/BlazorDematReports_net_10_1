@@ -76,75 +76,88 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
         /// <summary>
         /// Recupera e aggrega i dati di lavorazione per la procedura PRATICHE_SUCCESSIONE.
-        /// Gestisce le diverse fasi di lavorazione per le pratiche di successione.
+        /// Gestisce le fasi 4 (scansione) e 5 (indicizzazione) su Oracle.
         /// </summary>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalla fonte dati.</returns>
+        /// <returns>Lista di <see cref="DatiLavorazione"/> acquisiti dalla fonte dati.</returns>
         public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
-            var result = new List<DatiLavorazione>();
+            // Oracle usa TO_DATE con stringa YYYYMMDD — non è possibile usare DateTime2 come in SQL Server
             var startData = StartDataLavorazione.ToString("yyyyMMdd");
-            var endData = EndDataLavorazione?.ToString("yyyyMMdd") ?? startData;
+            var endData   = (EndDataLavorazione ?? StartDataLavorazione).ToString("yyyyMMdd");
 
-            _logger.LogInformation("[PRATICHE_SUCCESSIONE] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start} - {End}", IDFaseLavorazione, startData, endData);
+            _logger.LogInformation(
+                "[PRATICHE_SUCCESSIONE] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start} - {End}",
+                IDFaseLavorazione, startData, endData);
 
-            if (IDFaseLavorazione == 4)
+            var result = IDFaseLavorazione switch
             {
-                // Query per fase di scansione delle pratiche di successione
-                string query = @"
-                    select pt_operatore_scan as operatore, 
-                           TRUNC(pt_data_scan) as datalavorazione, 
-                           TRUNC(count(pt_barcode_ad_uso_interno)) as documenti, 
-                           TRUNC(SUM(pt_numero_pagine/2)) AS Fogli, 
-                           TRUNC(sum(pt_numero_pagine)) as pagine
-                    from bp_pratichesucc_s
-                    where TRUNC(pt_data_scan) >= to_date(:startData,'yyyymmdd') 
-                    and TRUNC(pt_data_scan) <= to_date(:endData,'yyyymmdd')
-                    group by pt_operatore_scan, TRUNC(pt_data_scan)";
+                4 => await EseguiQueryAsync(QueryFase4, startData, endData, ct),
+                5 => await EseguiQueryAsync(QueryFase5, startData, endData, ct),
+                _ => LogFaseNonGestita(IDFaseLavorazione)
+            };
 
-                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
-            }
-            else if (IDFaseLavorazione == 5)
-            {
-                // Query per fase di indicizzazione delle pratiche di successione
-                string query = @"
-                    select pt_operatore_index as operatore, 
-                           TRUNC(pt_data_index) as datalavorazione,  
-                           TRUNC(count(pt_barcode_ad_uso_interno)) as documenti, 
-                           TRUNC(SUM(pt_numero_pagine/2)) AS Fogli, 
-                           TRUNC(sum(pt_numero_pagine)) as pagine
-                    from bp_pratichesucc_s 
-                    where TRUNC(pt_data_index) >= to_date(:startData,'yyyymmdd') 
-                    and TRUNC(pt_data_index) <= to_date(:endData,'yyyymmdd') 
-                    group by pt_operatore_index, TRUNC(pt_data_index)";
-
-                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
-            }
-            else
-            {
-                _logger.LogWarning("[PRATICHE_SUCCESSIONE] IDFaseLavorazione {IdFase} non gestito", IDFaseLavorazione);
-            }
-
-            _logger.LogInformation("[PRATICHE_SUCCESSIONE] Elaborazione completata. Record ottenuti: {Count}", result.Count);
+            _logger.LogInformation(
+                "[PRATICHE_SUCCESSIONE] Elaborazione completata. Record ottenuti: {Count}", result.Count);
 
             return result;
         }
 
+        // Query fase 4: scansione pratiche di successione da Oracle.
+        private const string QueryFase4 = """
+            SELECT
+                pt_operatore_scan                        AS operatore,
+                TRUNC(pt_data_scan)                      AS datalavorazione,
+                TRUNC(COUNT(pt_barcode_ad_uso_interno))  AS documenti,
+                TRUNC(SUM(pt_numero_pagine / 2))         AS fogli,
+                TRUNC(SUM(pt_numero_pagine))             AS pagine
+            FROM bp_pratichesucc_s
+            WHERE TRUNC(pt_data_scan) >= TO_DATE(:startData, 'YYYYMMDD')
+              AND TRUNC(pt_data_scan) <= TO_DATE(:endData,   'YYYYMMDD')
+            GROUP BY pt_operatore_scan, TRUNC(pt_data_scan)
+            """;
+
+        // Query fase 5: indicizzazione pratiche di successione da Oracle.
+        private const string QueryFase5 = """
+            SELECT
+                pt_operatore_index                       AS operatore,
+                TRUNC(pt_data_index)                     AS datalavorazione,
+                TRUNC(COUNT(pt_barcode_ad_uso_interno))  AS documenti,
+                TRUNC(SUM(pt_numero_pagine / 2))         AS fogli,
+                TRUNC(SUM(pt_numero_pagine))             AS pagine
+            FROM bp_pratichesucc_s
+            WHERE TRUNC(pt_data_index) >= TO_DATE(:startData, 'YYYYMMDD')
+              AND TRUNC(pt_data_index) <= TO_DATE(:endData,   'YYYYMMDD')
+            GROUP BY pt_operatore_index, TRUNC(pt_data_index)
+            """;
+
+        /// <summary>Logga un avviso per una fase non gestita e restituisce una lista vuota.</summary>
+        private List<DatiLavorazione> LogFaseNonGestita(int idFase)
+        {
+            _logger.LogWarning("[PRATICHE_SUCCESSIONE] IDFaseLavorazione {IdFase} non gestito", idFase);
+            return [];
+        }
+
         /// <summary>
-        /// Esegue una query asincrona su Oracle per recuperare i dati di lavorazione delle pratiche di successione.
+        /// Esegue una query Oracle per le pratiche di successione.
+        /// I parametri <c>:startData</c> e <c>:endData</c> sono stringhe in formato <c>YYYYMMDD</c>
+        /// perché Oracle richiede <c>TO_DATE</c> per la conversione.
         /// </summary>
         /// <param name="query">Query Oracle da eseguire.</param>
-        /// <param name="startData">Data di inizio periodo in formato stringa (yyyyMMdd).</param>
-        /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
+        /// <param name="startData">Data inizio in formato YYYYMMDD.</param>
+        /// <param name="endData">Data fine in formato YYYYMMDD.</param>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData, CancellationToken ct = default)
+        private async Task<List<DatiLavorazione>> EseguiQueryAsync(
+            string query,
+            string startData,
+            string endData,
+            CancellationToken ct = default)
         {
             QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
-            var result = new List<DatiLavorazione>();
+            var result    = new List<DatiLavorazione>();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             try
@@ -154,43 +167,54 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                 await using var cmd = connection.CreateCommand();
                 cmd.CommandTimeout = 30;
-                cmd.BindByName = true;
-                cmd.CommandText = query;
+                cmd.BindByName     = true;
+                cmd.CommandText    = query;
                 cmd.Parameters.Add("startData", startData);
-                cmd.Parameters.Add("endData", endData);
+                cmd.Parameters.Add("endData",   endData);
 
-                _logger.LogDebug("[PRATICHE_SUCCESSIONE] Esecuzione query Oracle con timeout: {Timeout}s", cmd.CommandTimeout);
+                _logger.LogDebug("[PRATICHE_SUCCESSIONE] Esecuzione query Oracle con timeout: {Timeout}s",
+                    cmd.CommandTimeout);
 
                 await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+                // Ordinal pre-calcolati una sola volta per performance
+                var ordOp   = reader.GetOrdinal("operatore");
+                var ordData = reader.GetOrdinal("datalavorazione");
+                var ordDoc  = reader.GetOrdinal("documenti");
+                var ordFog  = reader.GetOrdinal("fogli");
+                var ordPag  = reader.GetOrdinal("pagine");
+
                 while (await reader.ReadAsync(ct))
                 {
-                    var dati = new DatiLavorazione
+                    result.Add(new DatiLavorazione
                     {
-                        Operatore = reader["operatore"] as string,
-                        DataLavorazione = reader.GetDateTime(reader.GetOrdinal("datalavorazione")),
-                        Documenti = reader["documenti"] != DBNull.Value ? Convert.ToInt32(reader["documenti"]) : null,
-                        Fogli = reader["fogli"] != DBNull.Value ? Convert.ToInt32(reader["fogli"]) : null,
-                        Pagine = reader["pagine"] != DBNull.Value ? Convert.ToInt32(reader["pagine"]) : null,
+                        Operatore       = reader.IsDBNull(ordOp)  ? null : reader.GetString(ordOp).Trim(),
+                        DataLavorazione = reader.GetDateTime(ordData),
+                        Documenti       = reader.IsDBNull(ordDoc) ? null : reader.GetInt32(ordDoc),
+                        Fogli           = reader.IsDBNull(ordFog) ? null : reader.GetInt32(ordFog),
+                        Pagine          = reader.IsDBNull(ordPag) ? null : reader.GetInt32(ordPag),
                         AppartieneAlCentroSelezionato = true
-                    };
-
-                    result.Add(dati);
+                    });
                 }
 
                 stopwatch.Stop();
-
-                _logger.LogInformation("[PRATICHE_SUCCESSIONE] Query Oracle eseguita con successo. Record letti: {Count}, Tempo: {Ms}ms", result.Count, stopwatch.ElapsedMilliseconds);
+                _logger.LogInformation(
+                    "[PRATICHE_SUCCESSIONE] Query Oracle eseguita con successo. Record letti: {Count}, Tempo: {Ms}ms",
+                    result.Count, stopwatch.ElapsedMilliseconds);
             }
             catch (OracleException oracleEx)
             {
                 stopwatch.Stop();
-                _logger.LogError(oracleEx, "[PRATICHE_SUCCESSIONE] Errore Oracle. Tempo: {Ms}ms, Numero: {ErrNum}", stopwatch.ElapsedMilliseconds, oracleEx.Number);
+                _logger.LogError(oracleEx,
+                    "[PRATICHE_SUCCESSIONE] Errore Oracle. Tempo: {Ms}ms, Numero: {ErrNum}",
+                    stopwatch.ElapsedMilliseconds, oracleEx.Number);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.LogError(ex, "[PRATICHE_SUCCESSIONE] Errore generico. Tempo: {Ms}ms", stopwatch.ElapsedMilliseconds);
+                _logger.LogError(ex, "[PRATICHE_SUCCESSIONE] Errore generico. Tempo: {Ms}ms",
+                    stopwatch.ElapsedMilliseconds);
                 throw;
             }
 

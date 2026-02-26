@@ -19,8 +19,9 @@ namespace BlazorDematReports.Core.Handlers.Registry
         /// </summary>
         public UnifiedHandlerRegistry(IEnumerable<IProductionDataHandler> productionHandlers)
         {
-            _handlersMap = new Dictionary<string, IRegistrableHandler>();
-            _executors = new Dictionary<string, Func<UnifiedExecutionContext, CancellationToken, Task<object>>>();
+            // OrdinalIgnoreCase: i codici handler possono arrivare con casing diverso (es. "ADER4" vs "ader4")
+            _handlersMap = new Dictionary<string, IRegistrableHandler>(StringComparer.OrdinalIgnoreCase);
+            _executors   = new Dictionary<string, Func<UnifiedExecutionContext, CancellationToken, Task<object>>>(StringComparer.OrdinalIgnoreCase);
 
             // DI risolve TUTTI gli IProductionDataHandler registrati e li passa come collection
             foreach (var handler in productionHandlers)

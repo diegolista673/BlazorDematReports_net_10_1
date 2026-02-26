@@ -94,11 +94,19 @@ namespace BlazorDematReports.Core.Services.DataService
                             lavorazioneFase.IdlavorazioneFaseDateReading);
                     }
 
-                    // Verifica se esiste già un task per questo mapping
+                    // Verifica se esiste già un task per questo mapping (fase + proc + centro della proc)
+                    // Il centro è ricavato da ProcedureLavorazioni.Idcentro tramite la navigation.
                     var taskEsistente = await context.TaskDaEseguires
                         .AnyAsync(t =>
                             t.IdConfigurazioneDatabase == idConfigurazione &&
-                            t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading);
+                            t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading &&
+                            context.LavorazioniFasiDataReadings
+                                .Where(lf => lf.IdlavorazioneFaseDateReading == t.IdLavorazioneFaseDateReading)
+                                .Join(context.ProcedureLavorazionis,
+                                    lf => lf.IdProceduraLavorazione,
+                                    p  => p.IdproceduraLavorazione,
+                                    (lf, p) => p.Idcentro)
+                                .Any(idCentro => idCentro == mapping.IdCentro));
 
                     if (taskEsistente)
                     {
@@ -198,11 +206,18 @@ namespace BlazorDematReports.Core.Services.DataService
                     lavorazioneFase.IdlavorazioneFaseDateReading);
             }
 
-            // Verifica duplicato
+            // Verifica duplicato includendo il centro della procedura
             var exists = await context.TaskDaEseguires
                 .AnyAsync(t =>
                     t.IdConfigurazioneDatabase == mapping.IdConfigurazione &&
-                    t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading);
+                    t.IdLavorazioneFaseDateReading == lavorazioneFase.IdlavorazioneFaseDateReading &&
+                    context.LavorazioniFasiDataReadings
+                        .Where(lf => lf.IdlavorazioneFaseDateReading == t.IdLavorazioneFaseDateReading)
+                        .Join(context.ProcedureLavorazionis,
+                            lf => lf.IdProceduraLavorazione,
+                            p  => p.IdproceduraLavorazione,
+                            (lf, p) => p.Idcentro)
+                        .Any(idCentro => idCentro == mapping.IdCentro));
 
             if (exists)
             {
@@ -217,8 +232,8 @@ namespace BlazorDematReports.Core.Services.DataService
                 IdConfigurazioneDatabase = mapping.IdConfigurazione,
                 Stato = "CONFIGURED",
                 DataStato = DateTime.Now,
-                GiorniPrecedenti = mapping.GiorniPrecedenti > 0 ? mapping.GiorniPrecedenti : 10,
-                CronExpression = mapping.CronExpression ?? "0 5 * * *",
+                GiorniPrecedenti = mapping.GiorniPrecedenti > 0 ? mapping.GiorniPrecedenti : TaskConfigurationDefaults.DefaultGiorniPrecedenti,
+                CronExpression = mapping.CronExpression ?? TaskConfigurationDefaults.DefaultCronExpression,
                 Enabled = true, //  SEMPRE TRUE per nuovi task generati
                 IdTaskHangFire = $"temp-{Guid.NewGuid()}"
             };

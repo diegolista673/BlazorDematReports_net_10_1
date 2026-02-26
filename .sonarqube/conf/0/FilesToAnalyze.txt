@@ -1,5 +1,6 @@
-﻿C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Helpers\QueryLoggingHelper.cs
-C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Migrations\20250915_RemoveHourFromTaskDaEseguire.cs
+﻿C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Converters\TipoFonteDataConverter.cs
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Enums\TipoFonteData.cs
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Helpers\QueryLoggingHelper.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\Anno.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\AderEquitalia4OperatoriGe.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\AderEquitalia4OperatoriVr.cs
@@ -19,6 +20,7 @@ C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\DaCercare.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\DematReportsContext.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\DematReportsContextExtension.cs
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\ElaborazioneEmailGiornaliera.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\Equitalia3Operatori.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\Equitalia3Produzione.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\DbApplication\FasiLavorazione.cs
@@ -86,6 +88,3 @@ C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\ResponseMessa
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\ResultTask.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\TaskJob.cs
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Models\TipiLetturaDati.cs
-C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Migrations\MigrationHistory.md
-C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Migrations\SQL\001_AddConfigurazioneFontiDatiTables.sql
-C:\Users\SMARTW\source\repos\BlazorDematReports_10\Entities\Migrations\SQL\002_RemoveQueryProcedureLavorazioniDependencies.sql

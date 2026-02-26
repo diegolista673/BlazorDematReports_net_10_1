@@ -14,7 +14,8 @@ with (firstrow = 170,
       per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
       esempio :
 
-
+controllare gli handler 
+controllare come vengono passate le date alle query per passarle come formato 'yyddmm' oppure senza convert(date) per velocizzarle
 
 completare lettura allegati e poi la notitfica via mail della lettura avvenuta?
 
@@ -28,13 +29,10 @@ fare guida per developer per aggiungere un nuovo handler passo passo
 
 come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
 
-va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo
+va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo oppure eliminarle? meglio eliminare
 
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
-
-
-TODO
 
 
 Controllare le varie operazioni fatte con utenti e permessi diversi e ruoli soprattutto per elenco lavoratori, schede totali e impostazioni

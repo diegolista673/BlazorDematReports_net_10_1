@@ -5,23 +5,30 @@ using BlazorDematReports.Core.Utility;
 using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
 using Entities.Helpers;
-using NLog;
+using Microsoft.Extensions.Logging;
 using Oracle.ManagedDataAccess.Client;
 
 namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 {
     /// <summary>
     /// Handler per la lavorazione Z0082041_SOFTLINE seguendo il pattern registry.
-    /// Gestisce l'elaborazione dei dati di produzione da più tabelle Oracle
+    /// Gestisce l'elaborazione dei dati di produzione da tabelle Oracle
     /// relative alla procedura Z0082041_SOFTLINE.
     /// </summary>
     public sealed class Z0082041_SoftlineHandler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public Z0082041_SoftlineHandler(ILavorazioniConfigManager configManager)
+        /// <summary>
+        /// Inizializza una nuova istanza di <see cref="Z0082041_SoftlineHandler"/>.
+        /// </summary>
+        public Z0082041_SoftlineHandler(
+            ILavorazioniConfigManager configManager,
+            ILoggerFactory loggerFactory)
         {
             _configManager = configManager;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
@@ -30,169 +37,191 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>Esegue la lavorazione Z0082041_SOFTLINE.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazione = new Z0082041_SOFTLINEProcessor(_configManager);
+            var lavorazione = new Z0082041_SOFTLINEProcessor(
+                _configManager,
+                _loggerFactory.CreateLogger<Z0082041_SOFTLINEProcessor>());
+
             lavorazione.NomeProcedura          = context.NomeProcedura;
             lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
             lavorazione.IDCentro               = context.IDCentro;
             lavorazione.StartDataLavorazione   = context.StartDataLavorazione;
             lavorazione.EndDataLavorazione     = context.EndDataLavorazione;
+
             return await lavorazione.SetDatiDematAsync(ct);
         }
     }
 
     /// <summary>
     /// Classe di lavorazione per la procedura Z0082041_SOFTLINE.
-    /// Implementa la logica di lettura e aggregazione dei dati di produzione da più tabelle Oracle
-    /// relative alla procedura Z0082041_SOFTLINE, gestendo sia la fase di scansione che di indicizzazione.
+    /// Legge dati dalla tabella Oracle <c>Z0082041_SOFTLINE_DETTAGLIO</c>,
+    /// gestendo sia la fase di scansione (IDFase=4) che di indicizzazione (IDFase=5).
+    /// I parametri data Oracle usano il formato stringa <c>YYYYMMDD</c> con <c>TO_DATE</c>.
     /// </summary>
     internal sealed class Z0082041_SOFTLINEProcessor : BaseLavorazione
     {
-        private readonly Logger _logger;
+        private readonly ILogger<Z0082041_SOFTLINEProcessor> _logger;
         private readonly ILavorazioniConfigManager _lavorazioniConfigManager;
 
         /// <summary>
-        /// Inizializza una nuova istanza di Z0082041_SOFTLINEProcessor.
+        /// Inizializza una nuova istanza di <see cref="Z0082041_SOFTLINEProcessor"/>.
         /// </summary>
-        /// <param name="normalizzatoreOperatori">Servizio di normalizzazione operatori.</param>
-        /// <param name="gestoreOperatoriDati">Servizio di gestione operatori dati lavorazione.</param>
-        /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
+        /// <param name="logger">Logger per la classe.</param>
         public Z0082041_SOFTLINEProcessor(
-            ILavorazioniConfigManager lavorazioniConfigManager
-        )
+            ILavorazioniConfigManager lavorazioniConfigManager,
+            ILogger<Z0082041_SOFTLINEProcessor> logger)
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
-            _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
+            _logger = logger;
         }
 
         /// <summary>
         /// Recupera e aggrega i dati di lavorazione per la procedura Z0082041_SOFTLINE.
-        /// Esegue la query di produzione sulle tabelle Oracle in base alla fase di lavorazione.
+        /// Gestisce le fasi 4 (scansione) e 5 (indicizzazione) su tabelle Oracle.
         /// </summary>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalla fonte dati.</returns>
+        /// <returns>Lista di <see cref="DatiLavorazione"/> acquisiti dalla fonte dati.</returns>
         public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "Oracle_Z0082041_SOFTLINE_Tables");
+            QueryLoggingHelper.LogQueryExecution(
+                logger: _logger,
+                queryType: "SELECT",
+                entityName: "Z0082041_SOFTLINE_DETTAGLIO");
 
-            var result = new List<DatiLavorazione>();
+            // Oracle usa TO_DATE con stringa YYYYMMDD — non è possibile usare DateTime2 come in SQL Server
             var startData = StartDataLavorazione.ToString("yyyyMMdd");
-            var endData = EndDataLavorazione?.ToString("yyyyMMdd") ?? startData;
+            var endData   = (EndDataLavorazione ?? StartDataLavorazione).ToString("yyyyMMdd");
 
-            _logger.Info($"[Z0082041_SOFTLINE] Elaborazione dati per IDFaseLavorazione: {IDFaseLavorazione}, Periodo: {startData} - {endData}");
+            _logger.LogInformation(
+                "[Z0082041_SOFTLINE] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start} - {End}",
+                IDFaseLavorazione, startData, endData);
 
-            if (IDFaseLavorazione == 4)
+            var result = IDFaseLavorazione switch
             {
-                // Query per fase di scansione
-                string query = @"
-                    SELECT 
-                        OP_SCAN as operatore,
-                        TRUNC(DATA_SCAN) as DataLavorazione,
-                        COUNT(*) as Documenti,
-                        SUM(NVL(NUM_PAG, 0))/2 AS Fogli,
-                        SUM(NVL(NUM_PAG, 0)) as Pagine
-                    FROM Z0082041_SOFTLINE_DETTAGLIO
-                    WHERE TRUNC(DATA_SCAN) >= TO_DATE(:startData, 'YYYYMMDD')
-                    AND TRUNC(DATA_SCAN) <= TO_DATE(:endData, 'YYYYMMDD')
-                    GROUP BY OP_SCAN, TRUNC(DATA_SCAN)";
+                4 => await EseguiQueryOracleAsync(QueryFase4, startData, endData, ct),
+                5 => await EseguiQueryOracleAsync(QueryFase5, startData, endData, ct),
+                _ => LogFaseNonGestita(IDFaseLavorazione)
+            };
 
-                result.AddRange(await EseguiQueryOracleAsync(query, startData, endData, ct));
-            }
-            else if (IDFaseLavorazione == 5)
-            {
-                // Query per fase di indicizzazione
-                string query = @"
-                    SELECT 
-                        OP_INDEX as operatore,
-                        TRUNC(DATA_INDEX) as DataLavorazione,
-                        COUNT(*) as Documenti,
-                        SUM(NVL(NUM_PAG, 0))/2 AS Fogli,
-                        SUM(NVL(NUM_PAG, 0)) as Pagine
-                    FROM Z0082041_SOFTLINE_DETTAGLIO
-                    WHERE TRUNC(DATA_INDEX) >= TO_DATE(:startData, 'YYYYMMDD')
-                    AND TRUNC(DATA_INDEX) <= TO_DATE(:endData, 'YYYYMMDD')
-                    GROUP BY OP_INDEX, TRUNC(DATA_INDEX)";
-
-                result.AddRange(await EseguiQueryOracleAsync(query, startData, endData, ct));
-            }
-            else
-            {
-                _logger.Warn($"[Z0082041_SOFTLINE] IDFaseLavorazione {IDFaseLavorazione} non gestito");
-            }
-
-            _logger.Info($"[Z0082041_SOFTLINE] Elaborazione completata. Record ottenuti: {result.Count}");
+            _logger.LogInformation(
+                "[Z0082041_SOFTLINE] Elaborazione completata. Record ottenuti: {Count}", result.Count);
 
             return result;
         }
 
+        // Query fase 4: scansione. TRUNC usato per normalizzare la data Oracle.
+        private const string QueryFase4 = """
+            SELECT
+                OP_SCAN                     AS operatore,
+                TRUNC(DATA_SCAN)            AS DataLavorazione,
+                COUNT(*)                    AS Documenti,
+                SUM(NVL(NUM_PAG, 0)) / 2   AS Fogli,
+                SUM(NVL(NUM_PAG, 0))        AS Pagine
+            FROM Z0082041_SOFTLINE_DETTAGLIO
+            WHERE TRUNC(DATA_SCAN) >= TO_DATE(:startData, 'YYYYMMDD')
+              AND TRUNC(DATA_SCAN) <= TO_DATE(:endData,   'YYYYMMDD')
+            GROUP BY OP_SCAN, TRUNC(DATA_SCAN)
+            """;
+
+        // Query fase 5: indicizzazione.
+        private const string QueryFase5 = """
+            SELECT
+                OP_INDEX                    AS operatore,
+                TRUNC(DATA_INDEX)           AS DataLavorazione,
+                COUNT(*)                    AS Documenti,
+                SUM(NVL(NUM_PAG, 0)) / 2   AS Fogli,
+                SUM(NVL(NUM_PAG, 0))        AS Pagine
+            FROM Z0082041_SOFTLINE_DETTAGLIO
+            WHERE TRUNC(DATA_INDEX) >= TO_DATE(:startData, 'YYYYMMDD')
+              AND TRUNC(DATA_INDEX) <= TO_DATE(:endData,   'YYYYMMDD')
+            GROUP BY OP_INDEX, TRUNC(DATA_INDEX)
+            """;
+
+        /// <summary>Logga un avviso per una fase non gestita e restituisce una lista vuota.</summary>
+        private List<DatiLavorazione> LogFaseNonGestita(int idFase)
+        {
+            _logger.LogWarning("[Z0082041_SOFTLINE] IDFaseLavorazione {IdFase} non gestito", idFase);
+            return [];
+        }
+
         /// <summary>
-        /// Esegue una query Oracle per recuperare i dati di lavorazione dalla tabella specificata.
+        /// Esegue una query Oracle e restituisce i dati di lavorazione.
+        /// I parametri <c>:startData</c> e <c>:endData</c> sono stringhe in formato <c>YYYYMMDD</c>
+        /// perché Oracle richiede <c>TO_DATE</c> per la conversione.
         /// </summary>
         /// <param name="query">Query Oracle da eseguire.</param>
-        /// <param name="startData">Data di inizio periodo in formato stringa (yyyyMMdd).</param>
-        /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
+        /// <param name="startData">Data inizio in formato YYYYMMDD.</param>
+        /// <param name="endData">Data fine in formato YYYYMMDD.</param>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryOracleAsync(string query, string startData, string endData, CancellationToken ct = default)
+        private async Task<List<DatiLavorazione>> EseguiQueryOracleAsync(
+            string query,
+            string startData,
+            string endData,
+            CancellationToken ct = default)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", additionalInfo: $"Parametri: startData={startData}, endData={endData}");
+            QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
-            var result = new List<DatiLavorazione>();
+            var result    = new List<DatiLavorazione>();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
-                // Usa la connessione Oracle disponibile tramite GetConnectionString
-                var oracleConnection = _lavorazioniConfigManager.GetConnectionString("OracleConnectionString")
-                                     ?? _lavorazioniConfigManager.CnxnCaptiva206; // Fallback
+                var connectionString = _lavorazioniConfigManager.GetConnectionString("OracleConnectionString")
+                                    ?? _lavorazioniConfigManager.CnxnCaptiva206;
 
-                await using var connection = new OracleConnection(oracleConnection);
+                await using var connection = new OracleConnection(connectionString);
                 await connection.OpenAsync(ct);
 
                 await using var cmd = new OracleCommand(query, connection);
                 cmd.CommandTimeout = 30;
-                cmd.Parameters.Add(new OracleParameter("startData", startData));
-                cmd.Parameters.Add(new OracleParameter("endData", endData));
+                cmd.BindByName = true;
+                cmd.Parameters.Add("startData", startData);
+                cmd.Parameters.Add("endData",   endData);
 
-                _logger.Debug($"[Z0082041_SOFTLINE] Esecuzione query Oracle con timeout: {cmd.CommandTimeout}s");
+                _logger.LogDebug("[Z0082041_SOFTLINE] Esecuzione query Oracle con timeout: {Timeout}s",
+                    cmd.CommandTimeout);
 
-                using var reader = await cmd.ExecuteReaderAsync(ct);
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+                // Ordinal pre-calcolati una sola volta per performance
+                var ordOp   = reader.GetOrdinal("operatore");
+                var ordData = reader.GetOrdinal("DataLavorazione");
+                var ordDoc  = reader.GetOrdinal("Documenti");
+                var ordFog  = reader.GetOrdinal("Fogli");
+                var ordPag  = reader.GetOrdinal("Pagine");
+
                 while (await reader.ReadAsync(ct))
                 {
-                    var dati = new DatiLavorazione
+                    result.Add(new DatiLavorazione
                     {
-                        Operatore = reader["operatore"] as string,
-                        DataLavorazione = reader.GetDateTime(reader.GetOrdinal("DataLavorazione")),
-                        Documenti = reader["Documenti"] != DBNull.Value ? Convert.ToInt32(reader["Documenti"]) : null,
-                        Fogli = reader["Fogli"] != DBNull.Value ? Convert.ToInt32(reader["Fogli"]) : null,
-                        Pagine = reader["Pagine"] != DBNull.Value ? Convert.ToInt32(reader["Pagine"]) : null,
+                        Operatore       = reader.IsDBNull(ordOp)  ? null : reader.GetString(ordOp).Trim(),
+                        DataLavorazione = reader.GetDateTime(ordData),
+                        Documenti       = reader.IsDBNull(ordDoc) ? null : reader.GetInt32(ordDoc),
+                        Fogli           = reader.IsDBNull(ordFog) ? null : reader.GetInt32(ordFog),
+                        Pagine          = reader.IsDBNull(ordPag) ? null : reader.GetInt32(ordPag),
                         AppartieneAlCentroSelezionato = true
-                    };
-
-                    result.Add(dati);
+                    });
                 }
 
                 stopwatch.Stop();
-
-                _logger.Info($"[Z0082041_SOFTLINE] Query Oracle eseguita con successo. " +
-                            $"Record letti: {result.Count}, " +
-                            $"Tempo esecuzione: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogInformation(
+                    "[Z0082041_SOFTLINE] Query Oracle eseguita con successo. Record letti: {Count}, Tempo: {Ms}ms",
+                    result.Count, stopwatch.ElapsedMilliseconds);
             }
             catch (OracleException oracleEx)
             {
                 stopwatch.Stop();
-                _logger.Error(oracleEx, $"[Z0082041_SOFTLINE] Errore Oracle durante l'esecuzione della query. " +
-                                        $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms, " +
-                                        $"Numero errore: {oracleEx.Number}, " +
-                                        $"Messaggio: {oracleEx.Message}");
+                _logger.LogError(oracleEx,
+                    "[Z0082041_SOFTLINE] Errore Oracle. Tempo: {Ms}ms, Numero: {ErrNum}",
+                    stopwatch.ElapsedMilliseconds, oracleEx.Number);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.Error(ex, $"[Z0082041_SOFTLINE] Errore generico durante l'esecuzione della query. " +
-                                 $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogError(ex, "[Z0082041_SOFTLINE] Errore generico. Tempo: {Ms}ms",
+                    stopwatch.ElapsedMilliseconds);
                 throw;
             }
 

@@ -1,4 +1,5 @@
 ﻿using BlazorDematReports.Core.DataReading.Interfaces;
+using BlazorDematReports.Core.DataReading.Models;
 using Entities.Helpers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -23,43 +24,122 @@ namespace BlazorDematReports.Core.DataReading.Services
             _logger = logger;
         }
 
+
         /// <summary>
-        /// Esegue una query SQL asincrona su un database e restituisce i risultati in un DataTable.
+        /// Esegue una query di produzione e restituisce risultati tipizzati con schema standard.
+        /// Le colonne Operatore, DataLavorazione, Documenti, Fogli, Pagine sono cercate case-insensitive.
+        /// Gli ordinal sono risolti una sola volta per massimizzare le performance su grandi dataset.
+        /// <para>
+        /// Verifica dell'appartenenza al centro — tre livelli in ordine di priorità:
+        /// <list type="number">
+        ///   <item><c>IdCentro</c> nel SELECT — confronto numerico per riga con <paramref name="idCentroAtteso"/>.</item>
+        ///   <item><c>NomeCentro</c> nel SELECT — confronto testuale per riga con <paramref name="nomeCentroAtteso"/> (case-insensitive).</item>
+        ///   <item>Euristica WHERE — se nessuna colonna è presente, cerca <paramref name="nomeCentroAtteso"/> come
+        ///   valore stringa SQL nel testo della query (es. <c>department = 'GENOVA'</c>).
+        ///   Se trovato → tutti i record appartengono al centro.
+        ///   Se non trovato o <paramref name="nomeCentroAtteso"/> è null → assume appartenenza (comportamento legacy).</item>
+        /// </list>
+        /// </para>
         /// </summary>
-        /// <param name="connectionString">Stringa di connessione al database.</param>
-        /// <param name="queryString">Query SQL da eseguire.</param>
-        /// <param name="startDate">Data di inizio per il filtro della query.</param>
-        /// <param name="endDate">Data di fine per il filtro della query.</param>
-        /// <param name="cancellationToken">Token per la cancellazione dell'operazione.</param>
-        /// <returns>Oggetto DataTable con i risultati della query.</returns>
-        /// <exception cref="SqlException">Errore nell'esecuzione della query SQL.</exception>
-        public async Task<DataTable> ExecuteQueryAsync(string connectionString, string queryString, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        public async Task<List<ProductionQueryResult>> ExecuteProductionQueryAsync(
+            string connectionString,
+            string queryString,
+            DateTime startDate,
+            DateTime endDate,
+            int idCentroAtteso,
+            string? nomeCentroAtteso = null,
+            CancellationToken cancellationToken = default)
         {
             QueryLoggingHelper.LogQueryExecution(_logger);
 
-            var table = new DataTable();
+            var results = new List<ProductionQueryResult>();
             try
             {
-                using var connection = new SqlConnection(connectionString);
+                await using var connection = new SqlConnection(connectionString);
                 await connection.OpenAsync(cancellationToken);
-                using var command = new SqlCommand(queryString, connection);
+
+                await using var command = new SqlCommand(queryString, connection);
                 command.CommandTimeout = 60;
 
-                var startDateParam = command.Parameters.Add("@startDate", SqlDbType.DateTime2);
-                startDateParam.Value = startDate;
+                command.Parameters.Add("@startDate", SqlDbType.DateTime2).Value = startDate;
+                command.Parameters.Add("@endDate",   SqlDbType.DateTime2).Value = endDate;
 
-                var endDateParam = command.Parameters.Add("@endDate", SqlDbType.DateTime2);
-                endDateParam.Value = endDate;
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-                using var reader = await command.ExecuteReaderAsync(cancellationToken);
-                table.Load(reader);
+                var ordOp   = GetOrdinalCaseInsensitive(reader, "Operatore");
+                var ordData = GetOrdinalCaseInsensitive(reader, "DataLavorazione");
+                var ordDoc  = GetOrdinalCaseInsensitive(reader, "Documenti");
+                var ordFog  = GetOrdinalCaseInsensitive(reader, "Fogli");
+                var ordPag  = GetOrdinalCaseInsensitive(reader, "Pagine");
+
+                while (await reader.ReadAsync(cancellationToken))
+                {
+
+                    // Logica priorità — tre livelli:
+                    // 1. IdCentro nel SELECT  → verifica numerica per riga
+                    // 2. NomeCentro nel SELECT → verifica testuale per riga (case-insensitive)
+                    // 3. Nessuna colonna      → euristica WHERE: cerca il nome del centro come
+                    //    valore stringa SQL nel testo della query (es. department = 'GENOVA').
+                    //    Se il nome è presente → tutti i record appartengono al centro.
+                    //    Se assente o nomeCentroAtteso è null → legacy: assume appartenenza.
+                    bool appartieneAlCentro = nomeCentroAtteso is null || QueryContienNomeCentro(queryString, nomeCentroAtteso);
+
+
+                    results.Add(new ProductionQueryResult
+                    {
+                        Operatore          = reader.GetString(ordOp).Trim(),
+                        DataLavorazione    = reader.GetDateTime(ordData),
+                        Documenti          = reader.IsDBNull(ordDoc) ? 0 : reader.GetInt32(ordDoc),
+                        Fogli              = reader.IsDBNull(ordFog) ? 0 : reader.GetInt32(ordFog),
+                        Pagine             = reader.IsDBNull(ordPag) ? 0 : reader.GetInt32(ordPag),
+                        AppartieneAlCentro = appartieneAlCentro
+                    });
+                }
             }
             catch (SqlException ex)
             {
-                _logger.LogError(ex, "Errore nell'esecuzione della query SQL.");
+                _logger.LogError(ex, "Errore nell'esecuzione della query di produzione.");
                 throw;
             }
-            return table;
+
+            return results;
         }
+
+        /// <summary>
+        /// Risolve l'ordinal di una colonna in modo case-insensitive.
+        /// Lancia <see cref="InvalidOperationException"/> se la colonna non è presente.
+        /// </summary>
+        private static int GetOrdinalCaseInsensitive(SqlDataReader reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+
+            throw new InvalidOperationException(
+                $"Colonna '{columnName}' mancante nel risultato della query. " +
+                "Le query di produzione devono restituire: Operatore, DataLavorazione, Documenti, Fogli, Pagine.");
+        }
+
+
+        /// <summary>
+        /// Verifica euristicamente se una query filtra per un nome di centro specifico.
+        /// Cerca <paramref name="nomeCentro"/> come valore stringa SQL (<c>'VALORE'</c>) nel testo della query,
+        /// indipendentemente dal nome della colonna usata nel WHERE (<c>department</c>, <c>sede</c>, <c>filiale</c>, ecc.).
+        /// <example>
+        /// Restituisce <c>true</c> per tutti questi pattern:
+        /// <code>
+        /// WHERE department = 'GENOVA'
+        /// WHERE sede='verona'
+        /// WHERE filiale = 'Pomezia'
+        /// </code>
+        /// </example>
+        /// </summary>
+        /// <param name="queryText">Testo SQL della query.</param>
+        /// <param name="nomeCentro">Nome del centro da cercare (es. 'GENOVA').</param>
+        /// <returns><c>true</c> se il nome del centro è presente come valore stringa nella query.</returns>
+        private static bool QueryContienNomeCentro(string queryText, string nomeCentro)
+            => queryText.Contains($"'{nomeCentro}'", StringComparison.OrdinalIgnoreCase);
     }
 }

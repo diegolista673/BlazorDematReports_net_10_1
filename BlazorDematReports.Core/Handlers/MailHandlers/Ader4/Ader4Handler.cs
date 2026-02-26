@@ -66,7 +66,19 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             if (isFirstToday)
             {
                 _logger.LogInformation("Primo task oggi. Elaborazione email completa per TUTTE le fasi...");
-                return await ProcessEmailAndInsertAllDataAsync(context, ct);
+                try
+                {
+                    return await ProcessEmailAndInsertAllDataAsync(context, ct);
+                }
+                catch (Exception ex)
+                {
+                    // Rollback del flag: se l'elaborazione fallisce il giorno non deve restare bloccato.
+                    // MarkAsFailedAsync usa CancellationToken.None per garantire il reset
+                    // anche quando il token originale è già cancellato.
+                    _logger.LogError(ex, "Errore durante elaborazione ADER4 in {TaskName}", taskName);
+                    await _flagService.MarkAsFailedAsync(LavorazioniCodes.ADER4, taskName);
+                    throw;
+                }
             }
             else
             {

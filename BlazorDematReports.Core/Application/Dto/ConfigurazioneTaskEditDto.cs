@@ -7,10 +7,6 @@ namespace BlazorDematReports.Core.Application.Dto
     /// DTO per la creazione/modifica di un singolo task.
     /// Usa TipoFonteData enum per type safety completa.
     /// </summary>
-    /// <summary>
-    /// DTO per la creazione/modifica di un singolo task.
-    /// Usa TipoFonteData enum per type safety completa.
-    /// </summary>
     public class ConfigurazioneTaskEditDto
     {
         public int IdFaseCentro { get; set; }
@@ -37,9 +33,6 @@ namespace BlazorDematReports.Core.Application.Dto
         /// <summary>
         /// Valida che la configurazione sia corretta in base al tipo task.
         /// </summary>
-        /// <summary>
-        /// Valida che la configurazione sia corretta in base al tipo task.
-        /// </summary>
         /// <returns>True se la configurazione è valida, false altrimenti.</returns>
         public bool IsValid()
         {
@@ -54,9 +47,6 @@ namespace BlazorDematReports.Core.Application.Dto
             };
         }
 
-        /// <summary>
-        /// Restituisce una descrizione leggibile della configurazione.
-        /// </summary>
         /// <summary>
         /// Restituisce una descrizione leggibile della configurazione.
         /// </summary>

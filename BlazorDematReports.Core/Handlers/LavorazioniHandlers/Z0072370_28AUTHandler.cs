@@ -6,22 +6,30 @@ using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
 using Entities.Helpers;
 using Microsoft.Data.SqlClient;
-using NLog;
+using Microsoft.Extensions.Logging;
+using System.Data;
 
 namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 {
     /// <summary>
     /// Handler per la lavorazione Z0072370_28AUT seguendo il pattern registry.
     /// Gestisce l'elaborazione dei dati di produzione per la procedura Z0072370_28AUT,
-    /// sia per la fase di scansione che di indicizzazione.
+    /// sia per la fase di scansione (IDFase=4) che di indicizzazione (IDFase=5).
     /// </summary>
     public sealed class Z0072370_28AutHandler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public Z0072370_28AutHandler(ILavorazioniConfigManager configManager)
+        /// <summary>
+        /// Inizializza una nuova istanza di <see cref="Z0072370_28AutHandler"/>.
+        /// </summary>
+        public Z0072370_28AutHandler(
+            ILavorazioniConfigManager configManager,
+            ILoggerFactory loggerFactory)
         {
             _configManager = configManager;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
@@ -30,7 +38,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>Esegue la lavorazione Z0072370_28AUT.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazione = new Z0072370_28AUTProcessor(_configManager);
+            var lavorazione = new Z0072370_28AUTProcessor(
+                _configManager,
+                _loggerFactory.CreateLogger<Z0072370_28AUTProcessor>());
+
             lavorazione.NomeProcedura          = context.NomeProcedura;
             lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
@@ -44,93 +55,120 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
     /// <summary>
     /// Classe di lavorazione per la procedura Z0072370_28AUT.
-    /// Implementa la logica di lettura e aggregazione dei dati di produzione dalla tabella SQL Server.
+    /// Legge dati dalla tabella SQL Server Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
+    /// filtrati per department='GENOVA', garantendo l'appartenenza al centro selezionato.
     /// </summary>
     internal sealed class Z0072370_28AUTProcessor : BaseLavorazione
     {
-        private readonly Logger _logger;
+        private readonly ILogger<Z0072370_28AUTProcessor> _logger;
         private readonly ILavorazioniConfigManager _lavorazioniConfigManager;
 
         /// <summary>
-        /// Inizializza una nuova istanza di Z0072370_28AUTProcessor.
+        /// Inizializza una nuova istanza di <see cref="Z0072370_28AUTProcessor"/>.
         /// </summary>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
+        /// <param name="logger">Logger per la classe.</param>
         public Z0072370_28AUTProcessor(
-            ILavorazioniConfigManager lavorazioniConfigManager
-        )
+            ILavorazioniConfigManager lavorazioniConfigManager,
+            ILogger<Z0072370_28AUTProcessor> logger)
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
-            _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
+            _logger = logger;
         }
 
         /// <summary>
         /// Recupera e aggrega i dati di lavorazione per la procedura Z0072370_28AUT.
+        /// Gestisce le fasi 4 (scansione) e 5 (indicizzazione).
         /// </summary>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalla fonte dati.</returns>
+        /// <returns>Lista di <see cref="DatiLavorazione"/> acquisiti dalla fonte dati.</returns>
         public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO");
+            QueryLoggingHelper.LogQueryExecution(
+                logger: _logger,
+                queryType: "SELECT",
+                entityName: "Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO");
 
-            var result = new List<DatiLavorazione>();
-            var startData = StartDataLavorazione.ToString("yyyyMMdd");
-            var endData = EndDataLavorazione?.ToString("yyyyMMdd") ?? startData;
+            var startDate = StartDataLavorazione;
+            var endDate   = EndDataLavorazione ?? StartDataLavorazione;
 
-            _logger.Info($"[Z0072370_28AUT] Elaborazione dati per IDFaseLavorazione: {IDFaseLavorazione}, Periodo: {startData} - {endData}");
+            _logger.LogInformation(
+                "[Z0072370_28AUT] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:d} - {End:d}",
+                IDFaseLavorazione, startDate, endDate);
 
-            if (IDFaseLavorazione == 4)
+            var result = IDFaseLavorazione switch
             {
-                string query = @"
-                    select 
-                        OP_SCAN as operatore,
-                        convert(date, DATA_SCAN) as DataLavorazione,
-                        COUNT(*) as Documenti,
-                        SUM(convert(int,NUM_PAG))/2 AS Fogli,
-                        SUM(convert(int,num_pag)) as Pagine
-                    from Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-                    where convert(date, DATA_SCAN) >= @startData and convert(date, DATA_SCAN) <= @endData and department = 'GENOVA'
-                    group by OP_SCAN, convert(date, DATA_SCAN)";
+                4 => await EseguiQueryAsync(QueryFase4, startDate, endDate, ct),
+                5 => await EseguiQueryAsync(QueryFase5, startDate, endDate, ct),
+                _ => LogFaseNonGestita(IDFaseLavorazione)
+            };
 
-                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
-            }
-            else if (IDFaseLavorazione == 5)
-            {
-                string query = @"
-                    select 
-                        OP_INDEX as operatore,
-                        convert(date, DATA_INDEX) as DataLavorazione,
-                        COUNT(*) as Documenti,
-                        SUM(convert(int,NUM_PAG))/2 AS Fogli,
-                        SUM(convert(int,NUM_PAG)) as Pagine
-                    from Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-                    where convert(date, DATA_INDEX) >= @startData and convert(date, DATA_INDEX) <= @endData and department = 'GENOVA'
-                    group by OP_INDEX, convert(date, DATA_INDEX), OP_SCAN";
-
-                result.AddRange(await EseguiQueryAsync(query, startData, endData, ct));
-            }
-            else
-            {
-                _logger.Warn($"[Z0072370_28AUT] IDFaseLavorazione {IDFaseLavorazione} non gestito");
-            }
-
-            _logger.Info($"[Z0072370_28AUT] Elaborazione completata. Record ottenuti: {result.Count}");
+            _logger.LogInformation(
+                "[Z0072370_28AUT] Elaborazione completata. Record ottenuti: {Count}", result.Count);
 
             return result;
         }
 
+        // Query fase 4: scansione documenti.
+        // DATA_SCAN usato direttamente senza CONVERT nella WHERE per sfruttare gli indici.
+        private const string QueryFase4 = """
+            SELECT
+                OP_SCAN                     AS operatore,
+                CONVERT(date, DATA_SCAN)    AS DataLavorazione,
+                COUNT(*)                    AS Documenti,
+                SUM(CONVERT(int, NUM_PAG)) / 2 AS Fogli,
+                SUM(CONVERT(int, NUM_PAG)) AS Pagine
+            FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
+            WHERE DATA_SCAN >= @startDate
+              AND DATA_SCAN <  DATEADD(DAY, 1, @endDate)
+              AND department  = 'GENOVA'
+            GROUP BY OP_SCAN, CONVERT(date, DATA_SCAN)
+            """;
+
+        // Query fase 5: indicizzazione documenti.
+        private const string QueryFase5 = """
+            SELECT
+                OP_INDEX                    AS operatore,
+                CONVERT(date, DATA_INDEX)   AS DataLavorazione,
+                COUNT(*)                    AS Documenti,
+                SUM(CONVERT(int, NUM_PAG)) / 2 AS Fogli,
+                SUM(CONVERT(int, NUM_PAG)) AS Pagine
+            FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
+            WHERE DATA_INDEX >= @startDate
+              AND DATA_INDEX <  DATEADD(DAY, 1, @endDate)
+              AND department   = 'GENOVA'
+            GROUP BY OP_INDEX, CONVERT(date, DATA_INDEX)
+            """;
+
         /// <summary>
-        /// Esegue una query SQL per recuperare i dati di lavorazione dalla tabella specificata.
+        /// Logga un avviso per una fase non gestita e restituisce una lista vuota.
+        /// </summary>
+        private List<DatiLavorazione> LogFaseNonGestita(int idFase)
+        {
+            _logger.LogWarning("[Z0072370_28AUT] IDFaseLavorazione {IdFase} non gestito", idFase);
+            return [];
+        }
+
+        /// <summary>
+        /// Esegue una query SQL su SQL Server e restituisce i dati di lavorazione.
+        /// I parametri <c>@startDate</c> e <c>@endDate</c> sono tipizzati come DateTime2.
+        /// La colonna <c>AppartieneAlCentroSelezionato</c> è sempre <c>true</c>
+        /// perché il filtro <c>department='GENOVA'</c> garantisce l'appartenenza al centro.
         /// </summary>
         /// <param name="query">Query SQL da eseguire.</param>
-        /// <param name="startData">Data di inizio periodo in formato stringa (yyyyMMdd).</param>
-        /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
+        /// <param name="startDate">Data di inizio periodo.</param>
+        /// <param name="endDate">Data di fine periodo.</param>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData, CancellationToken ct = default)
+        /// <returns>Lista di <see cref="DatiLavorazione"/> ottenuta dalla query.</returns>
+        private async Task<List<DatiLavorazione>> EseguiQueryAsync(
+            string query,
+            DateTime startDate,
+            DateTime endDate,
+            CancellationToken ct = default)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", additionalInfo: $"Parametri: startData={startData}, endData={endData}");
+            QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
-            var result = new List<DatiLavorazione>();
+            var result    = new List<DatiLavorazione>();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             try
@@ -140,49 +178,51 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
                 await using var cmd = new SqlCommand(query, connection);
                 cmd.CommandTimeout = 30;
-                cmd.Parameters.AddWithValue("@startData", startData);
-                cmd.Parameters.AddWithValue("@endData", endData);
+                cmd.Parameters.Add("@startDate", SqlDbType.DateTime2).Value = startDate;
+                cmd.Parameters.Add("@endDate",   SqlDbType.DateTime2).Value = endDate;
 
-                _logger.Debug($"[Z0072370_28AUT] Esecuzione query con timeout: {cmd.CommandTimeout}s");
+                _logger.LogDebug("[Z0072370_28AUT] Esecuzione query con timeout: {Timeout}s", cmd.CommandTimeout);
 
-                using var reader = await cmd.ExecuteReaderAsync(ct);
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+                // Ordinal pre-calcolati una sola volta per performance su grandi dataset
+                var ordOp   = reader.GetOrdinal("operatore");
+                var ordData = reader.GetOrdinal("DataLavorazione");
+                var ordDoc  = reader.GetOrdinal("Documenti");
+                var ordFog  = reader.GetOrdinal("Fogli");
+                var ordPag  = reader.GetOrdinal("Pagine");
+
                 while (await reader.ReadAsync(ct))
                 {
-                    var dati = new DatiLavorazione
+                    result.Add(new DatiLavorazione
                     {
-                        Operatore = reader["operatore"] as string,
-                        DataLavorazione = reader.GetDateTime(reader.GetOrdinal("DataLavorazione")),
-                        Documenti = reader["Documenti"] != DBNull.Value ? Convert.ToInt32(reader["Documenti"]) : null,
-                        Fogli = reader["Fogli"] != DBNull.Value ? Convert.ToInt32(reader["Fogli"]) : null,
-                        Pagine = reader["Pagine"] != DBNull.Value ? Convert.ToInt32(reader["Pagine"]) : null,
-                        // Flag true perché la query ha filtro department='GENOVA' => tutti i risultati appartengono al centro selezionato
+                        Operatore       = reader.IsDBNull(ordOp)   ? null : reader.GetString(ordOp).Trim(),
+                        DataLavorazione = reader.GetDateTime(ordData),
+                        Documenti       = reader.IsDBNull(ordDoc)  ? null : reader.GetInt32(ordDoc),
+                        Fogli           = reader.IsDBNull(ordFog)  ? null : reader.GetInt32(ordFog),
+                        Pagine          = reader.IsDBNull(ordPag)  ? null : reader.GetInt32(ordPag),
+                        // department='GENOVA' garantisce che tutti i risultati appartengano al centro
                         AppartieneAlCentroSelezionato = true
-                    };
-
-                    result.Add(dati);
+                    });
                 }
 
                 stopwatch.Stop();
-
-                _logger.Info($"[Z0072370_28AUT] Query eseguita con successo. " +
-                            $"Record letti: {result.Count}, " +
-                            $"Tempo esecuzione: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogInformation(
+                    "[Z0072370_28AUT] Query eseguita con successo. Record letti: {Count}, Tempo: {Ms}ms",
+                    result.Count, stopwatch.ElapsedMilliseconds);
             }
             catch (SqlException sqlEx)
             {
                 stopwatch.Stop();
-                _logger.Error(sqlEx, $"[Z0072370_28AUT] Errore SQL durante l'esecuzione della query. " +
-                                     $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms, " +
-                                     $"Numero errore: {sqlEx.Number}, " +
-                                     $"Severità: {sqlEx.Class}, " +
-                                     $"Stato: {sqlEx.State}");
+                _logger.LogError(sqlEx,
+                    "[Z0072370_28AUT] Errore SQL. Tempo: {Ms}ms, Numero: {ErrNum}, Severita: {Class}, Stato: {State}",
+                    stopwatch.ElapsedMilliseconds, sqlEx.Number, sqlEx.Class, sqlEx.State);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.Error(ex, $"[Z0072370_28AUT] Errore generico durante l'esecuzione della query. " +
-                                 $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogError(ex, "[Z0072370_28AUT] Errore generico. Tempo: {Ms}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
 
@@ -190,7 +230,3 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
     }
 }
-
-
-
-

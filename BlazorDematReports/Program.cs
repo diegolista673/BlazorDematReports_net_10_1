@@ -239,7 +239,6 @@ public static class Program
         builder.Services.AddScoped<NotificationDialog>();
         
         // Data Access Services 
-        builder.Services.AddScoped<IQueryService, QueryService>();
         builder.Services.AddScoped<IServiceCentri, ServiceCentri>();
         builder.Services.AddScoped<IServiceOperatori, ServiceOperatori>();
         builder.Services.AddScoped<IServiceClienti, ServiceClienti>();
@@ -264,46 +263,49 @@ public static class Program
         builder.Services.AddScoped<IServiceConfigurazioneFontiDati, ServiceConfigurazioneFontiDati>();
         builder.Services.AddScoped<IServiceMail, ServiceMail>();
         builder.Services.AddScoped<IServiceTaskManagement, ServiceTaskManagement>();
-
-        builder.Services.AddScoped<IProductionJobScheduler, ProductionJobScheduler>();
-        builder.Services.AddScoped<IRecurringJobManagerAdapter, HangfireRecurringJobManagerAdapter>();
-
         builder.Services.AddScoped<ProcedureEditStateService>();
         builder.Services.AddScoped<ProcedureValidationService>();
-
-        // Servizio validazione SQL (sicurezza SQL injection + test connessioni)
-        builder.Services.AddScoped<SqlValidationService>();
-
-        // Servizi per Configurazione Fonti Dati
-        builder.Services.AddScoped<IConfigurazioneDataReaderService, ConfigurazioneDataReaderService>();
-        builder.Services.AddScoped<ITaskGenerationService, TaskGenerationService>();
 
         // ? Wizard Multi-Step Configuration Services
         builder.Services.AddScoped<ConfigurationWizardStateService>();
         builder.Services.AddScoped<ConfigurationStepValidator>();
 
+        // Servizio validazione SQL (sicurezza SQL injection + test connessioni)
+        builder.Services.AddScoped<SqlValidationService>();
+
+         // Servizio esecuzione di query SQL 
+        builder.Services.AddSingleton<IQueryService, QueryService>();
+
+        // Servizi per Configurazione Fonti Dati
+        builder.Services.AddScoped<IConfigurazioneDataReaderService, ConfigurazioneDataReaderService>();
+        builder.Services.AddScoped<ITaskGenerationService, TaskGenerationService>();
+
+        // Singleton: IDbContextFactory e IRecurringJobManager (Hangfire) sono entrambi Singleton
+        builder.Services.AddSingleton<IProductionJobScheduler, ProductionJobScheduler>();
+        builder.Services.AddSingleton<IRecurringJobManagerAdapter, HangfireRecurringJobManagerAdapter>();
+
 
         // Registrazione handler lavorazioni (SQL/Oracle/Email)
-        // Auto-discovery: IProductionDataHandler raccolti dal registry via DI
-        builder.Services.AddScoped<IProductionDataHandler, Z0072370_28AutHandler>();
-        builder.Services.AddScoped<IProductionDataHandler, Z0082041_SoftlineHandler>();
-        builder.Services.AddScoped<IProductionDataHandler, Ant_Ader4_Sorter_1_2Handler>();
-        builder.Services.AddScoped<IProductionDataHandler, PraticheSuccessioneHandler>();
-        builder.Services.AddScoped<IProductionDataHandler, Rdmkt_RSPHandler>();
-        builder.Services.AddScoped<IProductionDataHandler, Hera16EwsHandler>();
-        builder.Services.AddScoped<IProductionDataHandler, Ader4Handler>();
+        // Singleton: tutti dipendono solo da ILavorazioniConfigManager e ILoggerFactory (entrambi Singleton)
+        builder.Services.AddSingleton<IProductionDataHandler, Z0072370_28AutHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Z0082041_SoftlineHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Ant_Ader4_Sorter_1_2Handler>();
+        builder.Services.AddSingleton<IProductionDataHandler, PraticheSuccessioneHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Rdmkt_RSPHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Hera16EwsHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Ader4Handler>();
 
-        // Registry unificato (raccoglie ILavorazioneHandler)
-        builder.Services.AddScoped<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
+        // Registry e servizio unificato: Singleton perche' il dizionario e' immutabile dopo costruzione
+        builder.Services.AddSingleton<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
 
         // Registra servizi email
-        builder.Services.AddScoped<EmailDailyFlagService>();
-        builder.Services.AddTransient<Ader4EmailService>();
-        //builder.Services.AddTransient<Hera16EmailService>(); 
+        builder.Services.AddSingleton<EmailDailyFlagService>();
+        builder.Services.AddSingleton<Ader4EmailService>();
+        //builder.Services.AddSingleton<Hera16EmailService>(); 
 
 
         // Servizio unificato principale
-        builder.Services.AddScoped<IUnifiedHandlerService, UnifiedHandlerService>();
+        builder.Services.AddSingleton<IUnifiedHandlerService, UnifiedHandlerService>();
 
         // Configurazione FluentEmail per ServiceMail
         RegisterFluentEmail(builder);

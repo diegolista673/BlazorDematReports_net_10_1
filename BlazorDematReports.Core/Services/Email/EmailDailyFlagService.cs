@@ -176,6 +176,50 @@ namespace BlazorDematReports.Core.Services.Email
         }
 
         /// <summary>
+        /// Resetta il flag giornaliero dopo un errore di elaborazione, consentendo un nuovo tentativo.
+        /// Chiamare nel catch dell'handler quando l'elaborazione è fallita dopo aver acquisito il lock.
+        /// Usa CancellationToken.None per garantire il rollback anche se il token originale è già cancellato.
+        /// </summary>
+        /// <param name="codiceServizio">Codice servizio email (es. ADER4).</param>
+        /// <param name="nomeTask">Nome del task che ha fallito (per logging).</param>
+        public async System.Threading.Tasks.Task MarkAsFailedAsync(
+            string codiceServizio,
+            string nomeTask)
+        {
+            try
+            {
+                // CancellationToken.None: il token originale potrebbe essere già cancelled,
+                // ma il rollback del flag deve essere garantito
+                await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
+                var oggi = DateOnly.FromDateTime(DateTime.Today);
+
+                var flag = await context.ElaborazioneEmailGiornalieras
+                    .FirstOrDefaultAsync(f =>
+                        f.CodiceServizio == codiceServizio &&
+                        f.DataElaborazione == oggi);
+
+                if (flag is { Elaborata: true })
+                {
+                    flag.Elaborata      = false;
+                    flag.ElaborataIl    = null;
+                    flag.ElaborataDaTask = null;
+                    await context.SaveChangesAsync(CancellationToken.None);
+
+                    _logger.LogWarning(
+                        "Flag {CodiceServizio} resettato dopo errore in {Task}: il prossimo task potra riprovare",
+                        codiceServizio, nomeTask);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Non rilanciare: il rollback del flag è best-effort, non deve mascherare l'errore originale
+                _logger.LogError(ex,
+                    "Impossibile resettare flag {CodiceServizio} dopo errore in {Task}",
+                    codiceServizio, nomeTask);
+            }
+        }
+
+        /// <summary>
         /// Verifica se exception è violazione unique constraint (SQL Server error 2627/2601).
         /// </summary>
         private static bool IsUniqueConstraintViolation(DbUpdateException ex)

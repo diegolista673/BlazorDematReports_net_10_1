@@ -74,39 +74,7 @@ Data Access Layer
 - **Services**: `{Feature}Service.cs` (e.g., `QueryService.cs`, `SqlValidationService.cs`)
 - **Boolean flags**: Prefix with `is`, `has`, `can` (e.g., `_isLoading`, `_hasErrors`)
 
-### File Structure
-```
-BlazorDematReports/
-├── Components/
-│   ├── Pages/
-│   │    └── Impostazioni/       # Configuration pages
-│   │       └── ConfigurazioneFonti/
-│   │           ├── PageConfiguraFonteDati.razor
-│   │           └── Steps/      # Wizard steps
-│   └── Shared/                 # Reusable components
-├── Services/
-│   ├── Validation/
-│   │   └── SqlValidationService.cs
-│   └── {Feature}Service.cs
-├── Dto/                        # Data Transfer Objects
-├── Models/                     # View models
-DataReading/                    # Data extraction project
-├── Services/
-│   └── QueryService.cs         # SQL query execution
-├── Infrastructure/
-│   └── ProductionJobRunner.cs  # Task orchestration
-└── Interfaces/                 # Service contracts
-Entities/                       # Database entities project
-├── Models/
-│   ├── DbApplication/          # Application entities
-│   └── DbLavorazioni/          # Work procedure entities
-└── Context/
-    └── DematReportsContext.cs
-ClassLibraryLavorazioni/        # Legacy handlers (deprecating)
-└── Handlers/                   # C# data handlers
-Database/
-└── Migrations/                 # SQL migration scripts
-```
+
 
 ---
 

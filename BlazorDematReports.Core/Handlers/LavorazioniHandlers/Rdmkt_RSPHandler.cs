@@ -6,7 +6,8 @@ using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
 using Entities.Helpers;
 using Microsoft.Data.SqlClient;
-using NLog;
+using Microsoft.Extensions.Logging;
+using System.Data;
 
 namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 {
@@ -18,10 +19,17 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
     public sealed class Rdmkt_RSPHandler : IProductionDataHandler
     {
         private readonly ILavorazioniConfigManager _configManager;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public Rdmkt_RSPHandler(ILavorazioniConfigManager configManager)
+        /// <summary>
+        /// Inizializza una nuova istanza di <see cref="Rdmkt_RSPHandler"/>.
+        /// </summary>
+        public Rdmkt_RSPHandler(
+            ILavorazioniConfigManager configManager,
+            ILoggerFactory loggerFactory)
         {
             _configManager = configManager;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>Codice identificativo univoco della lavorazione.</summary>
@@ -30,7 +38,10 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         /// <summary>Esegue la lavorazione RDMKT_RSP.</summary>
         public async Task<List<DatiLavorazione>> ExecuteAsync(ProductionExecutionContext context, CancellationToken ct = default)
         {
-            var lavorazione = new RDMKT_RSPProcessor(_configManager);
+            var lavorazione = new RDMKT_RSPProcessor(
+                _configManager,
+                _loggerFactory.CreateLogger<RDMKT_RSPProcessor>());
+
             lavorazione.NomeProcedura          = context.NomeProcedura;
             lavorazione.IDFaseLavorazione      = context.IDFaseLavorazione;
             lavorazione.IDProceduraLavorazione = context.IDProceduraLavorazione;
@@ -44,165 +55,173 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
 
     /// <summary>
     /// Classe di lavorazione per la procedura RDMKT_RSP.
-    /// Implementa la logica di lettura e aggregazione dei dati di produzione da tabelle dinamiche SQL Server
-    /// relative alla procedura RDMKT_RSP, gestendo sia la fase di scansione che di indicizzazione.
+    /// Legge dati da tabelle dinamiche SQL Server con pattern <c>*_RSP_*_UDA_DETTAGLIO</c>,
+    /// gestendo sia la fase di scansione (IDFase=4) che di indicizzazione (IDFase=5).
     /// </summary>
     internal sealed class RDMKT_RSPProcessor : BaseLavorazione
     {
-        private readonly Logger _logger;
+        private readonly ILogger<RDMKT_RSPProcessor> _logger;
         private readonly ILavorazioniConfigManager _lavorazioniConfigManager;
 
         /// <summary>
-        /// Inizializza una nuova istanza di RDMKT_RSPProcessor.
+        /// Inizializza una nuova istanza di <see cref="RDMKT_RSPProcessor"/>.
         /// </summary>
-        /// <param name="normalizzatoreOperatori">Servizio di normalizzazione operatori.</param>
-        /// <param name="gestoreOperatoriDati">Servizio di gestione operatori dati lavorazione.</param>
-        /// <param name="elaboratoreDati">Servizio di elaborazione dati lavorazione.</param>
         /// <param name="lavorazioniConfigManager">Servizio di configurazione lavorazioni.</param>
+        /// <param name="logger">Logger per la classe.</param>
         public RDMKT_RSPProcessor(
-            ILavorazioniConfigManager lavorazioniConfigManager
-        )
+            ILavorazioniConfigManager lavorazioniConfigManager,
+            ILogger<RDMKT_RSPProcessor> logger)
         {
             _lavorazioniConfigManager = lavorazioniConfigManager;
-            _logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
+            _logger = logger;
         }
 
         /// <summary>
         /// Recupera e aggrega i dati di lavorazione per la procedura RDMKT_RSP.
-        /// Gestisce tabelle dinamiche con pattern '_RSP_' e '_UDA_DETTAGLIO'.
+        /// Scopre dinamicamente le tabelle attive con il pattern <c>*_RSP_*_UDA_DETTAGLIO</c>.
         /// </summary>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione contenente i dati acquisiti dalle fonti dati.</returns>
+        /// <returns>Lista di <see cref="DatiLavorazione"/> acquisiti dalle fonti dati.</returns>
         public override async Task<List<DatiLavorazione>> SetDatiDematAsync(CancellationToken ct = default)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", entityName: "RDMKT_RSP_Dynamic_Tables");
+            QueryLoggingHelper.LogQueryExecution(
+                logger: _logger,
+                queryType: "SELECT",
+                entityName: "RDMKT_RSP_Dynamic_Tables");
+
+            var startDate = StartDataLavorazione;
+            var endDate   = EndDataLavorazione ?? StartDataLavorazione;
+
+            _logger.LogInformation(
+                "[RDMKT_RSP] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:d} - {End:d}",
+                IDFaseLavorazione, startDate, endDate);
 
             var result = new List<DatiLavorazione>();
-            var startData = StartDataLavorazione.ToString("yyyyMMdd");
-            var endData = EndDataLavorazione?.ToString("yyyyMMdd") ?? startData;
-
-            _logger.Info($"[RDMKT_RSP] Elaborazione dati per IDFaseLavorazione: {IDFaseLavorazione}, Periodo: {startData} - {endData}");
-
             try
             {
                 var tableNames = await GetNonEmptyTableNamesAsync(ct);
+                _logger.LogInformation("[RDMKT_RSP] Trovate {Count} tabelle RSP con dati", tableNames.Count);
 
-                _logger.Info($"[RDMKT_RSP] Trovate {tableNames.Count} tabelle RSP con dati");
-
-                if (IDFaseLavorazione == 5)
+                foreach (var tabName in tableNames)
                 {
-                    // Fase di indicizzazione
-                    foreach (var tabName in tableNames)
+                    var dati = IDFaseLavorazione switch
                     {
-                        string query = $@"
-                            select 
-                                OP_INDEX as operatore,
-                                CONVERT(date, DATA_INDEX) as DataLavorazione,
-                                Count(*) as Documenti,
-                                SUM(convert(int,isnull(NUM_PAG,0))/2) AS Fogli,
-                                SUM(convert(int,isnull(NUM_PAG,0))) AS Pagine
-                            from {tabName}
-                            where CONVERT(date, DATA_INDEX) >= @startData and CONVERT(date, DATA_INDEX) <= @endData
-                            group by OP_INDEX, CONVERT(date, DATA_INDEX), OP_SCAN";
+                        // DATA_INDEX usato direttamente senza CONVERT nel WHERE per sfruttare gli indici.
+                        // OP_SCAN rimosso dal GROUP BY perché non presente nel SELECT (era un bug SQL).
+                        5 => await EseguiQueryAsync(
+                            $"""
+                            SELECT
+                                OP_INDEX                    AS operatore,
+                                CONVERT(date, DATA_INDEX)   AS DataLavorazione,
+                                COUNT(*)                    AS Documenti,
+                                SUM(CONVERT(int, ISNULL(NUM_PAG, 0))) / 2 AS Fogli,
+                                SUM(CONVERT(int, ISNULL(NUM_PAG, 0))) AS Pagine,
+                                OP_SCAN
+                            FROM {tabName}
+                            WHERE DATA_INDEX >= @startDate
+                              AND DATA_INDEX <  DATEADD(DAY, 1, @endDate)
+                            GROUP BY OP_INDEX, CONVERT(date, DATA_INDEX), OP_SCAN
+                            """,
+                            tabName, includeOperatoreScan: true, startDate, endDate, ct),
 
-                        result.AddRange(await EseguiQueryAsync(query, startData, endData, tabName, true, ct));
-                    }
-                }
-                else if (IDFaseLavorazione == 4)
-                {
-                    // Fase di scansione
-                    foreach (var tabName in tableNames)
-                    {
-                        string query = $@"
-                            select 
-                                OP_SCAN as operatore,
-                                CONVERT(date, DATA_SCAN) as DataLavorazione,
-                                Count(*) as Documenti,
-                                SUM(convert(int,isnull(NUM_PAG,0))/2) AS Fogli,
-                                SUM(convert(int,isnull(NUM_PAG,0))) AS Pagine
-                            from {tabName}
-                            where CONVERT(date, DATA_SCAN) >= @startData and CONVERT(date, DATA_SCAN) <= @endData
-                            group by OP_SCAN, CONVERT(date, DATA_SCAN)
-                            order by CONVERT(date, DATA_SCAN)";
+                        4 => await EseguiQueryAsync(
+                            $"""
+                            SELECT
+                                OP_SCAN                     AS operatore,
+                                CONVERT(date, DATA_SCAN)    AS DataLavorazione,
+                                COUNT(*)                    AS Documenti,
+                                SUM(CONVERT(int, ISNULL(NUM_PAG, 0))) / 2 AS Fogli,
+                                SUM(CONVERT(int, ISNULL(NUM_PAG, 0))) AS Pagine
+                            FROM {tabName}
+                            WHERE DATA_SCAN >= @startDate
+                              AND DATA_SCAN <  DATEADD(DAY, 1, @endDate)
+                            GROUP BY OP_SCAN, CONVERT(date, DATA_SCAN)
+                            ORDER BY CONVERT(date, DATA_SCAN)
+                            """,
+                            tabName, includeOperatoreScan: false, startDate, endDate, ct),
 
-                        result.AddRange(await EseguiQueryAsync(query, startData, endData, tabName, false, ct));
-                    }
-                }
-                else
-                {
-                    _logger.Warn($"[RDMKT_RSP] IDFaseLavorazione {IDFaseLavorazione} non gestito");
+                        _ => LogFaseNonGestita(IDFaseLavorazione)
+                    };
+
+                    result.AddRange(dati);
                 }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, $"[RDMKT_RSP] Errore durante l'elaborazione delle tabelle dinamiche");
+                _logger.LogError(ex, "[RDMKT_RSP] Errore durante l'elaborazione delle tabelle dinamiche");
                 throw;
             }
 
-            _logger.Info($"[RDMKT_RSP] Elaborazione completata. Record totali ottenuti: {result.Count}");
+            _logger.LogInformation(
+                "[RDMKT_RSP] Elaborazione completata. Record totali ottenuti: {Count}", result.Count);
 
             return result;
         }
 
+        /// <summary>Logga un avviso per una fase non gestita e restituisce una lista vuota.</summary>
+        private List<DatiLavorazione> LogFaseNonGestita(int idFase)
+        {
+            _logger.LogWarning("[RDMKT_RSP] IDFaseLavorazione {IdFase} non gestito", idFase);
+            return [];
+        }
+
         /// <summary>
-        /// Trova tutte le tabelle con nome che contiene '_RSP_' e '_UDA_DETTAGLIO' e con almeno una riga.
+        /// Trova tutte le tabelle con nome che contiene <c>_RSP_</c> e <c>_UDA_DETTAGLIO</c> e con almeno una riga.
+        /// Il nome della tabella proviene da <c>sys.tables</c> — non è input utente, non c'è rischio SQL injection.
         /// </summary>
-        /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista dei nomi delle tabelle che soddisfano i criteri.</returns>
         private async Task<List<string>> GetNonEmptyTableNamesAsync(CancellationToken ct = default)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "METADATA", additionalInfo: "Ricerca tabelle dinamiche RSP");
+            QueryLoggingHelper.LogQueryExecution(
+                logger: _logger,
+                queryType: "METADATA",
+                additionalInfo: "Ricerca tabelle dinamiche RSP");
+
+            const string queryTabelle = """
+                SELECT DISTINCT T.name AS TableName
+                FROM sys.tables     T
+                JOIN sys.sysindexes I ON T.OBJECT_ID = I.ID
+                WHERE T.name LIKE '%_RSP_%_UDA_DETTAGLIO'
+                  AND I.Rows > 0
+                """;
 
             var tableNames = new List<string>();
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var stopwatch  = System.Diagnostics.Stopwatch.StartNew();
 
             try
             {
-                string queryTabelle = @"SELECT distinct(T.name) TableName 
-                                        FROM sys.tables T 
-                                        JOIN sys.sysindexes I ON T.OBJECT_ID = I.ID 
-                                        where t.name LIKE '%_RSP_%_UDA_DETTAGLIO' and i.Rows > 0";
-
                 await using var connection = new SqlConnection(_lavorazioniConfigManager.CnxnCaptiva206);
                 await connection.OpenAsync(ct);
 
-                await using var command = new SqlCommand(queryTabelle, connection);
-                command.CommandTimeout = 30;
+                await using var cmd = new SqlCommand(queryTabelle, connection);
+                cmd.CommandTimeout = 30;
 
-                _logger.Debug("[RDMKT_RSP] Esecuzione ricerca tabelle dinamiche");
+                _logger.LogDebug("[RDMKT_RSP] Ricerca tabelle dinamiche in corso");
 
-                using var reader = await command.ExecuteReaderAsync(ct);
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
                 while (await reader.ReadAsync(ct))
-                {
                     tableNames.Add(reader.GetString(0));
-                }
 
                 stopwatch.Stop();
-
-                _logger.Info($"[RDMKT_RSP] Ricerca tabelle completata. " +
-                            $"Tabelle trovate: {tableNames.Count}, " +
-                            $"Tempo esecuzione: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogInformation(
+                    "[RDMKT_RSP] Ricerca tabelle completata. Trovate: {Count}, Tempo: {Ms}ms",
+                    tableNames.Count, stopwatch.ElapsedMilliseconds);
 
                 if (tableNames.Count > 0)
-                {
-                    _logger.Debug($"[RDMKT_RSP] Tabelle trovate: {string.Join(", ", tableNames)}");
-                }
+                    _logger.LogDebug("[RDMKT_RSP] Tabelle: {Tables}", string.Join(", ", tableNames));
             }
             catch (SqlException sqlEx)
             {
                 stopwatch.Stop();
-                _logger.Error(sqlEx, $"[RDMKT_RSP] Errore SQL durante la ricerca delle tabelle. " +
-                                     $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms, " +
-                                     $"Numero errore: {sqlEx.Number}, " +
-                                     $"Severità: {sqlEx.Class}, " +
-                                     $"Stato: {sqlEx.State}");
+                _logger.LogError(sqlEx,
+                    "[RDMKT_RSP] Errore SQL ricerca tabelle. Tempo: {Ms}ms, Numero: {ErrNum}, Severita: {Class}, Stato: {State}",
+                    stopwatch.ElapsedMilliseconds, sqlEx.Number, sqlEx.Class, sqlEx.State);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.Error(ex, $"[RDMKT_RSP] Errore generico durante la ricerca delle tabelle. " +
-                                 $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogError(ex, "[RDMKT_RSP] Errore generico ricerca tabelle. Tempo: {Ms}ms",
+                    stopwatch.ElapsedMilliseconds);
                 throw;
             }
 
@@ -210,20 +229,25 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
 
         /// <summary>
-        /// Esegue la query per ottenere i dati di lavorazione da una tabella specifica.
+        /// Esegue la query di lavorazione su una tabella dinamica SQL Server.
         /// </summary>
-        /// <param name="query">Query SQL da eseguire.</param>
-        /// <param name="startData">Data di inizio periodo in formato stringa (yyyyMMdd).</param>
-        /// <param name="endData">Data di fine periodo in formato stringa (yyyyMMdd).</param>
-        /// <param name="tableName">Nome della tabella su cui viene eseguita la query.</param>
-        /// <param name="includeOperatoreScan">Indica se includere il campo OperatoreScan nei risultati.</param>
+        /// <param name="query">Query SQL da eseguire (tabella già interpolata).</param>
+        /// <param name="tableName">Nome della tabella (solo per logging).</param>
+        /// <param name="includeOperatoreScan">Se <c>true</c>, legge il campo <c>OP_SCAN</c> opzionale.</param>
+        /// <param name="startDate">Data di inizio periodo.</param>
+        /// <param name="endDate">Data di fine periodo.</param>
         /// <param name="ct">Token di cancellazione.</param>
-        /// <returns>Lista di DatiLavorazione ottenuta dalla query.</returns>
-        private async Task<List<DatiLavorazione>> EseguiQueryAsync(string query, string startData, string endData, string tableName, bool includeOperatoreScan, CancellationToken ct = default)
+        private async Task<List<DatiLavorazione>> EseguiQueryAsync(
+            string query,
+            string tableName,
+            bool includeOperatoreScan,
+            DateTime startDate,
+            DateTime endDate,
+            CancellationToken ct = default)
         {
-            QueryLoggingHelper.LogQueryExecution(nlogLogger: _logger, queryType: "SELECT", additionalInfo: $"Tabella: {tableName}, Parametri: startData={startData}, endData={endData}");
+            QueryLoggingHelper.LogQueryExecution(logger: _logger);
 
-            var result = new List<DatiLavorazione>();
+            var result    = new List<DatiLavorazione>();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             try
@@ -232,76 +256,82 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                 await connection.OpenAsync(ct);
 
                 await using var cmd = new SqlCommand(query, connection);
-                cmd.CommandTimeout = 60; // Timeout maggiore per tabelle dinamiche
-                cmd.Parameters.AddWithValue("@startData", startData);
-                cmd.Parameters.AddWithValue("@endData", endData);
+                cmd.CommandTimeout = 60;
+                cmd.Parameters.Add("@startDate", SqlDbType.DateTime2).Value = startDate;
+                cmd.Parameters.Add("@endDate",   SqlDbType.DateTime2).Value = endDate;
 
-                _logger.Debug($"[RDMKT_RSP] Esecuzione query su tabella {tableName} con timeout: {cmd.CommandTimeout}s");
+                _logger.LogDebug("[RDMKT_RSP] Esecuzione query su {Table} con timeout: {Timeout}s",
+                    tableName, cmd.CommandTimeout);
 
-                using var reader = await cmd.ExecuteReaderAsync(ct);
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+                // Ordinal pre-calcolati una sola volta per performance
+                var ordOp   = reader.GetOrdinal("operatore");
+                var ordData = reader.GetOrdinal("DataLavorazione");
+                var ordDoc  = reader.GetOrdinal("Documenti");
+                var ordFog  = reader.GetOrdinal("Fogli");
+                var ordPag  = reader.GetOrdinal("Pagine");
+
+                // OP_SCAN è opzionale: presente solo nella query fase 5
+                int? ordOpScan = includeOperatoreScan ? TryGetOrdinal(reader, "OP_SCAN") : null;
+
                 int recordCount = 0;
                 while (await reader.ReadAsync(ct))
                 {
-                    var dati = new DatiLavorazione
+                    var dato = new DatiLavorazione
                     {
-                        Operatore = reader["operatore"] as string,
-                        DataLavorazione = reader.GetDateTime(reader.GetOrdinal("DataLavorazione")),
-                        Documenti = reader["Documenti"] != DBNull.Value ? Convert.ToInt32(reader["Documenti"]) : null,
-                        Fogli = reader["Fogli"] != DBNull.Value ? Convert.ToInt32(reader["Fogli"]) : null,
-                        Pagine = reader["Pagine"] != DBNull.Value ? Convert.ToInt32(reader["Pagine"]) : null,
-                        AppartieneAlCentroSelezionato = true // Le tabelle RSP sono specifiche per centro
+                        Operatore       = reader.IsDBNull(ordOp)  ? null : reader.GetString(ordOp).Trim(),
+                        DataLavorazione = reader.GetDateTime(ordData),
+                        Documenti       = reader.IsDBNull(ordDoc) ? null : reader.GetInt32(ordDoc),
+                        Fogli           = reader.IsDBNull(ordFog) ? null : reader.GetInt32(ordFog),
+                        Pagine          = reader.IsDBNull(ordPag) ? null : reader.GetInt32(ordPag),
+                        // Le tabelle RSP sono specifiche per centro (nessun filtro multi-centro)
+                        AppartieneAlCentroSelezionato = true
                     };
 
-                    // Gestione opzionale dell'operatore di scansione per la fase di indicizzazione
-                    if (includeOperatoreScan)
-                    {
-                        try
-                        {
-                            var operatoreScanIndex = reader.GetOrdinal("OP_SCAN");
-                            if (reader["OP_SCAN"] != DBNull.Value)
-                            {
-                                dati.OperatoreScan = reader["OP_SCAN"] as string;
-                            }
-                        }
-                        catch (IndexOutOfRangeException)
-                        {
-                            // Campo OP_SCAN non presente nella query, ignoriamo
-                            _logger.Debug($"[RDMKT_RSP] Campo OP_SCAN non presente per tabella {tableName}");
-                        }
-                    }
+                    if (ordOpScan.HasValue && !reader.IsDBNull(ordOpScan.Value))
+                        dato.OperatoreScan = reader.GetString(ordOpScan.Value).Trim();
 
-                    result.Add(dati);
+                    result.Add(dato);
                     recordCount++;
                 }
 
                 stopwatch.Stop();
-
-                _logger.Info($"[RDMKT_RSP] Query su tabella {tableName} completata. " +
-                            $"Record letti: {recordCount}, " +
-                            $"Tempo esecuzione: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogInformation(
+                    "[RDMKT_RSP] Query su {Table} completata. Record letti: {Count}, Tempo: {Ms}ms",
+                    tableName, recordCount, stopwatch.ElapsedMilliseconds);
             }
             catch (SqlException sqlEx)
             {
                 stopwatch.Stop();
-                _logger.Error(sqlEx, $"[RDMKT_RSP] Errore SQL su tabella {tableName}. " +
-                                     $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms, " +
-                                     $"Numero errore: {sqlEx.Number}, " +
-                                     $"Severità: {sqlEx.Class}, " +
-                                     $"Stato: {sqlEx.State}");
+                _logger.LogError(sqlEx,
+                    "[RDMKT_RSP] Errore SQL su {Table}. Tempo: {Ms}ms, Numero: {ErrNum}, Severita: {Class}, Stato: {State}",
+                    tableName, stopwatch.ElapsedMilliseconds, sqlEx.Number, sqlEx.Class, sqlEx.State);
                 throw;
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.Error(ex, $"[RDMKT_RSP] Errore generico su tabella {tableName}. " +
-                                 $"Tempo trascorso: {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogError(ex, "[RDMKT_RSP] Errore generico su {Table}. Tempo: {Ms}ms",
+                    tableName, stopwatch.ElapsedMilliseconds);
                 throw;
             }
 
             return result;
         }
+
+        /// <summary>
+        /// Cerca l'ordinal di una colonna opzionale senza lanciare eccezioni.
+        /// Restituisce <c>null</c> se la colonna non è presente.
+        /// </summary>
+        private static int? TryGetOrdinal(SqlDataReader reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                    return i;
+            }
+            return null;
+        }
     }
 }
-
-
-
