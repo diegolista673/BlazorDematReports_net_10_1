@@ -74,7 +74,7 @@ public static class Program
             RegisterHangfire(builder);
             RegisterAuthentication(builder);
             RegisterMudBlazor(builder);
-            RegisterAutoMapper(builder);
+            RegisterMappers(builder);
 
             var app = builder.Build();
             InitializeApp(app);
@@ -313,24 +313,26 @@ public static class Program
     }
 
 
-    private static void RegisterAutoMapper(WebApplicationBuilder builder)
+    /// <summary>
+    /// Registra i mapper Mapperly come Singleton.
+    /// Mapperly genera mapper tipizzati a compile-time (nessun overhead runtime).
+    /// </summary>
+    private static void RegisterMappers(WebApplicationBuilder builder)
     {
-        builder.Services.AddAutoMapper(cfg =>
-        {
-            cfg.AddProfile<ProduzioneOperatoriProfile>();
-            cfg.AddProfile<OperatoriProfile>();
-            cfg.AddProfile<ClientiProfile>();
-            cfg.AddProfile<CentriProfile>();
-            cfg.AddProfile<TurniProfile>();
-            cfg.AddProfile<ProcedureLavorazioniProfile>();
-            cfg.AddProfile<LavorazioniFasiProfile>();
-            cfg.AddProfile<ReportsProfile>();
-            cfg.AddProfile<ProduzioneSistemaProfile>();
-            cfg.AddProfile<TipologieTotaliProfile>();
-            cfg.AddProfile<ConfigProcedureLavorazioniProfile>();
-            cfg.AddProfile<QueryProcedureLavorazioniProfile>();
-            cfg.AddProfile<TaskDataReadingAggiornamentoProfile>();
-        });
+        builder.Services.AddSingleton<ProduzioneSistemaMapper>();
+        builder.Services.AddSingleton<ProduzioneOperatoriMapper>();
+        builder.Services.AddSingleton<OperatoriMapper>();
+        builder.Services.AddSingleton<CentriMapper>();
+        builder.Services.AddSingleton<ClientiMapper>();
+        builder.Services.AddSingleton<TurniMapper>();
+        builder.Services.AddSingleton<TipologieTotaliMapper>();
+        builder.Services.AddSingleton<LavorazioniFasiMapper>();
+        builder.Services.AddSingleton<ProcedureLavorazioniMapper>();
+        builder.Services.AddSingleton<QueryProcedureLavorazioniMapper>();
+        builder.Services.AddSingleton<TaskDaEseguireMapper>();
+        builder.Services.AddSingleton<TaskDataReadingAggiornamentoMapper>();
+        builder.Services.AddSingleton<ReportsMapper>();
+        builder.Services.AddSingleton<AltriDatiMapper>();
     }
 
     private static void RegisterAuthentication(WebApplicationBuilder builder)
