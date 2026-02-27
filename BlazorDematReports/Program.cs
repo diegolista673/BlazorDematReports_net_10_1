@@ -1,4 +1,4 @@
-using BlazorDematReports.Application;
+Ôªøusing BlazorDematReports.Application;
 using BlazorDematReports.Components;
 using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Core.Application;
@@ -6,16 +6,15 @@ using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.DataReading.Infrastructure;
 using BlazorDematReports.Core.DataReading.Interfaces;
 using BlazorDematReports.Core.DataReading.Services;
-using BlazorDematReports.Core.Handlers;
 using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
 using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
 using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
+using BlazorDematReports.Core.Services.Email;
 using BlazorDematReports.Core.Handlers.Registry;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Services;
 using BlazorDematReports.Core.Services.DataService;
-using BlazorDematReports.Core.Services.Email;
 using BlazorDematReports.Core.Services.ProcedureEdit;
 using BlazorDematReports.Core.Services.Validation;
 using BlazorDematReports.Core.Services.Wizard;
@@ -70,11 +69,11 @@ public static class Program
             RegisterFramework(builder);
             RegisterLoginSettings(builder);
             RegisterDb(builder);
+            RegisterMappers(builder);     // ‚Üê prima di RegisterServices che usa i mapper
             RegisterServices(builder);
             RegisterHangfire(builder);
             RegisterAuthentication(builder);
             RegisterMudBlazor(builder);
-            RegisterMappers(builder);
 
             var app = builder.Build();
             InitializeApp(app);
@@ -178,7 +177,7 @@ public static class Program
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddCascadingAuthenticationState();
 
-        // Root directory per Razor Pages spostato sotto /Components/Pages cosÏ /Account/Login viene trovato
+        // Root directory per Razor Pages spostato sotto /Components/Pages cos√¨ /Account/Login viene trovato
         builder.Services.AddRazorPages(o => { o.RootDirectory = "/Components/Pages"; });
         builder.Services.AddControllers();
     }
@@ -224,8 +223,8 @@ public static class Program
 
     private static void RegisterServices(WebApplicationBuilder builder)
     {
-        //Check diagnostico utilizzato solo all'avvio per verificare la connettivit‡ e lo stato di Hangfire,
-        //non Ë un servizio utilizzato direttamente nei job o nelle operazioni quotidiane
+        //Check diagnostico utilizzato solo all'avvio per verificare la connettivit√† e lo stato di Hangfire,
+        //non √® un servizio utilizzato direttamente nei job o nelle operazioni quotidiane
         builder.Services.AddSingleton<IHangfireHealthService, HangfireHealthService>();
         builder.Services.AddSingleton<ILavorazioniConfigManager, LavorazioniConfigManager>();
 
@@ -300,7 +299,18 @@ public static class Program
 
         // Registra servizi email
         builder.Services.AddSingleton<EmailDailyFlagService>();
-        builder.Services.AddSingleton<Ader4EmailService>();
+
+        // Registrazione condizionale: mock (cartella locale) in sviluppo, Exchange EWS in produzione.
+        // Attivare con "MailServices:ADER4:UseMockService": true in appsettings.Development.json.
+        if (builder.Configuration.GetValue<bool>("MailServices:ADER4:UseMockService"))
+        {
+            builder.Services.AddSingleton<IEmailBatchProcessor, LocalCsvAder4EmailService>();
+            NLog.LogManager.GetCurrentClassLogger().Info("ADER4: modalita mock attiva - lettura CSV da cartella locale");
+        }
+        else
+        {
+            builder.Services.AddSingleton<IEmailBatchProcessor, Ader4EmailService>();
+        }
         //builder.Services.AddSingleton<Hera16EmailService>(); 
 
 

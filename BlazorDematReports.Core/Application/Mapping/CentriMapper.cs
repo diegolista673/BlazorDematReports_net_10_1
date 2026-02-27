@@ -33,6 +33,8 @@ public partial class CentriMapper
     /// </summary>
     [MapProperty(nameof(CentriVisibiliDto.IdCentro), nameof(CentriLavorazione.Idcentro))]
     [MapProperty(nameof(CentriVisibiliDto.Centro), nameof(CentriLavorazione.Centro))]
+    [MapperIgnoreSource(nameof(CentriVisibiliDto.IdOperatore))]
+    [MapperIgnoreSource(nameof(CentriVisibiliDto.FlagVisibile))]
     [MapperIgnoreTarget(nameof(CentriLavorazione.Sigla))]
     [MapperIgnoreTarget(nameof(CentriLavorazione.Clientis))]
     [MapperIgnoreTarget(nameof(CentriLavorazione.Operatoris))]
@@ -44,6 +46,12 @@ public partial class CentriMapper
     /// <summary>CentriLavorazione → CentriVisibiliDto (cross-type inverso).</summary>
     [MapProperty(nameof(CentriLavorazione.Idcentro), nameof(CentriVisibiliDto.IdCentro))]
     [MapProperty(nameof(CentriLavorazione.Centro), nameof(CentriVisibiliDto.Centro))]
+    [MapperIgnoreSource(nameof(CentriLavorazione.Sigla))]
+    [MapperIgnoreSource(nameof(CentriLavorazione.CentriVisibilis))]
+    [MapperIgnoreSource(nameof(CentriLavorazione.Clientis))]
+    [MapperIgnoreSource(nameof(CentriLavorazione.Operatoris))]
+    [MapperIgnoreSource(nameof(CentriLavorazione.ProduzioneSistemas))]
+    [MapperIgnoreSource(nameof(CentriLavorazione.ConfigurazioneFaseCentros))]
     public partial CentriVisibiliDto CentroToCentroVisibileDto(CentriLavorazione entity);
 
     #endregion

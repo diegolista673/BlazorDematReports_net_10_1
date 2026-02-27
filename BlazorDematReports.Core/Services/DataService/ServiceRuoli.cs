@@ -1,6 +1,6 @@
-﻿using AutoMapper;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -14,17 +14,19 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceRuoli : ServiceBase<Ruoli>, IServiceRuoli
     {
+        private readonly TurniMapper _mapper;
 
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione dei ruoli.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per conversioni Ruoli ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceRuoli(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceRuoli> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceRuoli(TurniMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceRuoli> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <inheritdoc/>
@@ -66,8 +68,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
             await using var context = await contextFactory.CreateDbContextAsync();
             List<Ruoli> lst = await context.Ruolis.ToListAsync();
-            var LstRuoli = mapper.Map<List<Ruoli>, List<RuoliDto>>(lst);
-            LstRuoli = LstRuoli.OrderBy(x => x.IdRuolo).ToList();
+            var LstRuoli = lst.Select(_mapper.RuoloToDto).OrderBy(x => x.IdRuolo).ToList();
             return LstRuoli;
         }
 
@@ -76,7 +77,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<Ruoli>(ruoliDto);
+            var entity = _mapper.DtoToRuolo(ruoliDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.Ruolis.Add(entity);
             await context.SaveChangesAsync();

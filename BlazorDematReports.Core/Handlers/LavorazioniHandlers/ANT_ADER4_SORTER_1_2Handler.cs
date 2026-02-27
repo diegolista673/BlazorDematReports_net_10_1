@@ -109,8 +109,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                         COUNT(coduniF)                   AS Fogli,
                         COUNT(coduniF) * 2               AS Pagine
                     FROM [GesimCheck_Local_Produzione].[dbo].[Tab_Lavorato]
-                    WHERE dateTime_acquisizione >= @startDate
-                      AND dateTime_acquisizione <  DATEADD(DAY, 1, @endDate)
+                    WHERE CONVERT(date, dateTime_acquisizione) >= @startDate
+                      AND CONVERT(date, dateTime_acquisizione) <= @endDate
                     GROUP BY Username, CONVERT(date, dateTime_acquisizione)
                     """;
 

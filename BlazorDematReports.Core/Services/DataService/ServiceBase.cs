@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -11,8 +10,7 @@ namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
     /// Servizio base generico per la gestione delle entità e delle operazioni CRUD.
-    /// Fornisce campi condivisi (contextFactory, logger, mapper, configUser) a tutti i service figli,
-    /// eliminando la necessità di ridichiarazioni ridondanti nelle sottoclassi.
+    /// Fornisce campi condivisi (contextFactory, logger, configUser) a tutti i service figli.
     /// </summary>
     /// <typeparam name="T">Tipo dell'entità gestita.</typeparam>
     public class ServiceBase<T> : IServiceBase<T> where T : class
@@ -23,34 +21,28 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <summary>Logger per il tracking delle operazioni.</summary>
         protected readonly ILogger logger;
 
-        /// <summary>Mapper AutoMapper per la conversione tra entità e DTO.</summary>
-        protected readonly IMapper mapper;
-
         /// <summary>Configurazione utente corrente (ruolo, centro di origine).</summary>
         protected readonly ConfigUser configUser;
 
         /// <summary>
-        /// Costruttore completo — tutti i campi condivisi.
+        /// Costruttore principale — campi condivisi senza mapper.
+        /// I service figli che necessitano di mapping iniettano il mapper Mapperly specifico.
         /// </summary>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        /// <param name="mapper">Mapper AutoMapper per la conversione tra entità e DTO.</param>
         /// <param name="configUser">Configurazione utente corrente.</param>
         public ServiceBase(
             IDbContextFactory<DematReportsContext> contextFactory,
             ILogger logger,
-            IMapper mapper,
             ConfigUser configUser)
         {
             ArgumentNullException.ThrowIfNull(contextFactory);
             ArgumentNullException.ThrowIfNull(logger);
-            ArgumentNullException.ThrowIfNull(mapper);
             ArgumentNullException.ThrowIfNull(configUser);
 
             this.contextFactory = contextFactory;
-            this.logger = logger;
-            this.mapper = mapper;
-            this.configUser = configUser;
+            this.logger         = logger;
+            this.configUser     = configUser;
         }
 
         /// <summary>

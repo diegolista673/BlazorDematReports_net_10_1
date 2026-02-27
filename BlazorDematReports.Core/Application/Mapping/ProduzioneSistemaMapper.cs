@@ -40,4 +40,17 @@ public partial class ProduzioneSistemaMapper
     /// <summary>DatiElaborati ↔ ProduzioneSistemaDTO (nomi identici).</summary>
     public partial ProduzioneSistemaDTO DatiElaboratiToDto(DatiElaborati dati);
     public partial DatiElaborati DtoToDatiElaborati(ProduzioneSistemaDTO dto);
+
+    /// <summary>
+    /// ProduzioneSistemaDto (Application) → ProduzioneSistema (ignora ID e navigation).
+    /// Usato dai servizi CRUD dove il DTO di presentazione viene salvato direttamente.
+    /// </summary>
+    [MapperIgnoreTarget(nameof(ProduzioneSistema.IdProduzioneSistema))]
+    [MapperIgnoreTarget(nameof(ProduzioneSistema.IdCentroNavigation))]
+    [MapperIgnoreTarget(nameof(ProduzioneSistema.IdFaseLavorazioneNavigation))]
+    [MapperIgnoreTarget(nameof(ProduzioneSistema.IdOperatoreNavigation))]
+    [MapperIgnoreTarget(nameof(ProduzioneSistema.IdProceduraLavorazioneNavigation))]
+    [MapperIgnoreSource(nameof(ProduzioneSistemaDto.Lavorazione))]
+    [MapperIgnoreSource(nameof(ProduzioneSistemaDto.Fase))]
+    public partial ProduzioneSistema ApplicationDtoToEntity(ProduzioneSistemaDto dto);
 }

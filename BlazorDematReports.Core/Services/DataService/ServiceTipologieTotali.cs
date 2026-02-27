@@ -1,6 +1,6 @@
-﻿using AutoMapper;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -14,16 +14,18 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceTipologieTotali : ServiceBase<TipologieTotali>, IServiceTipologieTotali
     {
+        private readonly TipologieTotaliMapper _mapper;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione delle tipologie totali.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per conversioni TipologieTotali ↔ DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceTipologieTotali(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTipologieTotali> logger) : base(contextFactory, logger, mapper, configUser)
+        public ServiceTipologieTotali(TipologieTotaliMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTipologieTotali> logger) : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -58,7 +60,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            TipologieTotali TipologieTotali = mapper.Map<TipologieTotali>(arg);
+            TipologieTotali TipologieTotali = _mapper.DtoToTotale(arg);
             await CreateAsync(TipologieTotali);
         }
 
@@ -89,7 +91,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var lstTipologie = (await FindAllAsync()).ToList();
-            var lstTipologieDto = mapper.Map<List<TipologieTotali>, List<TipologieTotaliDto>>(lstTipologie);
+            var lstTipologieDto = lstTipologie.Select(_mapper.TotaleToDto).ToList();
             return lstTipologieDto;
         }
 

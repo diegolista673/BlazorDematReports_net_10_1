@@ -36,17 +36,6 @@ public partial class ClientiMapper
     /// </summary>
     public partial ProcedureClienteDto ProceduraClienteToDto(ProcedureCliente entity);
 
-    /// <summary>Custom mapping per Centro (3-level chain).</summary>
-    private string? MapCentro(Clienti? cliente)
-        => cliente?.IdCentroLavorazioneNavigation?.Centro;
-
-    /// <summary>Custom mapping per Operatore.</summary>
-    private string? MapOperatore(Operatori? operatore)
-        => operatore?.Operatore;
-
-    /// <summary>Custom mapping per Cliente.</summary>
-    private string? MapCliente(Clienti? cliente)
-        => cliente?.NomeCliente;
 
     /// <summary>
     /// ProcedureClienteDto → ProcedureCliente (ignora navigation).

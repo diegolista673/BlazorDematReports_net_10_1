@@ -1,7 +1,6 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -13,25 +12,22 @@ namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
     /// Servizio per la gestione degli operatori nel sistema.
-    /// <para>
-    /// Questa classe implementa l'interfaccia <see cref="IServiceOperatori"/> e fornisce 
-    /// funzionalit� CRUD e query specifiche per l'entit� <see cref="Operatori"/>, 
-    /// gestendo anche la conversione tra entit� e DTO.
-    /// </para>
     /// </summary>
     public class ServiceOperatori : ServiceBase<Operatori>, IServiceOperatori
     {
+        private readonly OperatoriMapper _mapper;
 
         /// <summary>
         /// Inizializza una nuova istanza di <see cref="ServiceOperatori"/>.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
-        /// <param name="configUser">Configurazione dell'utente corrente, usata per filtrare i dati in base ai permessi.</param>
+        /// <param name="mapper">Mapper Mapperly per la conversione tra entità e DTO.</param>
+        /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceOperatori(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceOperatori> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceOperatori(OperatoriMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceOperatori> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -106,13 +102,13 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            Operatori operatore = mapper.Map<Operatori>(oper);
+            Operatori operatore = _mapper.DtoToOperatore(oper);
             operatore.Operatore = operatore.Operatore.ToLower();
             var pwd = operatore.Password;
             var passwordHasher = new PasswordHasher<string>();
             var hash = passwordHasher.HashPassword(null, pwd);
             operatore.Password = hash;
-            List<CentriVisibili> lst = mapper.Map<List<CentriVisibili>>(oper.CentriVisibiliDto);
+            List<CentriVisibili> lst = oper.CentriVisibiliDto.Select(_mapper.DtoToCentroVisibile).ToList();
             operatore.CentriVisibilis = lst;
             await using var context = await contextFactory.CreateDbContextAsync();
             context.Operatoris.Add(operatore);
@@ -128,7 +124,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger: logger);
 
-            Operatori operatore = mapper.Map<Operatori>(oper);
+            Operatori operatore = oper;
             operatore.Operatore = operatore.Operatore.ToLower();
             var pwd = operatore.Password;
             var passwordHasher = new PasswordHasher<string>();
@@ -175,7 +171,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 operatoreOriginal.Idcentro = (int)oper.Idcentro!;
                 operatoreOriginal.FlagOperatoreAttivo = oper.FlagOperatoreAttivo!;
                 operatoreOriginal.IdRuolo = (int)oper.IdRuolo!;
-                List<CentriVisibili> lstDaAggiornare = mapper.Map<List<CentriVisibili>>(oper.CentriVisibiliDto);
+                List<CentriVisibili> lstDaAggiornare = oper.CentriVisibiliDto.Select(_mapper.DtoToCentroVisibile).ToList();
                 context.CentriVisibilis.RemoveRange(operatoreOriginal.CentriVisibilis);
                 context.CentriVisibilis.AddRange(lstDaAggiornare);
                 await context.SaveChangesAsync();
@@ -193,19 +189,26 @@ namespace BlazorDematReports.Core.Services.DataService
             await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
-                return await context.Operatoris
+                var entities = await context.Operatoris
                               .Include(x => x.IdcentroNavigation)
                               .Include(x => x.CentriVisibilis)
+                                  .ThenInclude(cv => cv.IdCentroNavigation)
                               .AsNoTracking()
-                              .ProjectTo<OperatoriDto>(mapper.ConfigurationProvider).OrderBy(x => x.Operatore).ToListAsync();
+                              .OrderBy(x => x.Operatore)
+                              .ToListAsync();
+                return entities.Select(o => _mapper.OperatoreToDto(o)).ToList();
             }
             else
             {
-                return await context.Operatoris
+                var entities = await context.Operatoris
                               .Include(x => x.IdcentroNavigation)
                               .Include(x => x.CentriVisibilis)
+                                  .ThenInclude(cv => cv.IdCentroNavigation)
                               .AsNoTracking()
-                              .ProjectTo<OperatoriDto>(mapper.ConfigurationProvider).Where(x => x.Idcentro == configUser.IdCentroOrigine).OrderBy(x => x.Operatore).ToListAsync();
+                              .Where(x => x.Idcentro == configUser.IdCentroOrigine)
+                              .OrderBy(x => x.Operatore)
+                              .ToListAsync();
+                return entities.Select(o => _mapper.OperatoreToDto(o)).ToList();
             }
         }
     }

@@ -17,12 +17,12 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
     {
         private readonly ILogger<Ader4Handler> _logger;
         private readonly EmailDailyFlagService _flagService;
-        private readonly Ader4EmailService _emailService;
+        private readonly IEmailBatchProcessor _emailService;
 
         public Ader4Handler(
             ILogger<Ader4Handler> logger,
             EmailDailyFlagService flagService,
-            Ader4EmailService emailService)
+            IEmailBatchProcessor emailService)
         {
             _logger       = logger;
             _flagService  = flagService;

@@ -1,6 +1,6 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -10,23 +10,23 @@ using Microsoft.Extensions.Logging;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// Servizio per la gestione dei centri di lavorazione e delle relative operazioni sui dati.
+    /// Servizio per la gestione dei centri di lavorazione.
     /// </summary>
     public class ServiceCentri : ServiceBase<CentriLavorazione>, IServiceCentri
     {
-
+        private readonly CentriMapper _mapper;
 
         /// <summary>
-        /// Inizializza una nuova istanza della classe <see cref="ServiceCentri"/>.
+        /// Inizializza una nuova istanza di <see cref="ServiceCentri"/>.
         /// </summary>
-        /// <param name="mapper">Mapper per la conversione tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per CentriLavorazione ? DTO.</param>
         /// <param name="configUser">Configurazione utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per la registrazione delle operazioni.</param>
-        public ServiceCentri(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceCentri> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceCentri(CentriMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceCentri> logger)
+            : base(contextFactory, logger, configUser)
         {
-
+            _mapper = mapper;
         }
 
 
@@ -72,7 +72,7 @@ namespace BlazorDematReports.Core.Services.DataService
             {
                 lstCentri = await context.CentriLavoraziones.Where(x => x.Idcentro == configUser.IdCentroOrigine).ToListAsync();
             }
-            List<CentriVisibiliDto> lstCentriVisibiliDto = mapper.Map<List<CentriVisibiliDto>>(lstCentri);
+            List<CentriVisibiliDto> lstCentriVisibiliDto = lstCentri.Select(_mapper.CentroToCentroVisibileDto).ToList();
 
             return lstCentriVisibiliDto;
         }
@@ -86,7 +86,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<CentriLavorazione>(CentriLavorazioneDto);
+            var entity = _mapper.DtoToCentro(CentriLavorazioneDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.CentriLavoraziones.Add(entity);
             await context.SaveChangesAsync();

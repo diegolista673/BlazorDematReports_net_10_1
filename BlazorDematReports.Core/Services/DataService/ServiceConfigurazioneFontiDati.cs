@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.DataReading.Infrastructure;
@@ -22,15 +21,14 @@ namespace BlazorDematReports.Core.Services.DataService
         private readonly IProductionJobScheduler productionScheduler;
 
         /// <summary>
-        /// Costruttore che inizializza le dipendenze necessarie per la gestione delle procedure di lavorazione.
+        /// Costruttore che inizializza le dipendenze necessarie.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
         /// <param name="productionScheduler">Scheduler per la gestione dei job Hangfire.</param>
-        public ServiceConfigurazioneFontiDati(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigurazioneFontiDati> logger, IProductionJobScheduler productionScheduler)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceConfigurazioneFontiDati(ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigurazioneFontiDati> logger, IProductionJobScheduler productionScheduler)
+            : base(contextFactory, logger, configUser)
         {
             this.productionScheduler = productionScheduler;
         }

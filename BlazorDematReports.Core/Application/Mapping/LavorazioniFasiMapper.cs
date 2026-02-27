@@ -33,9 +33,7 @@ public partial class LavorazioniFasiMapper
     /// <summary>
     /// LavorazioniFasiDataReading → LavorazioniFasiDataReadingDto (denormalizza nomi).
     /// </summary>
-    [MapProperty(
-        nameof(LavorazioniFasiDataReading.IdProceduraLavorazioneNavigation) + "." + nameof(ProcedureLavorazioni.NomeProcedura),
-        nameof(LavorazioniFasiDataReadingDto.Lavorazione))]
+    [MapperIgnoreTarget(nameof(LavorazioniFasiDataReadingDto.Lavorazione))]
     [MapProperty(
         nameof(LavorazioniFasiDataReading.IdFaseLavorazioneNavigation) + "." + nameof(FasiLavorazione.FaseLavorazione),
         nameof(LavorazioniFasiDataReadingDto.FaseLavorazione))]

@@ -1,7 +1,6 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.DataReading.Dto;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
@@ -16,18 +15,22 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceProcedureLavorazioni : ServiceBase<ProcedureLavorazioni>, IServiceProcedureLavorazioni
     {
-
+        private readonly ProcedureLavorazioniMapper _mapper;
+        private readonly TaskDaEseguireMapper _taskMapper;
 
         /// <summary>
-        /// Costruttore che inizializza le dipendenze necessarie per la gestione delle procedure di lavorazione.
+        /// Costruttore che inizializza le dipendenze necessarie.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per ProcedureLavorazioni ↔ DTO.</param>
+        /// <param name="taskMapper">Mapper Mapperly per TaskDaEseguire ↔ DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceProcedureLavorazioni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProcedureLavorazioni> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceProcedureLavorazioni(ProcedureLavorazioniMapper mapper, TaskDaEseguireMapper taskMapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProcedureLavorazioni> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
+            _taskMapper = taskMapper;
         }
 
         /// <summary>
@@ -57,7 +60,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<ProcedureLavorazioniDto, ProcedureLavorazioni>(procedureLavorazioniDto);
+            var entity = _mapper.DtoToProcedura(procedureLavorazioniDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.ProcedureLavorazionis.Add(entity);
             await context.SaveChangesAsync();
@@ -180,18 +183,18 @@ namespace BlazorDematReports.Core.Services.DataService
             await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
-                return await context.ProcedureLavorazionis
+                return (await context.ProcedureLavorazionis
                     .OrderBy(x => x.NomeProcedura)
-                    .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                    .ToListAsync();
+                    .ToListAsync())
+                    .Select(_mapper.ProceduraToDto).ToList();
             }
             else
             {
-                return await context.ProcedureLavorazionis
+                return (await context.ProcedureLavorazionis
                     .Where(x => x.Idcentro == configUser.IdCentroOrigine)
                     .OrderBy(x => x.NomeProcedura)
-                    .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                    .ToListAsync();
+                    .ToListAsync())
+                    .Select(_mapper.ProceduraToDto).ToList();
             }
         }
 
@@ -204,13 +207,13 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProcedureLavorazionis
+            return (await context.ProcedureLavorazionis
                 .Include(x => x.IdoperatoreNavigation)
-                .Include(x => x.LavorazioniFasiDataReadings)
+                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.IdFaseLavorazioneNavigation)
                 .AsNoTracking()
                 .OrderBy(x => x.NomeProcedura)
-                .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                .ToListAsync();
+                .ToListAsync())
+                .Select(_mapper.ProceduraToDto).ToList();
         }
 
         /// <summary>
@@ -223,14 +226,14 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProcedureLavorazionis
+            return (await context.ProcedureLavorazionis
                 .Include(x => x.IdoperatoreNavigation)
-                .Include(x => x.LavorazioniFasiDataReadings)
+                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.IdFaseLavorazioneNavigation)
                 .AsNoTracking()
                 .Where(x => x.Idcentro == idCentro)
                 .OrderBy(x => x.NomeProcedura)
-                .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                .ToListAsync();
+                .ToListAsync())
+                .Select(_mapper.ProceduraToDto).ToList();
         }
 
         /// <summary>
@@ -259,9 +262,7 @@ namespace BlazorDematReports.Core.Services.DataService
                             .AsNoTracking()
                             .Where(x => x.IdproceduraLavorazione == idProceduraLavorazione);
 
-            return await query
-                .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                .FirstOrDefaultAsync();
+            return (await query.ToListAsync()).Select(_mapper.ProceduraToDto).FirstOrDefault();
         }
 
         /// <summary>
@@ -534,7 +535,7 @@ namespace BlazorDematReports.Core.Services.DataService
                                 IdConfigurazioneDatabase = taskDto.IdConfigurazioneDatabase
                             };
 
-                            var newTask = mapper.Map<TaskDaEseguire>(correctedTaskDto);
+                            var newTask = _taskMapper.DtoToEntity(correctedTaskDto);
 
                             // **CORREZIONE: Assicurati che IdTaskHangFire non sia null per task nuovi**
                             if (string.IsNullOrWhiteSpace(newTask.IdTaskHangFire))
@@ -656,7 +657,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 else
                 {
                     // Aggiungi nuovo task
-                    var newTask = mapper.Map<TaskDaEseguire>(taskDto);
+                    var newTask = _taskMapper.DtoToEntity(taskDto);
 
                     // **CORREZIONE: Assicurati che IdTaskHangFire non sia null per task nuovi**
                     if (string.IsNullOrWhiteSpace(newTask.IdTaskHangFire))
@@ -688,10 +689,20 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProcedureLavorazionis
+            return (await context.ProcedureLavorazionis
                 .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires)
-                .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                .FirstOrDefaultAsync(x => x.NomeProcedura == nomeProcedura);
+                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.IdFaseLavorazioneNavigation)
+                .Include(x => x.QueryProcedureLavorazionis)
+                .Include(x => x.IdoperatoreNavigation)
+                .Include(x => x.IdrepartiNavigation)
+                .Include(x => x.IdformatoDatiProduzioneNavigation)
+                .Include(x => x.IdproceduraClienteNavigation)
+                    .ThenInclude(p => p!.IdclienteNavigation)
+                    .ThenInclude(p => p!.IdCentroLavorazioneNavigation)
+                .AsNoTracking()
+                .ToListAsync())
+                .Select(_mapper.ProceduraToDto)
+                .FirstOrDefault(x => x.NomeProcedura == nomeProcedura);
         }
 
         /// <summary>
@@ -703,16 +714,17 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProcedureLavorazionis
+            return (await context.ProcedureLavorazionis
                 .Include(x => x.IdoperatoreNavigation)
                 .Include(x => x.IdrepartiNavigation)
                 .Include(x => x.IdformatoDatiProduzioneNavigation)
                 .Include(x => x.QueryProcedureLavorazionis)
                 .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires)
+                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdproceduraClienteNavigation).ThenInclude(p => p!.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                 .OrderBy(x => x.NomeProcedura)
-                .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                .ToListAsync();
+                .ToListAsync())
+                .Select(_mapper.ProceduraToDto).ToList();
         }
 
         /// <summary>
@@ -725,15 +737,18 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProcedureLavorazionis
+            return (await context.ProcedureLavorazionis
                 .Include(x => x.IdoperatoreNavigation!)
                 .Include(x => x.IdrepartiNavigation!)
                 .Include(x => x.IdformatoDatiProduzioneNavigation!)
                 .Include(x => x.QueryProcedureLavorazionis!)
                 .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.TaskDaEseguires).ThenInclude(t => t.IdConfigurazioneDatabaseNavigation)
+                .Include(x => x.LavorazioniFasiDataReadings!).ThenInclude(x => x.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdproceduraClienteNavigation!).ThenInclude(p => p.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
-                .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                .FirstOrDefaultAsync(x => x.IdproceduraLavorazione == idProceduraLavorazione);
+                .Where(x => x.IdproceduraLavorazione == idProceduraLavorazione)
+                .ToListAsync())
+                .Select(_mapper.ProceduraToDto)
+                .FirstOrDefault();
         }
 
 
@@ -747,18 +762,19 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProcedureLavorazionis
+            return (await context.ProcedureLavorazionis
                 .Include(x => x.IdoperatoreNavigation)
                 .Include(x => x.IdrepartiNavigation)
                 .Include(x => x.IdformatoDatiProduzioneNavigation)
                 .Include(x => x.QueryProcedureLavorazionis)
                 .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.TaskDaEseguires)
+                .Include(x => x.LavorazioniFasiDataReadings).ThenInclude(x => x.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdproceduraClienteNavigation).ThenInclude(p => p!.IdclienteNavigation).ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                 .AsNoTracking()
                 .Where(x => x.Idcentro == idCentro)
                 .OrderBy(x => x.NomeProcedura)
-                .ProjectTo<ProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                .ToListAsync();
+                .ToListAsync())
+                .Select(_mapper.ProceduraToDto).ToList();
         }
 
 

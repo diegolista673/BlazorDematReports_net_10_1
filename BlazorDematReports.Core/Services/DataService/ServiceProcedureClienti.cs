@@ -1,8 +1,8 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
-using Entities.Helpers; // Aggiornato: usare helper unificato
+using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,20 +10,22 @@ using Microsoft.Extensions.Logging;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// Servizio per la gestione delle procedure clienti e delle relative operazioni sui dati.
+    /// Servizio per la gestione delle procedure clienti.
     /// </summary>
     public class ServiceProcedureClienti : ServiceBase<ProcedureCliente>, IServiceProcedureClienti
     {
+        private readonly ClientiMapper _mapper;
 
         /// <summary>
-        /// Costruttore che inizializza le dipendenze necessarie per la gestione delle procedure clienti.
+        /// Costruttore che inizializza le dipendenze necessarie.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per ProcedureCliente ↔ DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceProcedureClienti(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProcedureClienti> logger) : base(contextFactory, logger, mapper, configUser)
+        public ServiceProcedureClienti(ClientiMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProcedureClienti> logger) : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <inheritdoc/>
@@ -83,8 +85,7 @@ namespace BlazorDematReports.Core.Services.DataService
                     .Where(x => x.Idcentro == configUser.IdCentroOrigine)
                     .ToListAsync();
             }
-            var LstProcedureClienteDto = mapper.Map<List<ProcedureCliente>, List<ProcedureClienteDto>>(lst);
-            LstProcedureClienteDto = LstProcedureClienteDto.OrderBy(x => x.ProceduraCliente).ToList();
+            var LstProcedureClienteDto = lst.Select(_mapper.ProceduraClienteToDto).OrderBy(x => x.ProceduraCliente).ToList();
             return LstProcedureClienteDto;
         }
 
@@ -120,7 +121,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<ProcedureCliente>(procedureClienteDto);
+            var entity = _mapper.DtoToProceduraCliente(procedureClienteDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.ProcedureClientes.Add(entity);
             await context.SaveChangesAsync();

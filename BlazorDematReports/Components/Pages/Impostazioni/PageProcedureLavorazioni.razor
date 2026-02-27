@@ -473,7 +473,7 @@
             ProcedureLavorazioniDto? lavorazioniDto = await serviceProcedureLavorazioni
                 .GetSingleProceduraLavorazioneDtoByIDAsync((int)item.IdproceduraLavorazione!);
 
-            ValueBeforeEdit = Mapper!.Map<ProcedureLavorazioniDto>(lavorazioniDto);
+            ValueBeforeEdit = DeepClone(lavorazioniDto);
 
             // ? COPIA LE RELAZIONI NELL'ITEM DEL DATAGRID
             item.LavorazioniFasiDataReadingsDto = lavorazioniDto.LavorazioniFasiDataReadingsDto;

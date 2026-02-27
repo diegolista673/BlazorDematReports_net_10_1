@@ -9,7 +9,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
     /// Implementazione servizio email per ADER4 (Equitalia 4).
     /// Gestisce import CSV da allegati email con logica specifica Sorter/Captiva.
     /// </summary>
-    public sealed class Ader4EmailService : BaseEwsEmailService
+    public class Ader4EmailService : BaseEwsEmailService, IEmailBatchProcessor
     {
         private readonly IConfiguration _configuration;
 
@@ -77,7 +77,6 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
                 return;
             }
 
-            // Logica specifica per tipo file
             if (attachment.FileName.Contains("EQTMN4_Scatole_Scansionate"))
             {
                 await ProcessScatoleScansionateAsync(csvData, metadata, ct);
@@ -131,31 +130,30 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             );
 
             // TODO: Inserimento dati in database (implementare in classe derivata o via DI)
-            await Task.CompletedTask;
-        }
+                await Task.CompletedTask;
+            }
 
+            /// <summary>
+            /// Processa file dispacci (Pre-accettazione, Ripartizione, Restituzione).
+            /// Calcola il totale documenti e lo inserisce nei metadata con la chiave del tipo dispaccio.
+            /// </summary>
+            private async Task ProcessDispacciAsync(
+                DataTable csvData,
+                string tipoDispaccio,
+                Dictionary<string, string> metadata,
+                CancellationToken ct)
+            {
+                Logger.LogInformation("Elaborazione Dispacci {Tipo}: {RowCount} righe", tipoDispaccio, csvData.Rows.Count);
 
-        /// <summary>
-        /// Processa file dispacci (Pre-accettazione, Ripartizione, Restituzione).
-        /// </summary>
-        private async Task ProcessDispacciAsync(
-            DataTable csvData,
-            string tipoDispaccio,
-            Dictionary<string, string> metadata,
-            CancellationToken ct)
-        {
-            Logger.LogInformation("Elaborazione Dispacci {Tipo}: {RowCount} righe", tipoDispaccio, csvData.Rows.Count);
+                int totale = CalculateTotaleDocumenti(csvData);
+                metadata[tipoDispaccio] = totale.ToString();
 
-            int totale = CalculateTotaleDocumenti(csvData);
-            metadata[tipoDispaccio] = totale.ToString();
+                Logger.LogInformation("Totale Dispacci {Tipo}: {Totale}", tipoDispaccio, totale);
 
-            Logger.LogInformation("Totale Dispacci {Tipo}: {Totale}", tipoDispaccio, totale);
+                await Task.CompletedTask;
+            }
 
-            // TODO: Inserimento dati in database
-            await Task.CompletedTask;
-        }
-
-        /// <summary>
+            /// <summary>
         /// Calcola totali per file scatole scansionate (logica specifica ADER4).
         /// </summary>
         private TotaliScansionati CalculateTotaliScansionati(DataTable csvData)

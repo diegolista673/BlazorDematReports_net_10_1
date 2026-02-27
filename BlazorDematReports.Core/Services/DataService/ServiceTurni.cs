@@ -1,6 +1,6 @@
-﻿using AutoMapper;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -14,17 +14,19 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceTurni : ServiceBase<Turni>, IServiceTurni
     {
+        private readonly TurniMapper _mapper;
 
         /// <summary>
         /// Inizializza una nuova istanza di <see cref="ServiceTurni"/>.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per conversioni Turni ↔ DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceTurni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTurni> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceTurni(TurniMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTurni> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -44,7 +46,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            Turni turni = mapper.Map<Turni>(turniDto);
+            Turni turni = _mapper.DtoToTurno(turniDto);
             await CreateAsync(turni);
         }
 

@@ -13,16 +13,19 @@ public partial class TaskDaEseguireMapper
 {
     /// <summary>
     /// TaskDaEseguire → TaskDaEseguireDto (denormalizza FaseLavorazione e TipoFonte).
+    /// IdProceduraLavorazione, IdFaseLavorazione, FaseLavorazione non sono mappabili via
+    /// IdLavorazioneFaseDateReadingNavigation (non-nullable, mai inclusa in query EF → NRE).
+    /// Vengono arricchiti in MapFasiCollection dal contesto LavorazioniFasiDataReading parent.
+    /// TaskName   ← IdTaskHangFire (chiave Hangfire leggibile, es. "hdl:15-10-nome:ader4").
+    /// Descrizione ← IdConfigurazioneDatabaseNavigation.DescrizioneConfigurazione.
     /// </summary>
+    [MapperIgnoreTarget(nameof(TaskDaEseguireDto.IdProceduraLavorazione))]
+    [MapperIgnoreTarget(nameof(TaskDaEseguireDto.IdFaseLavorazione))]
+    [MapperIgnoreTarget(nameof(TaskDaEseguireDto.FaseLavorazione))]
+    [MapProperty(nameof(TaskDaEseguire.IdTaskHangFire), nameof(TaskDaEseguireDto.TaskName))]
     [MapProperty(
-        nameof(TaskDaEseguire.IdLavorazioneFaseDateReadingNavigation) + "." + nameof(LavorazioniFasiDataReading.IdProceduraLavorazione),
-        nameof(TaskDaEseguireDto.IdProceduraLavorazione))]
-    [MapProperty(
-        nameof(TaskDaEseguire.IdLavorazioneFaseDateReadingNavigation) + "." + nameof(LavorazioniFasiDataReading.IdFaseLavorazione),
-        nameof(TaskDaEseguireDto.IdFaseLavorazione))]
-    [MapProperty(
-        nameof(TaskDaEseguire.IdLavorazioneFaseDateReadingNavigation) + "." + nameof(LavorazioniFasiDataReading.IdFaseLavorazioneNavigation) + "." + nameof(FasiLavorazione.FaseLavorazione),
-        nameof(TaskDaEseguireDto.FaseLavorazione))]
+        nameof(TaskDaEseguire.IdConfigurazioneDatabaseNavigation) + "." + nameof(ConfigurazioneFontiDati.DescrizioneConfigurazione),
+        nameof(TaskDaEseguireDto.Descrizione))]
     public partial TaskDaEseguireDto EntityToDto(TaskDaEseguire entity);
 
     /// <summary>

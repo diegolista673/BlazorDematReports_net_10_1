@@ -1,6 +1,6 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -10,21 +10,23 @@ using Microsoft.Extensions.Logging;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// Servizio per la gestione delle lavorazioni fasi tipo totale e delle relative operazioni sui dati.
+    /// Servizio per la gestione delle lavorazioni fasi tipo totale.
     /// </summary>
     public class ServiceLavorazioniFasiTipoTotale : ServiceBase<LavorazioniFasiTipoTotale>, IServiceLavorazioniFasiTipoTotale
     {
+        private readonly LavorazioniFasiMapper _mapper;
 
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione delle lavorazioni fasi tipo totale.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per LavorazioniFasiTipoTotale ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceLavorazioniFasiTipoTotale(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceLavorazioniFasiTipoTotale> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceLavorazioniFasiTipoTotale(LavorazioniFasiMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceLavorazioniFasiTipoTotale> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <inheritdoc/>
@@ -81,7 +83,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<LavorazioniFasiTipoTotale>(arg);
+            var entity = _mapper.DtoToTipoTotale(arg);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.LavorazioniFasiTipoTotales.Add(entity);
             await context.SaveChangesAsync();

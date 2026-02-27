@@ -10,30 +10,14 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-      nelle query dati migliorare le query eliminando nel where la convert date 
-      per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
-      esempio :
+nelle query dati migliorare le query eliminando nel where la convert date 
+per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
+esempio :
 
 controllare gli handler 
 controllare come vengono passate le date alle query per passarle come formato 'yyddmm' oppure senza convert(date) per velocizzarle
 
 completare lettura allegati e poi la notitfica via mail della lettura avvenuta?
-
-scrivere documentazione per la crazione dei task e di tutte le operazioni 
-
-scrivere documentazione completa del progetto , aggiungere note create in instructions per miglioare la documentazione aggiungere grafico delle attivita /sequenze
-
-spiegare funzionamento degli handler e le interfacce
-
-fare guida per developer per aggiungere un nuovo handler passo passo
-
-come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
-
-va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo oppure eliminarle? meglio eliminare
-
-controllare le lavorazioni che sono in datareading true ma non hanno un job associato
-
-
 
 Controllare le varie operazioni fatte con utenti e permessi diversi e ruoli soprattutto per elenco lavoratori, schede totali e impostazioni
 
@@ -41,6 +25,30 @@ Altra utenza quante volte possibile ? pensare di attribuire ad uno scanner piu d
 
 Condizione obbligatoria è che ci sia il risultato in Operatore,datalavorazione,Documenti,fogli pagine puoè valere per tutte le lavorazioni?
 testare query dedicata con qualche query integrta che ha campi data diversi 
+
+ipotizzare test con playright per testare l'interfaccia utente e le funzionalità del sistema in modo automatizzato.
+
+
+come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
+la lettura dei csv da cartella è andata abuon fine, resta da correggere il mancato task\query valorizzato in data manager nella form
+capire come gestire lettura dati da/a com email
+
+va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo oppure eliminarle? meglio eliminare
+
+controllare le lavorazioni che sono in datareading true ma non hanno un job associato
+
+testare tutti gli handler attivi su db collaudo
+
+Scopo del Sistema: Riassunto delle funzionalità principali basato sui componenti Razor e i servizi presenti.
+Architettura Tecnica: Spiegazione del flusso di dati tra il client (SignalR), i componenti Blazor e i servizi di backend.
+Analisi del Program.cs: Descrizione dei servizi registrati nel container DI (Dependency Injection) e del middleware configurato.
+Schema Database: Analisi dei file sotto la cartella 'Data' o dei file 'DbContext' per descrivere le entità principali e le relazioni.
+Guida al Setup: Istruzioni per configurare l'ambiente di sviluppo e le stringhe di connessione."
+fare guida per developer per aggiungere un nuovo handler passo passo
+scrivere documentazione per la crazione dei task e di tutte le operazioni 
+scrivere documentazione completa del progetto , aggiungere note create in instructions per miglioare la documentazione aggiungere grafico delle attivita /sequenze
+
+
 
 
 

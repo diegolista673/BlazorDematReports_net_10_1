@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using BlazorDematReports.Components.Dialog;
+﻿using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Components.Layout;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
@@ -14,6 +13,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
 using MudBlazor;
+using System.Text.Json;
 
 
 
@@ -27,7 +27,6 @@ namespace BlazorDematReports.Components.Shared
     {
 
         [Inject] protected UiStateService? UiState { get; set; }
-        [Inject] protected IMapper? Mapper { get; set; }
         [Inject] protected NotificationDialog? NotificationDialog { get; set; }
         [Inject] protected ILogger<TLogger>? Logger { get; set; }
         [Inject] protected ConfigUser? ConfigUser { get; set; }
@@ -63,7 +62,6 @@ namespace BlazorDematReports.Components.Shared
 
 
         public BaseComponentPage(
-            IMapper mapper,
             NotificationDialog notificationDialog,
             ILogger<TLogger> logger,
             ConfigUser configUser,
@@ -71,7 +69,6 @@ namespace BlazorDematReports.Components.Shared
             IDialogService dialogService,
             ILavorazioniConfigManager? lavorazioniConfigManager)
         {
-            Mapper = mapper;
             NotificationDialog = notificationDialog;
             Logger = logger;
             ConfigUser = configUser;
