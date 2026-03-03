@@ -7,6 +7,7 @@ using BlazorDematReports.Core.DataReading.Infrastructure;
 using BlazorDematReports.Core.DataReading.Interfaces;
 using BlazorDematReports.Core.DataReading.Services;
 using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
+using BlazorDematReports.Core.Handlers.MailHandlers;
 using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
 using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
 using BlazorDematReports.Core.Services.Email;
@@ -81,6 +82,7 @@ public static class Program
             MapMiddleware(app);
             await SyncRecurringJobsAsync(app);
             ScheduleSystemJobs();
+            ScheduleMailIngestion();
 
             _app = app;
             await app.RunAsync();
@@ -262,6 +264,7 @@ public static class Program
         builder.Services.AddScoped<IServiceConfigurazioneFontiDati, ServiceConfigurazioneFontiDati>();
         builder.Services.AddScoped<IServiceMail, ServiceMail>();
         builder.Services.AddScoped<IServiceTaskManagement, ServiceTaskManagement>();
+        builder.Services.AddScoped<IMailIngestionService, MailIngestionService>();
         builder.Services.AddScoped<ProcedureEditStateService>();
         builder.Services.AddScoped<ProcedureValidationService>();
 
@@ -292,13 +295,21 @@ public static class Program
         builder.Services.AddSingleton<IProductionDataHandler, PraticheSuccessioneHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Rdmkt_RSPHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Hera16EwsHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Ader4Handler>();
+
+        // Handler ADER4: staging readers (uno per fase)
+        builder.Services.AddSingleton<IProductionDataHandler, Ader4CaptivaHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterBusteHandler>();
+
+        // Handler ingestion generico mail
+        builder.Services.AddSingleton<IProductionDataHandler, GenericMailIngestionHandler>();
 
         // Registry e servizio unificato: Singleton perche' il dizionario e' immutabile dopo costruzione
         builder.Services.AddSingleton<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
 
-        // Registra servizi email
-        builder.Services.AddSingleton<EmailDailyFlagService>();
+
+        // Processori mail ingestion (chiamati da GenericMailIngestionHandler)
+        builder.Services.AddSingleton<IMailIngestionProcessor, Ader4IngestionProcessor>();
 
         // Registrazione condizionale: mock (cartella locale) in sviluppo, Exchange EWS in produzione.
         // Attivare con "MailServices:ADER4:UseMockService": true in appsettings.Development.json.
@@ -437,11 +448,70 @@ public static class Program
         await scheduler.SyncAllAsync();
     }
 
+
     private static void ScheduleSystemJobs()
     {
         RecurringJob.AddOrUpdate("system:cleanup-orphans",() => CleanupJobsOrfani(), "30 2 * * *");
     }
+
+
+    private static void ScheduleMailIngestion()
+    {
+        RecurringJob.AddOrUpdate(
+            "MAIL_INGESTION",
+            () => ExecuteMailIngestionAsync(),
+            "0 7 * * *");  // Ogni giorno alle 07:00
+    }
+
+    /// <summary>
+    /// Esegue il job di ingestion mail generico.
+    /// Chiamato da Hangfire recurring job MAIL_INGESTION.
+    /// Questo job orchestra tutti i processori mail registrati (ADER4, HERA16, etc.)
+    /// e salva i dati aggregati nella tabella staging DatiMailIngestion.
+    /// </summary>
+    public static async Task ExecuteMailIngestionAsync()
+    {
+        using var scope = _app.Services.CreateScope();
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("MailIngestion");
+
+        try
+        {
+            logger.LogInformation("Inizio job MAIL_INGESTION");
+
+            var handler = scope.ServiceProvider
+                .GetServices<IProductionDataHandler>()
+                .FirstOrDefault(h => h.HandlerCode == "MAIL_INGESTION");
+
+            if (handler is null)
+            {
+                logger.LogError("Handler MAIL_INGESTION (GenericMailIngestionHandler) non trovato nel registry");
+                return;
+            }
+
+            // Context minimale per handler ingestion (non legato a TaskDaEseguire)
+            var context = new BlazorDematReports.Core.Lavorazioni.Models.ProductionExecutionContext
+            {
+                StartDataLavorazione = DateTime.Today,
+                EndDataLavorazione = DateTime.Today,
+                IDProceduraLavorazione = 0,
+                IDFaseLavorazione = 0,
+                IDCentro = 0
+            };
+
+            await handler.ExecuteAsync(context, CancellationToken.None);
+            logger.LogInformation("Job MAIL_INGESTION completato con successo");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Errore durante esecuzione job MAIL_INGESTION");
+            throw;
+        }
+    }
+
+
     #endregion
+
 
     #region Maintenance Jobs
     /// <summary>

@@ -35,6 +35,8 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Counter> Counters { get; set; }
 
+    public virtual DbSet<DatiMailIngestion> DatiMailIngestions { get; set; }
+
     public virtual DbSet<ElaborazioneEmailGiornaliera> ElaborazioneEmailGiornalieras { get; set; }
 
     public virtual DbSet<FasiLavorazione> FasiLavoraziones { get; set; }
@@ -328,6 +330,40 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.Key).HasMaxLength(100);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.ExpireAt).HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<DatiMailIngestion>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_DatiMailIngestion");
+
+            entity.ToTable("DatiMailIngestion");
+
+            entity.HasIndex(e => new { e.CodiceServizio, e.DataRiferimento, e.TipoDato, e.Centro }, "UQ_DatiMailIngestion_Servizio_Data_Tipo_Centro")
+                .IsUnique();
+
+            entity.HasIndex(e => new { e.CodiceServizio, e.DataRiferimento, e.TipoDato, e.Centro }, "IX_DatiMailIngestion_Elaborata_Servizio_Data")
+                .HasFilter("([Elaborata] = 0)");
+
+            entity.HasIndex(e => e.DataIngestione, "IX_DatiMailIngestion_DataIngestione");
+
+            entity.Property(e => e.CodiceServizio)
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            entity.Property(e => e.TipoDato)
+                .HasMaxLength(100)
+                .IsUnicode(true);
+
+            entity.Property(e => e.Centro)
+                .HasMaxLength(50)
+                .IsUnicode(true);
+
+            entity.Property(e => e.DataIngestione)
+                .HasColumnType("datetime2")
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.Property(e => e.Elaborata)
+                .HasDefaultValue(false);
         });
 
         modelBuilder.Entity<ElaborazioneEmailGiornaliera>(entity =>

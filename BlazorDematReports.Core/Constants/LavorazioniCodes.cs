@@ -22,6 +22,21 @@ namespace BlazorDematReports.Core.Constants
         public const string ANT_ADER4_SORTER_1_2 = "ANT_ADER4_SORTER_1_2";
 
         /// <summary>
+        /// Lavorazione ADER4_CAPTIVA.
+        /// </summary>
+        public const string ADER4_CAPTIVA = "ADER4_CAPTIVA";
+
+        /// <summary>
+        /// Lavorazione ADER4_SORTER.
+        /// </summary>
+        public const string ADER4_SORTER = "ADER4_SORTER";
+
+        /// <summary>
+        /// Lavorazione ADER4_SORTER_BUSTE.
+        /// </summary>
+        public const string ADER4_SORTER_BUSTE = "ADER4_SORTER_BUSTE";
+
+        /// <summary>
         /// Lavorazione Pratiche Successione.
         /// </summary>
         public const string PRATICHE_SUCCESSIONE = "PRATICHE_SUCCESSIONE";

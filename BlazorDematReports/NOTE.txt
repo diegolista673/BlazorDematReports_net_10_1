@@ -30,7 +30,26 @@ ipotizzare test con playright per testare l'interfaccia utente e le funzionalit�
 
 
 come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
-la lettura dei csv da cartella è andata abuon fine, resta da correggere il mancato task\query valorizzato in data manager nella form
+✅ COMPLETATO: implementato LocalCsvAder4EmailService con IEmailBatchProcessor per test locali
+✅ COMPLETATO: fix TaskDaEseguireMapper - TaskName da IdTaskHangFire, Descrizione da ConfigurazioneFontiDati
+✅ COMPLETATO: fix FlagDataReading in TaskGenerationService per visibilità dropdown DataManager
+✅ COMPLETATO: refactoring architettura mail ingestion separata da production tasks
+
+NUOVA ARCHITETTURA MAIL INGESTION (implementata 2026-03-02):
+- Tabella DatiMailIngestion (staging): riceve dati aggregati da tutte le mail
+- GenericMailIngestionHandler: job Hangfire singolo (07:00) che orchestra tutti i processori mail
+- IMailIngestionProcessor: interfaccia per processori specifici (Ader4IngestionProcessor, HeraSu16IngestionProcessor, etc.)
+- Handler produzione fase-specifici: leggono staging filtrato per servizio/tipo/centro, scrivono ProduzioneSistema
+  * Ader4CaptivaHandler → legge DatiMailIngestion WHERE TipoDato='ScansioneCaptiva'
+  * Ader4SorterHandler → legge DatiMailIngestion WHERE TipoDato='ScansioneSorter'
+  * Ader4SorterBusteHandler → legge DatiMailIngestion WHERE TipoDato='ScansioneSorterBuste'
+
+PROSSIMI PASSI:
+1. Eseguire script SQL: Database\Migrations\20260302_AddDatiMailIngestion.sql
+2. Creare ConfigurazioneFontiDati per ADER4_CAPTIVA/SORTER/SORTER_BUSTE (TipoFonte=HandlerIntegrato)
+3. Deprecare EmailDailyFlagService (non più necessario con staging)
+4. Applicare stesso pattern a HERA16 (creare Hera16IngestionProcessor + staging readers)
+
 capire come gestire lettura dati da/a com email
 
 va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo oppure eliminarle? meglio eliminare
