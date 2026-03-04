@@ -85,7 +85,7 @@ namespace BlazorDematReports.Core.Services.Email
         /// </summary>
         /// <param name="ct">Token di cancellazione.</param>
         /// <returns>Risultato batch elaborazione email.</returns>
-        public async System.Threading.Tasks.Task<BatchEmailProcessingResult> ProcessEmailsAsync(CancellationToken ct = default)
+        public virtual async System.Threading.Tasks.Task<BatchEmailProcessingResult> ProcessEmailsAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Inizio elaborazione email batch");
 
@@ -444,7 +444,7 @@ namespace BlazorDematReports.Core.Services.Email
         {
             // Pattern comuni (override per pattern specifici)
             ExtractMetadataField(bodyText, "Identificativo evento:", metadata, "IdEvento");
-            ExtractMetadataField(bodyText, "Periodo di riferimento:", metadata, "DataRiferimento");
+            ExtractMetadataField(bodyText, "Periodo di riferimento:", metadata, "DataLavorazione");
             ExtractMetadataField(bodyText, "Data evento:", metadata, "DataEvento");
         }
 

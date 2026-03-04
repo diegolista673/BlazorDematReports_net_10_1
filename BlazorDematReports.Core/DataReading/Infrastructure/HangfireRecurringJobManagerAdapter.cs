@@ -159,7 +159,11 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 throw new ArgumentException($"Cron non valida: {cronExpression}", nameof(cronExpression));
         }
 
-        /// <summary>Ritorna true se l'espressione cron è sintatticamente corretta e produce una prossima occorrenza.</summary>
+        /// <summary>
+        /// Ritorna true se l'espressione cron è sintatticamente corretta e produce una prossima occorrenza.
+        /// Usa DateTime.UtcNow (Kind=Utc) perché Cronos richiede un riferimento UTC per GetNextOccurrence;
+        /// DateTime.Now (Kind=Local) causa un'eccezione interna che verrebbe inghiottita dal catch restituendo false.
+        /// </summary>
         private static bool IsCronValid(string cron)
         {
             try

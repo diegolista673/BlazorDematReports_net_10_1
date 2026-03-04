@@ -28,6 +28,9 @@ namespace Entities.Models.DbApplication
 
         public virtual DbSet<ReportChartStackedLineOre> ReportChartStackedLineOres { get; set; }
 
+        /// <summary>Staging per-operatore da CSV email (ADER4, HERA16).</summary>
+        public virtual DbSet<DatiMailCsv> DatiMailCsvs { get; set; }
+
         partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ReportOreDocumenti>(entity =>
@@ -101,12 +104,35 @@ namespace Entities.Models.DbApplication
                 entity.HasNoKey();
             });
 
-            // ✅ Configurazione Value Converter per TipoFonte (enum → string nel DB)
+            // Configurazione Value Converter per TipoFonte (enum -> string nel DB)
             modelBuilder.Entity<ConfigurazioneFontiDati>(entity =>
             {
                 entity.Property(e => e.TipoFonte)
                     .HasConversion<Entities.Converters.TipoFonteDataConverter>()
                     .HasColumnType("nvarchar(50)");
+            });
+
+            // DatiMailCsv: staging per-operatore da CSV email
+            modelBuilder.Entity<DatiMailCsv>(entity =>
+            {
+                entity.ToTable("DatiMailCsv");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CodiceServizio).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Operatore).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.TipoRisultato).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.IdEvento).HasMaxLength(100);
+                entity.Property(e => e.Centro).HasMaxLength(50);
+                entity.Property(e => e.DataIngestione).HasDefaultValueSql("GETDATE()");
+                entity.Property(e => e.Elaborata).HasDefaultValue(false);
+
+                entity.HasIndex(
+                    e => new { e.CodiceServizio, e.TipoRisultato, e.DataLavorazione },
+                    "IX_DatiMailCsv_Lookup");
+
+                entity.HasIndex(
+                    e => new { e.CodiceServizio, e.TipoRisultato, e.DataLavorazione },
+                    "IX_DatiMailCsv_NonElaborati")
+                    .HasFilter("[Elaborata] = 0");
             });
         }
 

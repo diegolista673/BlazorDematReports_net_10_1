@@ -66,8 +66,9 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             if (t.IdConfigurazioneDatabase.HasValue && t.IdConfigurazioneDatabaseNavigation != null)
             {
                 var config = t.IdConfigurazioneDatabaseNavigation;
+                var tipoFonte = config.TipoFonte;
 
-                var (prefix, detail) = config.TipoFonte switch
+                var (prefix, detail) = tipoFonte switch
                 {
                     TipoFonteData.SQL              => ("sql", faseName),
                     TipoFonteData.HandlerIntegrato => ("hdl", NormalizeToken(config.HandlerClassName ?? "handler")),

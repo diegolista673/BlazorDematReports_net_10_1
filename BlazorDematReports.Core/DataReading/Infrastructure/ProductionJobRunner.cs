@@ -177,7 +177,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             DateTime? endDate,
             CancellationToken ct)
         {
-            return config.TipoFonte switch
+            var tipoFonte = config.TipoFonte;
+            return tipoFonte switch
             {
                 TipoFonteData.SQL              => AcquireFromSqlAsync(scope, entity, config, mapping, startDate, endDate, ct),
                 TipoFonteData.HandlerIntegrato => AcquireFromHandlerAsync(scope, entity, config, mapping, startDate, endDate, ct),
@@ -420,7 +421,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>Marca il task come completato con successo.</summary>
         private static void MarkSuccess(TaskDaEseguire entity)
         {
-            entity.LastRunUtc = DateTime.UtcNow;
+            entity.LastRunUtc = DateTime.Now;
             entity.LastError  = null;
             entity.Stato      = "COMPLETED";
             entity.DataStato  = DateTime.Now;
@@ -429,7 +430,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>Marca il task come fallito, salvando il messaggio di errore.</summary>
         private static void MarkFailure(TaskDaEseguire entity, Exception ex)
         {
-            entity.LastRunUtc = DateTime.UtcNow;
+            entity.LastRunUtc = DateTime.Now;
             entity.LastError  = ex.Message;
             entity.Stato      = "ERROR";
             entity.DataStato  = DateTime.Now;

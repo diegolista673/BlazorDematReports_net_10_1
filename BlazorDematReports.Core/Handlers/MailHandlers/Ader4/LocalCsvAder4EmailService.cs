@@ -35,11 +35,13 @@ public sealed class LocalCsvAder4EmailService : Ader4EmailService, IEmailBatchPr
     /// Legge tutti i file *.csv dalla cartella locale configurata,
     /// processa quelli che corrispondono ai pattern ADER4 e costruisce
     /// un <see cref="BatchEmailProcessingResult"/> identico a quello prodotto dal servizio reale.
-    /// I metadati <c>DataRiferimento</c> e <c>IdEvento</c> vengono impostati alla data odierna.
+    /// I metadati <c>DataLavorazione</c> e <c>IdEvento</c> vengono impostati alla data odierna.
     /// </summary>
-    public new async Task<BatchEmailProcessingResult> ProcessEmailsAsync(CancellationToken ct = default)
+    public override async Task<BatchEmailProcessingResult> ProcessEmailsAsync(CancellationToken ct = default)
     {
         _localLogger.LogInformation("Mock ADER4: lettura CSV da cartella locale {Path}", _mockDataPath);
+
+        RigheElaborate_Clear();
 
         if (!Directory.Exists(_mockDataPath))
         {
@@ -59,7 +61,7 @@ public sealed class LocalCsvAder4EmailService : Ader4EmailService, IEmailBatchPr
         // Metadata condivisi per tutti gli allegati della stessa "email simulata"
         var metadata = new Dictionary<string, string>
         {
-            ["DataRiferimento"] = DateTime.Today.ToString("yyyy-MM-dd"),
+            ["DataLavorazione"] = DateTime.Today.ToString("yyyy-MM-dd"),
             ["IdEvento"]        = $"MOCK-{DateTime.Today:yyyyMMdd}"
         };
 

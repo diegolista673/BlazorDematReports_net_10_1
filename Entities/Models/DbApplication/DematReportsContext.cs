@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
 
 namespace Entities.Models.DbApplication;
 
@@ -35,9 +37,6 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Counter> Counters { get; set; }
 
-    public virtual DbSet<DatiMailIngestion> DatiMailIngestions { get; set; }
-
-    public virtual DbSet<ElaborazioneEmailGiornaliera> ElaborazioneEmailGiornalieras { get; set; }
 
     public virtual DbSet<FasiLavorazione> FasiLavoraziones { get; set; }
 
@@ -76,8 +75,6 @@ public partial class DematReportsContext : DbContext
     public virtual DbSet<ProduzioneSistema> ProduzioneSistemas { get; set; }
 
     public virtual DbSet<QueryProcedureLavorazioni> QueryProcedureLavorazionis { get; set; }
-
-    public virtual DbSet<QueryProcedureLavorazioniBackup> QueryProcedureLavorazioniBackups { get; set; }
 
     public virtual DbSet<RepartiProduzione> RepartiProduziones { get; set; }
 
@@ -332,54 +329,7 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.ExpireAt).HasColumnType("datetime");
         });
 
-        modelBuilder.Entity<DatiMailIngestion>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK_DatiMailIngestion");
 
-            entity.ToTable("DatiMailIngestion");
-
-            entity.HasIndex(e => new { e.CodiceServizio, e.DataRiferimento, e.TipoDato, e.Centro }, "UQ_DatiMailIngestion_Servizio_Data_Tipo_Centro")
-                .IsUnique();
-
-            entity.HasIndex(e => new { e.CodiceServizio, e.DataRiferimento, e.TipoDato, e.Centro }, "IX_DatiMailIngestion_Elaborata_Servizio_Data")
-                .HasFilter("([Elaborata] = 0)");
-
-            entity.HasIndex(e => e.DataIngestione, "IX_DatiMailIngestion_DataIngestione");
-
-            entity.Property(e => e.CodiceServizio)
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            entity.Property(e => e.TipoDato)
-                .HasMaxLength(100)
-                .IsUnicode(true);
-
-            entity.Property(e => e.Centro)
-                .HasMaxLength(50)
-                .IsUnicode(true);
-
-            entity.Property(e => e.DataIngestione)
-                .HasColumnType("datetime2")
-                .HasDefaultValueSql("GETUTCDATE()");
-
-            entity.Property(e => e.Elaborata)
-                .HasDefaultValue(false);
-        });
-
-        modelBuilder.Entity<ElaborazioneEmailGiornaliera>(entity =>
-        {
-            entity.HasKey(e => e.IdElaborazione).HasName("PK__Elaboraz__52A4A5874CD9CA32");
-
-            entity.ToTable("ElaborazioneEmailGiornaliera");
-
-            entity.HasIndex(e => new { e.CodiceServizio, e.DataElaborazione }, "IX_EmailFlag_Service_Date");
-
-            entity.HasIndex(e => new { e.CodiceServizio, e.DataElaborazione }, "UQ_EmailFlag_Service_Date").IsUnique();
-
-            entity.Property(e => e.CodiceServizio).HasMaxLength(50);
-            entity.Property(e => e.ElaborataDaTask).HasMaxLength(200);
-            entity.Property(e => e.ElaborataIl).HasColumnType("datetime");
-        });
 
         modelBuilder.Entity<FasiLavorazione>(entity =>
         {
@@ -837,25 +787,6 @@ public partial class DematReportsContext : DbContext
                 .HasForeignKey(d => d.IdproceduraLavorazione)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_QueryProcedureLavorazioni_ProcedureLavorazioni");
-        });
-
-        modelBuilder.Entity<QueryProcedureLavorazioniBackup>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToTable("QueryProcedureLavorazioni_BACKUP");
-
-            entity.Property(e => e.Connessione)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.DataCreazioneQuery).HasColumnType("datetime");
-            entity.Property(e => e.Descrizione).IsUnicode(false);
-            entity.Property(e => e.IdQuery).ValueGeneratedOnAdd();
-            entity.Property(e => e.IdproceduraLavorazione).HasColumnName("IDProceduraLavorazione");
-            entity.Property(e => e.Note).IsUnicode(false);
-            entity.Property(e => e.Titolo)
-                .HasMaxLength(50)
-                .IsUnicode(false);
         });
 
         modelBuilder.Entity<RepartiProduzione>(entity =>

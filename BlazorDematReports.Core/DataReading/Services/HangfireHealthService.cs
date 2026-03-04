@@ -51,7 +51,7 @@ namespace BlazorDematReports.Core.DataReading.Services
 
                 var monitoring = JobStorage.Current.GetMonitoringApi();
                 var servers = monitoring.Servers();
-                var threshold = DateTime.UtcNow.Subtract(ServerActiveThreshold);
+                var threshold = DateTime.Now.Subtract(ServerActiveThreshold);
 
                 var activeServers = servers.Count(s =>
                     s.Heartbeat.HasValue && s.Heartbeat.Value >= threshold);
@@ -84,7 +84,7 @@ namespace BlazorDematReports.Core.DataReading.Services
                 var monitoring = JobStorage.Current.GetMonitoringApi();
                 var statistics = monitoring.GetStatistics();
                 var servers = monitoring.Servers();
-                var threshold = DateTime.UtcNow.Subtract(ServerActiveThreshold);
+                var threshold = DateTime.Now.Subtract(ServerActiveThreshold);
 
                 result.EnqueuedJobs = (int)statistics.Enqueued;
                 result.ProcessingJobs = (int)statistics.Processing;
@@ -116,6 +116,6 @@ namespace BlazorDematReports.Core.DataReading.Services
         public int FailedJobs { get; set; }
         public int ActiveServers { get; set; }
         public int RecurringJobs { get; set; }
-        public DateTime CheckTime { get; set; } = DateTime.UtcNow;
+        public DateTime CheckTime { get; set; } = DateTime.Now;
     }
 }

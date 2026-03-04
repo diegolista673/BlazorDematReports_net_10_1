@@ -264,7 +264,7 @@ public static class Program
         builder.Services.AddScoped<IServiceConfigurazioneFontiDati, ServiceConfigurazioneFontiDati>();
         builder.Services.AddScoped<IServiceMail, ServiceMail>();
         builder.Services.AddScoped<IServiceTaskManagement, ServiceTaskManagement>();
-        builder.Services.AddScoped<IMailIngestionService, MailIngestionService>();
+        builder.Services.AddScoped<IMailCsvService, MailCsvService>();
         builder.Services.AddScoped<ProcedureEditStateService>();
         builder.Services.AddScoped<ProcedureValidationService>();
 
@@ -294,14 +294,18 @@ public static class Program
         builder.Services.AddSingleton<IProductionDataHandler, Ant_Ader4_Sorter_1_2Handler>();
         builder.Services.AddSingleton<IProductionDataHandler, PraticheSuccessioneHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Rdmkt_RSPHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Hera16EwsHandler>();
 
-        // Handler ADER4: staging readers (uno per fase)
+        // Handler ADER4: staging readers (uno per TipoRisultato)
         builder.Services.AddSingleton<IProductionDataHandler, Ader4CaptivaHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterBusteHandler>();
 
-        // Handler ingestion generico mail
+        // Handler HERA16: staging readers (Scansione, Index, Classificazione)
+        //builder.Services.AddSingleton<IProductionDataHandler, Hera16ScansioneHandler>();
+        //builder.Services.AddSingleton<IProductionDataHandler, Hera16IndexHandler>();
+        //builder.Services.AddSingleton<IProductionDataHandler, Hera16ClassificazioneHandler>();
+
+        // Handler ingestion generico mail (orchestratore MAIL_INGESTION)
         builder.Services.AddSingleton<IProductionDataHandler, GenericMailIngestionHandler>();
 
         // Registry e servizio unificato: Singleton perche' il dizionario e' immutabile dopo costruzione
@@ -310,19 +314,31 @@ public static class Program
 
         // Processori mail ingestion (chiamati da GenericMailIngestionHandler)
         builder.Services.AddSingleton<IMailIngestionProcessor, Ader4IngestionProcessor>();
+        //builder.Services.AddSingleton<IMailIngestionProcessor, Hera16IngestionProcessor>();
 
-        // Registrazione condizionale: mock (cartella locale) in sviluppo, Exchange EWS in produzione.
-        // Attivare con "MailServices:ADER4:UseMockService": true in appsettings.Development.json.
+        // Ader4EmailService registrata come tipo concreto (iniettato in Ader4IngestionProcessor).
+        // In modalita mock, LocalCsvAder4EmailService estende Ader4EmailService e viene usata al suo posto.
         if (builder.Configuration.GetValue<bool>("MailServices:ADER4:UseMockService"))
         {
-            builder.Services.AddSingleton<IEmailBatchProcessor, LocalCsvAder4EmailService>();
+            builder.Services.AddSingleton<Ader4EmailService, LocalCsvAder4EmailService>();
             NLog.LogManager.GetCurrentClassLogger().Info("ADER4: modalita mock attiva - lettura CSV da cartella locale");
         }
         else
         {
-            builder.Services.AddSingleton<IEmailBatchProcessor, Ader4EmailService>();
+            builder.Services.AddSingleton<Ader4EmailService>();
         }
-        //builder.Services.AddSingleton<Hera16EmailService>(); 
+
+        //// Hera16EmailService registrata come tipo concreto (iniettato in Hera16IngestionProcessor).
+        //// In modalita mock, LocalCsvHera16EmailService estende Hera16EmailService e viene usata al suo posto.
+        //if (builder.Configuration.GetValue<bool>("MailServices:HERA16:UseMockService"))
+        //{
+        //    builder.Services.AddSingleton<Hera16EmailService, LocalCsvHera16EmailService>();
+        //    NLog.LogManager.GetCurrentClassLogger().Info("HERA16: modalita mock attiva - lettura CSV da cartella locale");
+        //}
+        //else
+        //{
+        //    builder.Services.AddSingleton<Hera16EmailService>();
+        //}
 
 
         // Servizio unificato principale

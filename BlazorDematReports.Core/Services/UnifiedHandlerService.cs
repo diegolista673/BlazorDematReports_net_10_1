@@ -90,7 +90,7 @@ namespace BlazorDematReports.Core.Services
         }
 
         /// <summary>
-        /// Risolve il codice dell'handler tentando di trovare corrispondenze esatte o parziali.
+        /// Risolve il codice dell'handler verificando la corrispondenza esatta.
         /// </summary>
         /// <param name="inputCode">Codice di input da risolvere.</param>
         /// <returns>Codice risolto dell'handler.</returns>
@@ -99,29 +99,13 @@ namespace BlazorDematReports.Core.Services
         {
             _logger.LogDebug("Tentativo di risoluzione del codice handler: {InputCode}", inputCode);
 
-            // 1. Prova prima con il codice esatto
             if (_registry.IsRegistered(inputCode))
             {
                 _logger.LogDebug("Codice handler risolto esattamente: {InputCode}", inputCode);
                 return inputCode;
             }
 
-            // 2. Se non trovato, cerca pattern parziali
             var availableCodes = _registry.GetAllCodes().ToList();
-
-            // Cerca handler che terminano con il codice fornito (es: "28_AUT" -> "Z0072370_28AUT")
-            var partialMatch = availableCodes.FirstOrDefault(code =>
-                code.EndsWith("_" + inputCode, StringComparison.OrdinalIgnoreCase) ||
-                code.EndsWith(inputCode, StringComparison.OrdinalIgnoreCase));
-
-            if (partialMatch != null)
-            {
-                _logger.LogInformation("Codice handler risolto tramite corrispondenza parziale: {InputCode} -> {ResolvedCode}",
-                    inputCode, partialMatch);
-                return partialMatch;
-            }
-
-            // 3. Se ancora non trovato, lancia eccezione
             var errorMessage = $"Handler non trovato per il codice '{inputCode}'. " +
                               $"Codici disponibili: {string.Join(", ", availableCodes)}";
 

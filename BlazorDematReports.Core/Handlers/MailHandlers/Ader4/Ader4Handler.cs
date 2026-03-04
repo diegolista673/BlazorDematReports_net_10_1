@@ -10,8 +10,9 @@ using System.ComponentModel;
 namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 {
     /// <summary>
-    /// Handler base per task produzione ADER4 che leggono dati da staging DatiMailIngestion.
-    /// Ogni implementazione specifica quale TipoDato leggere (ScansioneCaptiva, ScansioneSorter, etc.).
+    /// Handler base per task produzione ADER4 che leggono righe per-operatore da DatiMailCsv.
+    /// Ogni implementazione specifica quale TipoRisultato leggere.
+    /// L'operatore e' preso direttamente dal record staging (colonna 'postazione' del CSV).
     /// </summary>
     public abstract class Ader4StagingHandlerBase : IProductionDataHandler
     {
@@ -26,19 +27,11 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             ScopeFactory = scopeFactory;
         }
 
-        /// <summary>
-        /// Tipo di dato che questo handler deve leggere dallo staging (override nelle classi derivate).
-        /// </summary>
-        protected abstract string TipoDatoStaging { get; }
+        /// <summary>TipoRisultato da leggere in DatiMailCsv (es. 'ScansioneCaptiva').</summary>
+        protected abstract string TipoRisultatoStaging { get; }
 
         /// <summary>
-        /// Nome operatore da usare nei DatiLavorazione generati (override nelle classi derivate).
-        /// </summary>
-        protected abstract string NomeOperatore { get; }
-
-        /// <summary>
-        /// Calcola Fogli da Documenti (override se logica diversa).
-        /// Default: Documenti / 2.
+        /// Calcola Fogli da Documenti. Default: Documenti / 2.
         /// </summary>
         protected virtual int CalcolaFogli(int documenti) => documenti / 2;
 
@@ -46,7 +39,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         public abstract string HandlerCode { get; }
 
         /// <inheritdoc />
-        public string? GetServiceCode() => LavorazioniCodes.ADER4;
+        public string? GetServiceCode() => "";
 
         /// <inheritdoc />
         public HandlerMetadata GetMetadata() => new()
@@ -62,9 +55,9 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             CancellationToken ct = default)
         {
             Logger.LogInformation(
-                "Handler {Code}: lettura staging per {TipoDato}, periodo {Start:d}-{End:d}",
+                "Handler {Code}: lettura staging {TipoRisultato}, periodo {Start:d}-{End:d}",
                 HandlerCode,
-                TipoDatoStaging,
+                TipoRisultatoStaging,
                 context.StartDataLavorazione,
                 context.EndDataLavorazione ?? context.StartDataLavorazione);
 
@@ -74,36 +67,38 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
                 : DateOnly.FromDateTime(context.StartDataLavorazione);
 
             using var scope = ScopeFactory.CreateScope();
-            var ingestionService = scope.ServiceProvider.GetRequiredService<IMailIngestionService>();
+            var mailCsvService = scope.ServiceProvider.GetRequiredService<IMailCsvService>();
 
-            var stagingRecords = await ingestionService.GetUnprocessedAsync(
+            var stagingRecords = await mailCsvService.GetUnprocessedAsync(
                 LavorazioniCodes.ADER4,
-                TipoDatoStaging,
-                centro: null,
+                TipoRisultatoStaging,
                 dataMin,
-                dataMax);
+                dataMax,
+                centro: null,
+                ct);
 
             if (stagingRecords.Count == 0)
             {
-                Logger.LogInformation("Nessun dato staging per {TipoDato}", TipoDatoStaging);
-                return new List<DatiLavorazione>();
+                Logger.LogInformation("Nessun dato staging per {TipoRisultato}", TipoRisultatoStaging);
+                return [];
             }
 
+            // Operatore reale dal CSV (colonna 'postazione'), non piu hardcoded
             var datiLavorazione = stagingRecords.Select(s => new DatiLavorazione
             {
-                Operatore = NomeOperatore,
-                DataLavorazione = s.DataRiferimento.ToDateTime(TimeOnly.MinValue),
-                Documenti = s.Quantita,
-                Fogli = CalcolaFogli(s.Quantita),
-                Pagine = s.Quantita,
+                Operatore               = s.Operatore,
+                DataLavorazione         = s.DataLavorazione.ToDateTime(TimeOnly.MinValue),
+                Documenti               = s.Documenti,
+                Fogli                   = CalcolaFogli(s.Documenti),
+                Pagine                  = s.Documenti,
                 AppartieneAlCentroSelezionato = true
             }).ToList();
 
             var ids = stagingRecords.Select(s => s.Id).ToList();
-            await ingestionService.MarkAsProcessedAsync(ids, 0);
+            await mailCsvService.MarkAsProcessedAsync(ids, 0, ct);
 
             Logger.LogInformation(
-                "Handler {Code}: {Count} record letti dallo staging e marcati come elaborati",
+                "Handler {Code}: {Count} record letti da DatiMailCsv e marcati come elaborati",
                 HandlerCode, datiLavorazione.Count);
 
             return datiLavorazione;
@@ -123,9 +118,8 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         {
         }
 
-        public override string HandlerCode => "ADER4_CAPTIVA";
-        protected override string TipoDatoStaging => "ScansioneCaptiva";
-        protected override string NomeOperatore => "SISTEMA";
+        public override string HandlerCode => LavorazioniCodes.ADER4_CAPTIVA;
+        protected override string TipoRisultatoStaging => "ScansioneCaptiva";
     }
 
     /// <summary>
@@ -141,9 +135,8 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         {
         }
 
-        public override string HandlerCode => "ADER4_SORTER";
-        protected override string TipoDatoStaging => "ScansioneSorter";
-        protected override string NomeOperatore => "SISTEMA_SORTER";
+        public override string HandlerCode => LavorazioniCodes.ADER4_SORTER;
+        protected override string TipoRisultatoStaging => "ScansioneSorter";
     }
 
     /// <summary>
@@ -159,9 +152,8 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         {
         }
 
-        public override string HandlerCode => "ADER4_SORTER_BUSTE";
-        protected override string TipoDatoStaging => "ScansioneSorterBuste";
-        protected override string NomeOperatore => "SISTEMA_SORTER_BUSTE";
+        public override string HandlerCode => LavorazioniCodes.ADER4_SORTER_BUSTE;
+        protected override string TipoRisultatoStaging => "ScansioneSorterBuste";
         protected override int CalcolaFogli(int documenti) => documenti; // 1 busta = 1 foglio
     }
 }

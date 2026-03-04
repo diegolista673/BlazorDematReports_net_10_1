@@ -11,11 +11,10 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers;
 /// <summary>
 /// Handler generico per l'ingestion di tutte le email configurate nel sistema.
 /// Chiamato da un singolo recurring job Hangfire (es. ore 07:00).
-/// Orchestra tutti i servizi email registrati (ADER4, HERA16, ...) e salva i dati
-/// aggregati nella tabella DatiMailIngestion.
-/// I task produzione fase-specifici leggeranno poi da quella tabella.
+/// Orchestra tutti i processori registrati (ADER4, HERA16, ...) e salva
+/// le righe per-operatore in DatiMailCsv.
 /// </summary>
-[Description("Ingestion generica email - salva dati aggregati in staging")]
+[Description("Ingestion generica email - salva dati per-operatore in DatiMailCsv")]
 public sealed class GenericMailIngestionHandler : IProductionDataHandler
 {
     private readonly ILogger<GenericMailIngestionHandler> _logger;
@@ -48,20 +47,20 @@ public sealed class GenericMailIngestionHandler : IProductionDataHandler
 
     /// <summary>
     /// Esegue l'ingestion di tutte le mail configurate.
-    /// Ogni IMailIngestionProcessor (ADER4, HERA16, ...) viene chiamato in sequenza.
-    /// Ritorna lista vuota perché questo handler non produce direttamente DatiLavorazione.
+    /// Ogni IMailIngestionProcessor viene chiamato in sequenza con IMailCsvService.
+    /// Ritorna lista vuota perche questo handler non produce direttamente DatiLavorazione.
     /// </summary>
     public async Task<List<DatiLavorazione>> ExecuteAsync(
         ProductionExecutionContext context,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Inizio ingestion mail generica - Processori registrati: {Count}", _mailProcessors.Count());
+        _logger.LogInformation("Inizio ingestion mail - Processori registrati: {Count}", _mailProcessors.Count());
 
         int totalProcessed = 0;
         int totalErrors = 0;
 
         using var scope = _scopeFactory.CreateScope();
-        var ingestionService = scope.ServiceProvider.GetRequiredService<IMailIngestionService>();
+        var mailCsvService = scope.ServiceProvider.GetRequiredService<IMailCsvService>();
 
         foreach (var processor in _mailProcessors)
         {
@@ -69,11 +68,11 @@ public sealed class GenericMailIngestionHandler : IProductionDataHandler
             {
                 _logger.LogInformation("Avvio processore: {Code}", processor.ServiceCode);
 
-                var result = await processor.ProcessAndSaveAsync(ingestionService, ct);
+                var result = await processor.ProcessAndSaveAsync(mailCsvService, ct);
 
                 totalProcessed += result.RecordsSaved;
                 _logger.LogInformation(
-                    "Processore {Code} completato: {Saved} record salvati",
+                    "Processore {Code} completato: {Saved} righe salvate",
                     processor.ServiceCode, result.RecordsSaved);
             }
             catch (Exception ex)
@@ -84,31 +83,26 @@ public sealed class GenericMailIngestionHandler : IProductionDataHandler
         }
 
         _logger.LogInformation(
-            "Ingestion mail completata: {Total} record salvati, {Errors} errori",
+            "Ingestion mail completata: {Total} righe salvate, {Errors} errori",
             totalProcessed, totalErrors);
 
-        return new List<DatiLavorazione>();
+        return [];
     }
 }
 
 /// <summary>
 /// Contratto per processori mail specifici per servizio (ADER4, HERA16).
-/// Ogni implementazione sa come leggere le proprie email e salvare in staging.
+/// Ogni implementazione sa come leggere le proprie email e salvare righe per-operatore in DatiMailCsv.
 /// </summary>
 public interface IMailIngestionProcessor
 {
-    /// <summary>
-    /// Codice servizio (es. 'ADER4', 'HERA16').
-    /// </summary>
+    /// <summary>Codice servizio (es. 'ADER4', 'HERA16').</summary>
     string ServiceCode { get; }
 
     /// <summary>
-    /// Legge email del servizio e salva dati in staging tramite IMailIngestionService.
+    /// Legge email del servizio, aggrega per operatore e salva in DatiMailCsv.
     /// </summary>
-    /// <param name="ingestionService">Servizio per salvare in DatiMailIngestion.</param>
-    /// <param name="ct">Token cancellazione.</param>
-    /// <returns>Risultato con numero record salvati.</returns>
-    Task<IngestionResult> ProcessAndSaveAsync(IMailIngestionService ingestionService, CancellationToken ct);
+    Task<IngestionResult> ProcessAndSaveAsync(IMailCsvService mailCsvService, CancellationToken ct);
 }
 
 /// <summary>
@@ -118,5 +112,5 @@ public sealed class IngestionResult
 {
     public int RecordsSaved { get; init; }
     public int EmailsProcessed { get; init; }
-    public List<string> Errors { get; init; } = new();
+    public List<string> Errors { get; init; } = [];
 }
