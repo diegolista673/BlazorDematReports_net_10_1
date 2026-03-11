@@ -75,8 +75,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
                     Documenti       = dto.Documenti,
                     IdEvento        = dto.IdEvento,
                     Centro          = dto.Centro,
-                    DataIngestione  = DateTime.Now,
-                    Elaborata       = false
+                    DataIngestione  = DateTime.Now
                 };
                 context.DatiMailCsvs.Add(nuova);
                 // Aggiunge al dizionario per gestire duplicati all'interno dello stesso batch
@@ -109,8 +108,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
             d.CodiceServizio  == codiceServizio  &&
             d.TipoRisultato   == tipoRisultato   &&
             d.DataLavorazione >= dataMin         &&
-            d.DataLavorazione <= dataMax         &&
-            !d.Elaborata);
+            d.DataLavorazione <= dataMax);
 
         if (centro is not null)
             query = query.Where(d => d.Centro == centro);
@@ -124,7 +122,6 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
     /// <inheritdoc />
     public async Task MarkAsProcessedAsync(
         IReadOnlyList<int> ids,
-        int taskId,
         CancellationToken ct = default)
     {
         if (ids.Count == 0)
@@ -138,14 +135,12 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
         await context.DatiMailCsvs
             .Where(d => ids.Contains(d.Id))
             .ExecuteUpdateAsync(s => s
-                .SetProperty(d => d.Elaborata,          true)
-                .SetProperty(d => d.ElaborataIl,        now)
-                .SetProperty(d => d.ElaborataDaTaskId,  taskId),
+                .SetProperty(d => d.ElaborataIl, now),
                 ct);
 
         logger.LogInformation(
-            "Marcati {Count} record DatiMailCsv come elaborati da task {TaskId}",
-            ids.Count, taskId);
+            "Aggiornato ElaborataIl su {Count} record DatiMailCsv",
+            ids.Count);
     }
 
     /// <inheritdoc />
@@ -156,7 +151,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
         await using var context = await contextFactory.CreateDbContextAsync(ct);
 
         int deleted = await context.DatiMailCsvs
-            .Where(d => d.Elaborata && d.ElaborataIl < olderThan)
+            .Where(d => d.DataLavorazione < DateOnly.FromDateTime(olderThan))
             .ExecuteDeleteAsync(ct);
 
         logger.LogInformation("Eliminati {Count} record DatiMailCsv piu vecchi di {Date}", deleted, olderThan);

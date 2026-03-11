@@ -90,7 +90,7 @@ public abstract class Hera16StagingHandlerBase : IProductionDataHandler
         }).ToList();
 
         var ids = stagingRecords.Select(s => s.Id).ToList();
-        await mailCsvService.MarkAsProcessedAsync(ids, 0, ct);
+        await mailCsvService.MarkAsProcessedAsync(ids, ct);
 
         Logger.LogInformation(
             "Handler {Code}: {Count} record letti da DatiMailCsv e marcati come elaborati",

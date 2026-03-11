@@ -193,7 +193,7 @@ namespace BlazorDematReports.Core.Utility
 
             using var context = _contextFactory.CreateDbContext();
             var centroDemat = await context.CentriLavoraziones
-                .FirstOrDefaultAsync(c => c.Centro.Equals(centro, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefaultAsync(c => c.Centro == centro);
 
             if (centroDemat == null)
             {
@@ -227,9 +227,10 @@ namespace BlazorDematReports.Core.Utility
 
             using var context = _contextFactory.CreateDbContext();
 
-            // Verifica se l'operatore esiste già con lo stesso nome
+            // Verifica se l'operatore esiste già con lo stesso nome (EF Core non supporta StringComparison in LINQ,
+            // il confronto è case-insensitive grazie alla collation SQL Server)
             var operatoreEsistente = await context.Operatoris
-                .FirstOrDefaultAsync(o => o.Operatore.Equals(operatore.Operatore, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefaultAsync(o => o.Operatore == operatore.Operatore);
 
             if (operatoreEsistente != null)
             {

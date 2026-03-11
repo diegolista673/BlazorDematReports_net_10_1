@@ -157,10 +157,10 @@
 
                                         <div>
                                             <div class="d-inline-flex pa-2">
-                                                <MudDatePicker Label="Data Da" @bind-Date="@Model!.StartDataLavorazione" Required="true" />
+                                                <MudDatePicker Label="Data Aggiornamento Da" @bind-Date="@Model!.StartDataLavorazione" Required="true" />
                                             </div>
                                             <div class="d-inline-flex pa-2">
-                                                <MudDatePicker Label="Data A" @bind-Date="@Model.EndDataLavorazione" Required="true" />
+                                                <MudDatePicker Label="Data Aggiornamento A" @bind-Date="@Model.EndDataLavorazione" Required="true" />
                                                 <ValidationMessage For="() => Model.EndDataLavorazione" />
                                             </div>
 
@@ -478,7 +478,6 @@
     #endregion
 
 
-
     #region TAB Aggiornamento
 
     protected async Task HandleSubmitAggiornamentoAsync()
@@ -486,7 +485,9 @@
         await RunWithOverlay(async () =>
         {
             ListAggiornamento = await ServiceTaskDataReadingAggiornamento
-                .GetAggiornamentoDtoByDateAsync(Model!.StartDataLavorazione!.Value.Date);
+                .GetAggiornamentoDtoByDateAsync(
+                    Model!.StartDataLavorazione!.Value.Date,
+                    Model!.EndDataLavorazione!.Value.Date);
 
             if (ListAggiornamento.Count == 0)
             {

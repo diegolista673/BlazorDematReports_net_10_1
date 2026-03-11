@@ -39,10 +39,6 @@ public partial class DatiMailCsv
 
     public DateTime DataIngestione { get; set; }
 
-    /// <summary>False = pronto per essere letto dagli handler produzione.</summary>
-    public bool Elaborata { get; set; }
-
+    /// <summary>Data/ora in cui il record è stato letto da un handler produzione (solo informativa).</summary>
     public DateTime? ElaborataIl { get; set; }
-
-    public int? ElaborataDaTaskId { get; set; }
 }

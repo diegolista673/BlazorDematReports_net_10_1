@@ -10,14 +10,19 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
+
+ controllare il servizio di hera, il file di produzione che arriva via mail potrebbe essere a riempimento, i dati vanno inseriti in tabella e potrebbero essere sovreascritti se contengono dati aggiornati,
+ perchè le fasi vengono aggiornate giorno per giorno
+
 nelle query dati migliorare le query eliminando nel where la convert date 
 per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
 esempio :
 
-controllare gli handler 
 controllare come vengono passate le date alle query per passarle come formato 'yyddmm' oppure senza convert(date) per velocizzarle
 
+
 completare lettura allegati e poi la notitfica via mail della lettura avvenuta?
+
 
 Controllare le varie operazioni fatte con utenti e permessi diversi e ruoli soprattutto per elenco lavoratori, schede totali e impostazioni
 

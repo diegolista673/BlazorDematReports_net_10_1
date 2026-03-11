@@ -89,10 +89,7 @@ public sealed class LocalCsvHera16EmailService : Hera16EmailService, IEmailBatch
             };
 
             if (!matchesPattern)
-            {
-                _localLogger.LogDebug("Mock HERA16: file {FileName} ignorato (nessun pattern corrisponde)", fileName);
-                continue;
-            }
+                _localLogger.LogDebug("Mock HERA16: file {FileName} non corrisponde al pattern HERA16, elaborato comunque in modalita mock", fileName);
 
             _localLogger.LogInformation("Mock HERA16: elaborazione file {FileName}", fileName);
             await ProcessAttachmentAsync(attachmentInfo, metadata, ct);

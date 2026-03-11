@@ -75,25 +75,26 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <summary>
-        /// Restituisce la lista degli aggiornamenti task data reading per procedura e range di date specifiche e li mappa su DTO.
+        /// <summary>
+        /// Restituisce le esecuzioni per una procedura nel range di date di lavoro indicato,
+        /// ordinate per DataAggiornamento decrescente (ultima esecuzione prima).
         /// </summary>
         /// <param name="IdProceduraLavorazione">Identificativo della procedura di lavorazione.</param>
-        /// <param name="startDate">Data inizio del periodo di ricerca.</param>
-        /// <param name="endDate">Data fine del periodo di ricerca.</param>
+        /// <param name="startDate">Data inizio del periodo di lavoro.</param>
+        /// <param name="endDate">Data fine del periodo di lavoro.</param>
         /// <returns>Lista di oggetti <see cref="TaskDataReadingAggiornamentoDto"/> ordinata per data aggiornamento decrescente.</returns>
         public async Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoLavorazioneDtoByDateAsync(
-            int IdProceduraLavorazione, 
-            DateTime startDate, 
+            int IdProceduraLavorazione,
+            DateTime startDate,
             DateTime endDate)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
             var lstTask = await context.TaskDataReadingAggiornamentos
-                .Where(x => x.IdLavorazione == IdProceduraLavorazione 
-                         && x.DataInizioLavorazione.Date == startDate.Date 
-                         && x.DataFineLavorazione!.Value.Date == endDate.Date
-                         && x.DataAggiornamento.Date == DateTime.Now.Date)
+                .Where(x => x.IdLavorazione == IdProceduraLavorazione
+                         && x.DataInizioLavorazione.Date == startDate.Date
+                         && x.DataFineLavorazione!.Value.Date == endDate.Date)
                 .OrderByDescending(x => x.DataAggiornamento)
                 .ToListAsync();
 
@@ -101,24 +102,35 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <summary>
-        /// Restituisce la lista degli aggiornamenti task data reading per intervallo di date e li mappa su DTO.
+        /// Restituisce l'ultima esecuzione per ogni combinazione (IdLavorazione, IdFase)
+        /// il cui periodo di lavoro (DataInizioLavorazione - DataFineLavorazione) rientra nel range indicato.
         /// </summary>
-        /// <param name="startDate">Data di inizio del periodo di ricerca.</param>
-        /// <param name="endDate">Data di fine del periodo di ricerca.</param>
-        /// <returns>Lista di oggetti <see cref="TaskDataReadingAggiornamentoDto"/> ordinata per data aggiornamento.</returns>
-        public async Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoDtoByDateAsync(DateTime dataAggiornamento)
+        /// <param name="startDate">Inizio del periodo di lavoro da ricercare.</param>
+        /// <param name="endDate">Fine del periodo di lavoro da ricercare.</param>
+        public async Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoDtoByDateAsync(
+            DateTime startDate,
+            DateTime endDate)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
+
+            // Carica tutti i record nel periodo di lavoro selezionato
             var lstTask = await context.TaskDataReadingAggiornamentos
-                .Where(x => x.DataAggiornamento.Date == dataAggiornamento.Date)
-                .OrderBy(x => x.DataAggiornamento)
+                .Where(x => x.DataAggiornamento.Date >= startDate.Date
+                         && x.DataAggiornamento.Date <= endDate.Date)
+                .OrderByDescending(x => x.DataAggiornamento)
                 .ToListAsync();
 
-            var listTaskDto = _mapper.EntitiesToDtos(lstTask);
+            // Per ogni coppia (IdLavorazione, IdFase) tieni solo il record più recente
+            var latest = lstTask
+                .GroupBy(x => (x.IdLavorazione, x.IdFase))
+                .Select(g => g.First())  // First = più recente grazie a OrderByDescending
+                .OrderBy(x => x.IdLavorazione)
+                .ThenBy(x => x.IdFase)
+                .ToList();
 
-            return listTaskDto;
+            return _mapper.EntitiesToDtos(latest);
         }
 
         /// <summary>

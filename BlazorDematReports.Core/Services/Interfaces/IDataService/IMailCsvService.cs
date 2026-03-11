@@ -17,7 +17,8 @@ public interface IMailCsvService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Recupera record non ancora elaborati per un handler produzione.
+    /// Recupera record di staging per un handler produzione nel periodo indicato.
+    /// Tutti i record nel range vengono restituiti indipendentemente da ElaborataIl.
     /// </summary>
     Task<List<DatiMailCsv>> GetUnprocessedAsync(
         string codiceServizio,
@@ -28,15 +29,14 @@ public interface IMailCsvService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Marca i record come elaborati dopo l'INSERT in ProduzioneSistema.
+    /// Aggiorna ElaborataIl sui record indicati come informazione di audit (quando sono stati letti).
     /// </summary>
     Task MarkAsProcessedAsync(
         IReadOnlyList<int> ids,
-        int taskId,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Elimina record elaborati piu vecchi della data indicata.
+    /// Elimina record di staging con DataLavorazione precedente alla data indicata.
     /// </summary>
     Task<int> CleanupOldProcessedAsync(DateTime olderThan, CancellationToken ct = default);
 }

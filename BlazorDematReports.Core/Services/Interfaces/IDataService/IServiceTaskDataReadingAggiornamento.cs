@@ -22,7 +22,7 @@ namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 
         Task<TaskDataReadingAggiornamento?> GetAggiornamentoLavorazioneAsync(int IdProceduraLavorazione, int IdFase);
 
-        Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoDtoByDateAsync(DateTime dataAggiornamento);
+        Task<List<TaskDataReadingAggiornamentoDto>> GetAggiornamentoDtoByDateAsync(DateTime startDate, DateTime endDate);
 
 
         /// <summary>

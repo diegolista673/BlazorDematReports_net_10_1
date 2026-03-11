@@ -39,6 +39,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             _scopeFactory = factory;
         }
 
+
         /// <summary>Entry point Hangfire: esegue il task con date calcolate da GiorniPrecedenti.</summary>
         public static async Task RunAsync(int idTaskDaEseguire, CancellationToken cancellationToken = default)
             => await RunAsync(idTaskDaEseguire, startDate: null, endDate: null, cancellationToken);
@@ -111,10 +112,12 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             DateTime? endDate,
             CancellationToken ct)
         {
-            var db          = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
-            var elaboratore = scope.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
-            var logger      = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-                                  .CreateLogger("ProductionJobRunner");
+            var db               = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
+            var elaboratore      = scope.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
+            var gestoreOperatori = scope.ServiceProvider.GetRequiredService<IGestoreOperatoriDatiLavorazione>();
+            var logger           = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                                       .CreateLogger("ProductionJobRunner");
+
             var fase = entity.IdLavorazioneFaseDateReadingNavigation;
 
             var config = await db.ConfigurazioneFontiDatis
@@ -147,6 +150,22 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 logger.LogInformation("Task {TaskId}: nessun dato acquisito per il periodo configurato",
                     entity.IdTaskDaEseguire);
                 return;
+            }
+
+            // Carica gli elenchi operatori prima dell'elaborazione.
+            // Senza questi Set*, le cache di ElaboratoreDatiLavorazione restano vuote
+            // e tutti gli operatori finiscono in Not_Found_Oper.
+            await gestoreOperatori.SetOperatoriAsync();
+
+            try
+            {
+                await gestoreOperatori.SetOperatoriEsterniMondoAsync();
+            }
+            catch (Exception exMondo)
+            {
+                logger.LogWarning(exMondo,
+                    "Task {TaskId}: impossibile caricare operatori Mondo. Si procede senza operatori esterni",
+                    entity.IdTaskDaEseguire);
             }
 
             var datiElaborati = await elaboratore.ElaboraDatiLavorazioneAsync(

@@ -228,15 +228,26 @@ public static class Program
         //Check diagnostico utilizzato solo all'avvio per verificare la connettività e lo stato di Hangfire,
         //non è un servizio utilizzato direttamente nei job o nelle operazioni quotidiane
         builder.Services.AddSingleton<IHangfireHealthService, HangfireHealthService>();
+
+        // Singleton: configurazione globale condivisa tra tutti gli utenti.
         builder.Services.AddSingleton<ILavorazioniConfigManager, LavorazioniConfigManager>();
 
+        // Scoped: stato UI legato alla sessione del singolo utente.
+        // In Blazor Server, lo "scope" = connessione SignalR dell'utente.
         builder.Services.AddScoped<UiStateService>();
         builder.Services.AddScoped<ConfigUser>();
+
+        // Scoped: servizi di elaborazione dati operatori.
+        // Dipendono da DbContext (Scoped) → devono essere Scoped.
         builder.Services.AddScoped<INormalizzatoreOperatori, NormalizzatoreOperatori>();
         builder.Services.AddScoped<IGestoreOperatoriDatiLavorazione, GestoreOperatoriDatiLavorazione>();
         builder.Services.AddScoped<IElaboratoreDatiLavorazione, ElaboratoreDatiLavorazione>();
+
+        // Scoped: servizi UI ausiliari per clipboard e PDF.
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IPdfExportService, PdfExportService>();
+
+        // Scoped: dialog registrato come servizio (pattern Blazor per dialogs riutilizzabili).
         builder.Services.AddScoped<NotificationDialog>();
         
         // Data Access Services 
@@ -268,7 +279,7 @@ public static class Program
         builder.Services.AddScoped<ProcedureEditStateService>();
         builder.Services.AddScoped<ProcedureValidationService>();
 
-        // ? Wizard Multi-Step Configuration Services
+        // Wizard Multi-Step Configuration Services
         builder.Services.AddScoped<ConfigurationWizardStateService>();
         builder.Services.AddScoped<ConfigurationStepValidator>();
 
@@ -301,9 +312,9 @@ public static class Program
         builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterBusteHandler>();
 
         // Handler HERA16: staging readers (Scansione, Index, Classificazione)
-        //builder.Services.AddSingleton<IProductionDataHandler, Hera16ScansioneHandler>();
-        //builder.Services.AddSingleton<IProductionDataHandler, Hera16IndexHandler>();
-        //builder.Services.AddSingleton<IProductionDataHandler, Hera16ClassificazioneHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Hera16ScansioneHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Hera16IndexHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Hera16ClassificazioneHandler>();
 
         // Handler ingestion generico mail (orchestratore MAIL_INGESTION)
         builder.Services.AddSingleton<IProductionDataHandler, GenericMailIngestionHandler>();
@@ -314,7 +325,7 @@ public static class Program
 
         // Processori mail ingestion (chiamati da GenericMailIngestionHandler)
         builder.Services.AddSingleton<IMailIngestionProcessor, Ader4IngestionProcessor>();
-        //builder.Services.AddSingleton<IMailIngestionProcessor, Hera16IngestionProcessor>();
+        builder.Services.AddSingleton<IMailIngestionProcessor, Hera16IngestionProcessor>();
 
         // Ader4EmailService registrata come tipo concreto (iniettato in Ader4IngestionProcessor).
         // In modalita mock, LocalCsvAder4EmailService estende Ader4EmailService e viene usata al suo posto.
@@ -330,15 +341,15 @@ public static class Program
 
         //// Hera16EmailService registrata come tipo concreto (iniettato in Hera16IngestionProcessor).
         //// In modalita mock, LocalCsvHera16EmailService estende Hera16EmailService e viene usata al suo posto.
-        //if (builder.Configuration.GetValue<bool>("MailServices:HERA16:UseMockService"))
-        //{
-        //    builder.Services.AddSingleton<Hera16EmailService, LocalCsvHera16EmailService>();
-        //    NLog.LogManager.GetCurrentClassLogger().Info("HERA16: modalita mock attiva - lettura CSV da cartella locale");
-        //}
-        //else
-        //{
-        //    builder.Services.AddSingleton<Hera16EmailService>();
-        //}
+        if (builder.Configuration.GetValue<bool>("MailServices:HERA16:UseMockService"))
+        {
+            builder.Services.AddSingleton<Hera16EmailService, LocalCsvHera16EmailService>();
+            NLog.LogManager.GetCurrentClassLogger().Info("HERA16: modalita mock attiva - lettura CSV da cartella locale");
+        }
+        else
+        {
+            builder.Services.AddSingleton<Hera16EmailService>();
+        }
 
 
         // Servizio unificato principale
@@ -476,7 +487,8 @@ public static class Program
         RecurringJob.AddOrUpdate(
             "MAIL_INGESTION",
             () => ExecuteMailIngestionAsync(),
-            "0 7 * * *");  // Ogni giorno alle 07:00
+            "0 */2 * * *");  // Ogni 2 ore
+
     }
 
     /// <summary>

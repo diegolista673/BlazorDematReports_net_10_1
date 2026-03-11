@@ -123,16 +123,7 @@ namespace Entities.Models.DbApplication
                 entity.Property(e => e.IdEvento).HasMaxLength(100);
                 entity.Property(e => e.Centro).HasMaxLength(50);
                 entity.Property(e => e.DataIngestione).HasDefaultValueSql("GETDATE()");
-                entity.Property(e => e.Elaborata).HasDefaultValue(false);
 
-                entity.HasIndex(
-                    e => new { e.CodiceServizio, e.TipoRisultato, e.DataLavorazione },
-                    "IX_DatiMailCsv_Lookup");
-
-                entity.HasIndex(
-                    e => new { e.CodiceServizio, e.TipoRisultato, e.DataLavorazione },
-                    "IX_DatiMailCsv_NonElaborati")
-                    .HasFilter("[Elaborata] = 0");
             });
         }
 

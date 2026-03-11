@@ -9,16 +9,27 @@
 ## Indice
 
 1. [Panoramica](#1-panoramica)
+ 
 2. [Architettura a due fasi](#2-architettura-a-due-fasi)
+
 3. [Componenti coinvolti](#3-componenti-coinvolti)
+ 
 4. [Fase 1 - Ingestion email (07:00)](#4-fase-1---ingestion-email-0700)
+
 5. [Fase 2 - Produzione (07:15+)](#5-fase-2---produzione-0715)
+
 6. [Servizio ADER4](#6-servizio-ader4)
+ 
 7. [Servizio HERA16](#7-servizio-hera16)
+
 8. [Tabella staging DatiMailCsv](#8-tabella-staging-datimailcsv)
+
 9. [Configurazione appsettings](#9-configurazione-appsettings)
+ 
 10. [Modalità mock (sviluppo/test)](#10-modalità-mock-sviluppotest)
+ 
 11. [Aggiungere un nuovo servizio email](#11-aggiungere-un-nuovo-servizio-email)
+
 12. [Troubleshooting](#12-troubleshooting)
 
 ---
