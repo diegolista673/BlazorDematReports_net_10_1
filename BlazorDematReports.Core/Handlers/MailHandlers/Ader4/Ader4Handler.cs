@@ -55,7 +55,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             CancellationToken ct = default)
         {
             Logger.LogInformation(
-                "Handler {Code}: lettura staging {TipoRisultato}, periodo {Start:d}-{End:d}",
+                "Handler {Code}: lettura staging {TipoRisultato}, periodo {Start:dd/MM/yyyy}-{End:dd/MM/yyyy}",
                 HandlerCode,
                 TipoRisultatoStaging,
                 context.StartDataLavorazione,
@@ -67,7 +67,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
                 : DateOnly.FromDateTime(context.StartDataLavorazione);
 
             using var scope = ScopeFactory.CreateScope();
-            var mailCsvService = scope.ServiceProvider.GetRequiredService<IMailCsvService>();
+            var mailCsvService = scope.ServiceProvider.GetRequiredService<IAder4MailCsvService>();
 
             var stagingRecords = await mailCsvService.GetUnprocessedAsync(
                 LavorazioniCodes.ADER4,

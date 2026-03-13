@@ -9,7 +9,7 @@ namespace Entities.Models.DbApplication;
 /// HERA16: Operatore = OperatoreScansione / OperatoreIndex / OperatoreClassificazione.
 /// Letta dagli handler produzione che producono DatiLavorazione con operatore reale.
 /// </summary>
-public partial class DatiMailCsv
+public partial class DatiMailCsvAder4
 {
     public int Id { get; set; }
 

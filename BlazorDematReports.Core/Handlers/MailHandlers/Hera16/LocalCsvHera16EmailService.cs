@@ -2,13 +2,13 @@ using BlazorDematReports.Core.Services.Email;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
+namespace BlazorDematReports.Core.Handlers.MailHandlers.DatiMailCsvHera16;
 
 /// <summary>
 /// Implementazione mock di <see cref="Hera16EmailService"/> per ambienti di sviluppo/test.
 /// Sostituisce la connessione Exchange EWS con la lettura diretta di file CSV
 /// da una cartella locale configurabile, permettendo il test del parsing HERA16
-/// senza accesso alla posta aziendale.
+/// e del bulk insert nella tabella HERA16 senza accesso alla posta aziendale.
 ///
 /// Attivazione: impostare "MailServices:HERA16:UseMockService": true in appsettings.Development.json.
 /// Cartella default: {BaseDirectory}/TestData/HERA16/  (override con "MailServices:HERA16:MockDataPath")
@@ -45,7 +45,7 @@ public sealed class LocalCsvHera16EmailService : Hera16EmailService, IEmailBatch
     {
         _localLogger.LogInformation("Mock HERA16: lettura CSV da cartella locale {Path}", _mockDataPath);
 
-        RigheElaborate_Clear();
+        RawCsvAttachments_Clear();
 
         if (!Directory.Exists(_mockDataPath))
         {
@@ -97,8 +97,8 @@ public sealed class LocalCsvHera16EmailService : Hera16EmailService, IEmailBatch
         }
 
         _localLogger.LogInformation(
-            "Mock HERA16: batch completato - {FileCount} file processati, {Righe} righe per-operatore",
-            processedAttachments.Count, RigheElaborate.Count);
+            "Mock HERA16: batch completato - {FileCount} file processati, {Righe} righe CSV totali",
+            processedAttachments.Count, RawCsvAttachments.Sum(a => a.Data.Rows.Count));
 
         var emailResult = new EmailProcessingResult
         {

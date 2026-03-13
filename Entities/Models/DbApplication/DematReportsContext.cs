@@ -44,7 +44,7 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Hash> Hashes { get; set; }
 
-    public virtual DbSet<Hera16> Hera16s { get; set; }
+    public virtual DbSet<DatiMailCsvHera16> DatiMailCsvHera16 { get; set; }
 
     public virtual DbSet<Job> Jobs { get; set; }
 
@@ -366,7 +366,7 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.Field).HasMaxLength(100);
         });
 
-        modelBuilder.Entity<Hera16>(entity =>
+        modelBuilder.Entity<DatiMailCsvHera16>(entity =>
         {
             entity.HasKey(e => e.IdCounter).HasName("PK_HERA32_1");
 
@@ -425,6 +425,9 @@ public partial class DematReportsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("tipo_documento");
+            entity.Property(e => e.ElaboratoIl)
+                .HasColumnType("datetime")
+                .HasColumnName("elaborato_il");
         });
 
         modelBuilder.Entity<Job>(entity =>

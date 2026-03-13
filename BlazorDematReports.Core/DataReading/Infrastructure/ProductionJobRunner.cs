@@ -248,7 +248,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             if (results.Count == 0)
             {
                 logger.LogInformation(
-                    "Task {TaskId}: nessun dato dalla query SQL per periodo {Start:d}-{End:d}",
+                    "Task {TaskId}: nessun dato dalla query SQL per periodo {Start:dd/MM/yyyy}-{End:dd/MM/yyyy}",
                     entity.IdTaskDaEseguire, effectiveStart, effectiveEnd);
                 return [];
             }

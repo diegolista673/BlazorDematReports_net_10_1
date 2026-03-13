@@ -80,7 +80,10 @@
                                         @* task da eseguire *@
                                         @if(LavorazioniFasiDataReadingDto != null){
                                             <MudSelect T=int? Label="Task/Query" Margin="Margin.Dense"
-                                                       Required=true Clearable=true @bind-Value="@IdTaskDaEseguire" Disabled=IsDisabledTask @ref="@RefTask">
+                                                       Required=true Clearable=true
+                                                       @bind-Value="@uModel!.IdTaskDaEseguire"
+                                                       For="(() => uModel!.IdTaskDaEseguire)"
+                                                       Disabled=IsDisabledTask @ref="@RefTask">
 
                                                 @foreach (var item in LavorazioniFasiDataReadingDto!.TaskDaEseguireDto)
                                                 {
@@ -230,7 +233,6 @@
     protected List<TaskDataReadingAggiornamentoDto>? ListAggiornamento { get; set; } = new();
 
     protected bool ClasseQueryIntegrata { get; set; }
-    protected int? IdTaskDaEseguire { get; set; }
     protected int? IdTaskHangFire { get; set; }
 
     protected LavorazioniFasiDataReadingDto? LavorazioniFasiDataReadingDto { get; set; } = new LavorazioniFasiDataReadingDto();
@@ -300,12 +302,15 @@
                 idProcLav = (int)procedura.IdproceduraLavorazione;
                 int idFase = fase.IdFaseLavorazione;
 
-                if (IdTaskDaEseguire == null)
-                    throw new NullReferenceException("Errore manca Task/Query da eseguire");
+                if (uModel.IdTaskDaEseguire == null)
+                {
+                    MessaggioErrore = "Selezionare un Task/Query da eseguire";
+                    return;
+                }
 
                 // Esegui task con date selezionate e token cancellabile
                 await ProductionJobRunner.RunAsync(
-                    (int)IdTaskDaEseguire, 
+                    (int)uModel.IdTaskDaEseguire, 
                     uModel.StartDate, 
                     uModel.EndDate, 
                     _queryCts.Token);
@@ -437,15 +442,30 @@
     protected async Task OnValueChangedFase(string fase)
     {
         uModel!.Fase = fase;
+        uModel!.IdTaskDaEseguire = null;
         await RefTask!.ClearAsync();
         IsDisabledTask = true;
+        LavorazioniFasiDataReadingDto = new LavorazioniFasiDataReadingDto();
+        MessaggioErrore = string.Empty;
 
-        if (!string.IsNullOrEmpty(fase))
+        if (!string.IsNullOrEmpty(fase) && ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto != null)
         {
-            if (ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto != null){
-                int idFase = ListFasiLavorazione!.Where(x => x.FaseLavorazione == uModel.Fase).FirstOrDefault()!.IdFaseLavorazione;
-                LavorazioniFasiDataReadingDto = ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto.Where(t => t.FlagDataReading == true & t.IdFaseLavorazione == idFase).FirstOrDefault();
+            int idFase = ListFasiLavorazione!
+                .Where(x => x.FaseLavorazione == uModel.Fase)
+                .FirstOrDefault()!.IdFaseLavorazione;
+
+            var dto = ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto
+                .Where(t => t.FlagDataReading == true && t.IdFaseLavorazione == idFase)
+                .FirstOrDefault();
+
+            if (dto != null && dto.TaskDaEseguireDto.Count > 0)
+            {
+                LavorazioniFasiDataReadingDto = dto;
                 IsDisabledTask = false;
+            }
+            else
+            {
+                MessaggioErrore = "Nessun Task/Query configurato per la fase selezionata";
             }
         }
     }

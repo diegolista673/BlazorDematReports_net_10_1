@@ -6,7 +6,7 @@ namespace BlazorDematReports.Core.Services.Interfaces.IDataService;
 /// Contratto per lo staging per-operatore da CSV email.
 /// Tabella unificata DatiMailCsv per ADER4, HERA16 e futuri servizi.
 /// </summary>
-public interface IMailCsvService
+public interface IAder4MailCsvService
 {
     /// <summary>
     /// Inserisce o aggiorna in bulk le righe per-operatore estratte dai CSV.
@@ -20,7 +20,7 @@ public interface IMailCsvService
     /// Recupera record di staging per un handler produzione nel periodo indicato.
     /// Tutti i record nel range vengono restituiti indipendentemente da ElaborataIl.
     /// </summary>
-    Task<List<DatiMailCsv>> GetUnprocessedAsync(
+    Task<List<DatiMailCsvAder4>> GetUnprocessedAsync(
         string codiceServizio,
         string tipoRisultato,
         DateOnly dataMin,

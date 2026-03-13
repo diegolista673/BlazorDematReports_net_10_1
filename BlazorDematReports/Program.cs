@@ -9,8 +9,7 @@ using BlazorDematReports.Core.DataReading.Services;
 using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
 using BlazorDematReports.Core.Handlers.MailHandlers;
 using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
-using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
-using BlazorDematReports.Core.Services.Email;
+using BlazorDematReports.Core.Handlers.MailHandlers.DatiMailCsvHera16;
 using BlazorDematReports.Core.Handlers.Registry;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
@@ -275,7 +274,7 @@ public static class Program
         builder.Services.AddScoped<IServiceConfigurazioneFontiDati, ServiceConfigurazioneFontiDati>();
         builder.Services.AddScoped<IServiceMail, ServiceMail>();
         builder.Services.AddScoped<IServiceTaskManagement, ServiceTaskManagement>();
-        builder.Services.AddScoped<IMailCsvService, MailCsvService>();
+        builder.Services.AddScoped<IAder4MailCsvService, Ader4MailCsvService>();
         builder.Services.AddScoped<ProcedureEditStateService>();
         builder.Services.AddScoped<ProcedureValidationService>();
 
@@ -285,6 +284,9 @@ public static class Program
 
         // Servizio validazione SQL (sicurezza SQL injection + test connessioni)
         builder.Services.AddScoped<SqlValidationService>();
+
+         // Servizio bulk insert CSV grezzo in tabella HERA16 (usato da Hera16IngestionProcessor)
+         builder.Services.AddSingleton<IHera16DataService, Hera16DataService>();
 
          // Servizio esecuzione di query SQL 
         builder.Services.AddSingleton<IQueryService, QueryService>();
@@ -298,7 +300,7 @@ public static class Program
         builder.Services.AddSingleton<IRecurringJobManagerAdapter, HangfireRecurringJobManagerAdapter>();
 
 
-        // Registrazione handler lavorazioni (SQL/Oracle/Email)
+        // Registrazione handler lavorazioni (SQL/Oracle/)
         // Singleton: tutti dipendono solo da ILavorazioniConfigManager e ILoggerFactory (entrambi Singleton)
         builder.Services.AddSingleton<IProductionDataHandler, Z0072370_28AutHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Z0082041_SoftlineHandler>();
@@ -468,6 +470,12 @@ public static class Program
         });
     }
 
+    /// <summary>
+    /// Sincronizza i recurring job Hangfire con la configurazione attuale delle lavorazioni.
+    /// Crea uno scope temporaneo per risolvere <see cref="IProductionJobScheduler"/> e chiama
+    /// <c>SyncAllAsync</c> che aggiunge, aggiorna o rimuove i job in base alle fasi/centri configurati.
+    /// </summary>
+    /// <param name="app">L'istanza di <see cref="WebApplication"/> usata per creare lo scope DI.</param>
     private static async Task SyncRecurringJobsAsync(WebApplication app)
     {
         using var scope = app.Services.CreateScope();
@@ -476,12 +484,22 @@ public static class Program
     }
 
 
+    /// <summary>
+    /// Registra i recurring job di manutenzione del sistema in Hangfire.
+    /// Attualmente schedula <c>system:cleanup-orphans</c> ogni giorno alle 02:30
+    /// per rimuovere i job orfani (configurazioni eliminate ma job ancora presenti in Hangfire).
+    /// </summary>
     private static void ScheduleSystemJobs()
     {
         RecurringJob.AddOrUpdate("system:cleanup-orphans",() => CleanupJobsOrfani(), "30 2 * * *");
     }
 
 
+    /// <summary>
+    /// Registra il recurring job di ingestion email in Hangfire.
+    /// Schedula <c>MAIL_INGESTION</c> ogni 2 ore per orchestrare tutti i processori mail
+    /// registrati (ADER4, HERA16, ecc.) tramite <see cref="ExecuteMailIngestionAsync"/>.
+    /// </summary>
     private static void ScheduleMailIngestion()
     {
         RecurringJob.AddOrUpdate(

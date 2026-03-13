@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Entities.Models.DbApplication;
 
-public partial class Hera16
+public partial class DatiMailCsvHera16
 {
     public int IdCounter { get; set; }
 
@@ -36,4 +36,7 @@ public partial class Hera16
     public DateTime? DataCaricamentoFile { get; set; }
 
     public int? IdentificativoAllegato { get; set; }
+
+    /// <summary>Data/ora in cui il record è stato letto da un handler di produzione.</summary>
+    public DateTime? ElaboratoIl { get; set; }
 }

@@ -28,8 +28,8 @@ namespace Entities.Models.DbApplication
 
         public virtual DbSet<ReportChartStackedLineOre> ReportChartStackedLineOres { get; set; }
 
-        /// <summary>Staging per-operatore da CSV email (ADER4, HERA16).</summary>
-        public virtual DbSet<DatiMailCsv> DatiMailCsvs { get; set; }
+        /// <summary>Staging per-operatore da CSV email ADER4.</summary>
+        public virtual DbSet<DatiMailCsvAder4> DatiMailCsvAder4 { get; set; }
 
         partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
         {
@@ -113,9 +113,9 @@ namespace Entities.Models.DbApplication
             });
 
             // DatiMailCsv: staging per-operatore da CSV email
-            modelBuilder.Entity<DatiMailCsv>(entity =>
+            modelBuilder.Entity<DatiMailCsvAder4>(entity =>
             {
-                entity.ToTable("DatiMailCsv");
+                entity.ToTable("DatiMailCsvAder4");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.CodiceServizio).HasMaxLength(50).IsRequired();
                 entity.Property(e => e.Operatore).HasMaxLength(100).IsRequired();

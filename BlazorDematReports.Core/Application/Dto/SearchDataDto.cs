@@ -27,7 +27,11 @@ namespace BlazorDematReports.Core.Application.Dto
         [Required]
         public string? Fase { get; set; }
 
-
+        /// <summary>
+        /// Identificativo del task da eseguire selezionato.
+        /// </summary>
+        [Required]
+        public int? IdTaskDaEseguire { get; set; }
 
     }
 }

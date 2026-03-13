@@ -9,14 +9,14 @@ namespace BlazorDematReports.Core.Services.DataService;
 
 /// <summary>
 /// Implementazione dello staging per-operatore da CSV email.
-/// Gestisce la tabella DatiMailCsv per ADER4, HERA16 e futuri servizi.
+/// Gestisce la tabella DatiMailCsv per ADER4 e futuri servizi.
 /// </summary>
-public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
+public sealed class Ader4MailCsvService : ServiceBase<DatiMailCsvAder4>, IAder4MailCsvService
 {
-    public MailCsvService(
+    public Ader4MailCsvService(
         ConfigUser configUser,
         IDbContextFactory<DematReportsContext> contextFactory,
-        ILogger<MailCsvService> logger)
+        ILogger<Ader4MailCsvService> logger)
         : base(contextFactory, logger, configUser)
     {
     }
@@ -40,7 +40,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
         var dateMin  = righe.Min(r => r.DataLavorazione);
         var dateMax  = righe.Max(r => r.DataLavorazione);
 
-        var esistenti = await context.DatiMailCsvs
+        var esistenti = await context.DatiMailCsvAder4
             .Where(d => codici.Contains(d.CodiceServizio)
                      && d.DataLavorazione >= dateMin
                      && d.DataLavorazione <= dateMax)
@@ -66,7 +66,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
             }
             else
             {
-                var nuova = new DatiMailCsv
+                var nuova = new DatiMailCsvAder4
                 {
                     CodiceServizio  = dto.CodiceServizio,
                     DataLavorazione = dto.DataLavorazione,
@@ -77,7 +77,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
                     Centro          = dto.Centro,
                     DataIngestione  = DateTime.Now
                 };
-                context.DatiMailCsvs.Add(nuova);
+                context.DatiMailCsvAder4.Add(nuova);
                 // Aggiunge al dizionario per gestire duplicati all'interno dello stesso batch
                 dict[key] = nuova;
                 inseriti++;
@@ -92,7 +92,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
     }
 
     /// <inheritdoc />
-    public async Task<List<DatiMailCsv>> GetUnprocessedAsync(
+    public async Task<List<DatiMailCsvAder4>> GetUnprocessedAsync(
         string codiceServizio,
         string tipoRisultato,
         DateOnly dataMin,
@@ -104,7 +104,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
 
         await using var context = await contextFactory.CreateDbContextAsync(ct);
 
-        var query = context.DatiMailCsvs.Where(d =>
+        var query = context.DatiMailCsvAder4.Where(d =>
             d.CodiceServizio  == codiceServizio  &&
             d.TipoRisultato   == tipoRisultato   &&
             d.DataLavorazione >= dataMin         &&
@@ -132,7 +132,7 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
         await using var context = await contextFactory.CreateDbContextAsync(ct);
 
         var now = DateTime.Now;
-        await context.DatiMailCsvs
+        await context.DatiMailCsvAder4
             .Where(d => ids.Contains(d.Id))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(d => d.ElaborataIl, now),
@@ -150,11 +150,13 @@ public sealed class MailCsvService : ServiceBase<DatiMailCsv>, IMailCsvService
 
         await using var context = await contextFactory.CreateDbContextAsync(ct);
 
-        int deleted = await context.DatiMailCsvs
+        int deleted = await context.DatiMailCsvAder4
             .Where(d => d.DataLavorazione < DateOnly.FromDateTime(olderThan))
             .ExecuteDeleteAsync(ct);
 
         logger.LogInformation("Eliminati {Count} record DatiMailCsv piu vecchi di {Date}", deleted, olderThan);
         return deleted;
     }
+
+
 }

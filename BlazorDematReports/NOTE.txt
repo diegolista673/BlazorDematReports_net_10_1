@@ -10,9 +10,10 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
+controllare se il delete insert tabella daticsv hera ellimina e poi inserisce il file ogni volta che lo legge, oppure se trova i record non fa nulla
+errore nel caricamento dati hera
 
- controllare il servizio di hera, il file di produzione che arriva via mail potrebbe essere a riempimento, i dati vanno inseriti in tabella e potrebbero essere sovreascritti se contengono dati aggiornati,
- perchè le fasi vengono aggiornate giorno per giorno
+implementare service Hera per fill data tabella DatiMailCsvHera16
 
 nelle query dati migliorare le query eliminando nel where la convert date 
 per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
@@ -34,11 +35,7 @@ testare query dedicata con qualche query integrta che ha campi data diversi
 ipotizzare test con playright per testare l'interfaccia utente e le funzionalità del sistema in modo automatizzato.
 
 
-come eseguire test su email se non leggo edpvr? intanto leggere csv di esempio da cartella di test e poi provare su macchina uffico 
-✅ COMPLETATO: implementato LocalCsvAder4EmailService con IEmailBatchProcessor per test locali
-✅ COMPLETATO: fix TaskDaEseguireMapper - TaskName da IdTaskHangFire, Descrizione da ConfigurazioneFontiDati
-✅ COMPLETATO: fix FlagDataReading in TaskGenerationService per visibilità dropdown DataManager
-✅ COMPLETATO: refactoring architettura mail ingestion separata da production tasks
+
 
 NUOVA ARCHITETTURA MAIL INGESTION (implementata 2026-03-02):
 - Tabella DatiMailIngestion (staging): riceve dati aggregati da tutte le mail
@@ -55,7 +52,7 @@ PROSSIMI PASSI:
 3. Deprecare EmailDailyFlagService (non più necessario con staging)
 4. Applicare stesso pattern a HERA16 (creare Hera16IngestionProcessor + staging readers)
 
-capire come gestire lettura dati da/a com email
+
 
 va rivisto il discorso delle quey che deveono diventare personalizzate per utente come in mondo oppure eliminarle? meglio eliminare
 
@@ -84,6 +81,6 @@ Per quando programma è pronto per la produzione
  
 
 
-controllare il funzinamento in lettore dati, job mail e job lavorazioni
+
 
 
