@@ -79,16 +79,20 @@
 
                                         @* task da eseguire *@
                                         @if(LavorazioniFasiDataReadingDto != null){
-                                            <MudSelect T=int? Label="Task/Query" Margin="Margin.Dense"
-                                                       Required=true Clearable=true
-                                                       @bind-Value="@uModel!.IdTaskDaEseguire"
-                                                       For="(() => uModel!.IdTaskDaEseguire)"
-                                                       Disabled=IsDisabledTask @ref="@RefTask">
+                                            <MudSelect T=int?  
+                                                @bind-Value="@uModel!.IdTaskDaEseguire"
+                                                Label="Task/Query" 
+                                                Margin="Margin.Dense"
+                                                Required=true 
+                                                Clearable=true
+                                                For="(() => uModel!.IdTaskDaEseguire)"
+                                                Disabled=IsDisabledTask
+                                                @ref="@RefTask">
 
                                                 @foreach (var item in LavorazioniFasiDataReadingDto!.TaskDaEseguireDto)
                                                 {
                                                     <MudSelectItem T=int? Value="item.IdTaskDaEseguire">
-                                                        @item.TaskName - @item.Descrizione
+                                                        @item.TaskName
                                                         @if (!string.IsNullOrEmpty(item.TipoFonte))
                                                         {
                                                             <text> (@GetTipoFonteLabel(item.TipoFonte))</text>
@@ -522,6 +526,8 @@
     }
 
     #endregion
+
+
 
     /// <summary>
     /// Restituisce label leggibile per il tipo di fonte dati.

@@ -136,7 +136,7 @@ namespace BlazorDematReports.Core.Services.DataService
             var proCliente = await context.ProcedureClientes.Where(x => x.IdproceduraCliente.Equals(procedureClienteDto.IdproceduraCliente)).FirstOrDefaultAsync();
             if (proCliente != null)
             {
-                proCliente.ProceduraCliente = procedureClienteDto.ProceduraCliente;
+                proCliente.ProceduraCliente = procedureClienteDto.ProceduraCliente!;
                 proCliente.Idcliente = procedureClienteDto.Idcliente;
                 proCliente.Idcentro = (int)procedureClienteDto.Idcentro!;
                 proCliente.Commessa = procedureClienteDto.Commessa;

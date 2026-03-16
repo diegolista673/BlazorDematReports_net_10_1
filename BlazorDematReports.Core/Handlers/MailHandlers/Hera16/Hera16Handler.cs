@@ -1,34 +1,34 @@
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
-using BlazorDematReports.Core.Services.Interfaces.IDataService;
+using BlazorDematReports.Core.Utility.Interfaces;
 using BlazorDematReports.Core.Utility.Models;
-using Entities.Models.DbApplication;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Entities.Helpers;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
+using System.Data;
 
 namespace BlazorDematReports.Core.Handlers.MailHandlers.DatiMailCsvHera16;
 
 /// <summary>
-/// Handler base per task produzione HERA16.
-/// Interroga la tabella <c>HERA16</c> tramite EF Core
-/// (popolata dall'ingestion CSV via <see cref="Hera16IngestionProcessor"/>)
-/// e restituisce i dati di produzione per-operatore.
-/// Aggiorna <c>ElaboratoIl</c> sui record letti al termine dell'esecuzione.
+/// Handler base per task produzione DatiMailCsvHera16.
+/// Interroga direttamente la tabella <c>DatiMailCsvHera16</c> (popolata da Hera16IngestionProcessor)
 /// </summary>
 public abstract class Hera16QueryHandlerBase : IProductionDataHandler
 {
     protected readonly ILogger Logger;
-    protected readonly IServiceScopeFactory ScopeFactory;
+    private readonly ILavorazioniConfigManager _configManager;
 
+    /// <summary>
+    /// Inizializza una nuova istanza di <see cref="Hera16QueryHandlerBase"/>.
+    /// </summary>
     protected Hera16QueryHandlerBase(
         ILogger logger,
-        IServiceScopeFactory scopeFactory)
+        ILavorazioniConfigManager configManager)
     {
-        Logger       = logger;
-        ScopeFactory = scopeFactory;
+        Logger         = logger;
+        _configManager = configManager;
     }
 
     /// <inheritdoc />
@@ -45,16 +45,8 @@ public abstract class Hera16QueryHandlerBase : IProductionDataHandler
         Category             = "HERA16 SQL Query"
     };
 
-    /// <summary>
-    /// Esegue la query LINQ su HERA16, filtra nel DB e aggrega in memoria per operatore/data.
-    /// Restituisce i dati aggregati e la lista di <c>IdCounter</c> dei record letti,
-    /// usata per aggiornare <c>ElaboratoIl</c>.
-    /// </summary>
-    protected abstract Task<(List<DatiLavorazione> Dati, List<int> Ids)> QueryHera16Async(
-        DematReportsContext db,
-        DateTime startDate,
-        DateTime endDate,
-        CancellationToken ct);
+    /// <summary>Restituisce la query SQL specifica per la fase di lavorazione.</summary>
+    protected abstract string GetQuery();
 
     /// <inheritdoc />
     public async Task<List<DatiLavorazione>> ExecuteAsync(
@@ -65,205 +57,191 @@ public abstract class Hera16QueryHandlerBase : IProductionDataHandler
         var endDate   = context.EndDataLavorazione ?? context.StartDataLavorazione;
 
         Logger.LogInformation(
-            "Handler {Code}: query su HERA16, periodo {Start:dd/MM/yyyy}-{End:dd/MM/yyyy}",
+            "[{Code}] Elaborazione dati HERA16, periodo {Start:dd/MM/yyyy}-{End:dd/MM/yyyy}",
             HandlerCode, startDate, endDate);
 
-        using var scope = ScopeFactory.CreateScope();
-        var db               = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
-        var hera16DataService = scope.ServiceProvider.GetRequiredService<IHera16DataService>();
-
-        var (datiLavorazione, ids) = await QueryHera16Async(db, startDate, endDate, ct);
-
-        if (ids.Count > 0)
-            await hera16DataService.MarkAsProcessedAsync(ids, ct);
-
-        Logger.LogInformation(
-            "Handler {Code}: {Count} record estratti da HERA16, {Ids} righe marcate come elaborate",
-            HandlerCode, datiLavorazione.Count, ids.Count);
-
-        return datiLavorazione;
+        return await EseguiQueryAsync(GetQuery(), startDate, endDate, ct);
     }
 
     /// <summary>
-    /// Aggrega in memoria le righe proiettate contando le combinazioni distinte
-    /// (codice_mercato + codice_offerta + tipo_documento) per operatore e data.
+    /// Esegue la query SQL su SQL Server tramite la connessione <c>CnxnDematReports</c>.
+    /// I parametri <c>@startDate</c> e <c>@endDate</c> sono tipizzati come DateTime2.
     /// </summary>
-    protected static List<DatiLavorazione> AggregaPerOperatore<T>(
-        IEnumerable<T> rows,
-        Func<T, string?> getOperatore,
-        Func<T, DateTime> getData,
-        Func<T, string> getKey)
+    private async Task<List<DatiLavorazione>> EseguiQueryAsync(
+        string query,
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken ct = default)
     {
-        return rows
-            .GroupBy(r => (Operatore: getOperatore(r), Data: getData(r)))
-            .Select(g =>
+        QueryLoggingHelper.LogQueryExecution(logger: Logger);
+
+        var connectionString = _configManager.CnxnDematReports
+            ?? throw new InvalidOperationException("ConnectionStrings:CnxnDematReports non configurata in appsettings");
+
+        var result    = new List<DatiLavorazione>();
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync(ct);
+
+            await using var cmd = new SqlCommand(query, connection);
+            cmd.CommandTimeout = 30;
+            cmd.Parameters.Add("@startDate", SqlDbType.DateTime2).Value = startDate.Date;
+            cmd.Parameters.Add("@endDate",   SqlDbType.DateTime2).Value = endDate.Date;
+
+            Logger.LogDebug("[{Code}] Esecuzione query con timeout: {Timeout}s", HandlerCode, cmd.CommandTimeout);
+
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+            // Ordinal pre-calcolati una sola volta per performance su grandi dataset
+            var ordOp   = reader.GetOrdinal("Operatore");
+            var ordData = reader.GetOrdinal("DataLavorazione");
+            var ordDoc  = reader.GetOrdinal("Documenti");
+            var ordFog  = reader.GetOrdinal("Fogli");
+            var ordPag  = reader.GetOrdinal("Pagine");
+
+            while (await reader.ReadAsync(ct))
             {
-                var count = g.Select(getKey).Distinct().Count();
-                return new DatiLavorazione
+                result.Add(new DatiLavorazione
                 {
-                    Operatore                     = g.Key.Operatore ?? string.Empty,
-                    DataLavorazione               = g.Key.Data,
-                    Documenti                     = count,
-                    Fogli                         = count,
-                    Pagine                        = count * 2,
+                    Operatore                     = reader.IsDBNull(ordOp)  ? null : reader.GetString(ordOp).Trim(),
+                    DataLavorazione               = reader.GetDateTime(ordData),
+                    Documenti                     = reader.IsDBNull(ordDoc) ? null : reader.GetInt32(ordDoc),
+                    Fogli                         = reader.IsDBNull(ordFog) ? null : reader.GetInt32(ordFog),
+                    Pagine                        = reader.IsDBNull(ordPag) ? null : reader.GetInt32(ordPag),
                     AppartieneAlCentroSelezionato = true
-                };
-            })
-            .ToList();
+                });
+            }
+
+            stopwatch.Stop();
+            Logger.LogInformation(
+                "[{Code}] Query eseguita con successo. Record letti: {Count}, Tempo: {Ms}ms",
+                HandlerCode, result.Count, stopwatch.ElapsedMilliseconds);
+        }
+        catch (SqlException sqlEx)
+        {
+            stopwatch.Stop();
+            Logger.LogError(sqlEx,
+                "[{Code}] Errore SQL. Tempo: {Ms}ms, Numero: {ErrNum}, Severita: {Class}, Stato: {State}",
+                HandlerCode, stopwatch.ElapsedMilliseconds, sqlEx.Number, sqlEx.Class, sqlEx.State);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            Logger.LogError(ex, "[{Code}] Errore generico. Tempo: {Ms}ms", HandlerCode, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+
+        return result;
     }
 }
 
 /// <summary>
 /// Handler HERA16 per fase Scansione.
-/// Aggrega per operatore_scan e data_scansione con COUNT DISTINCT documenti.
+/// Aggrega COUNT DISTINCT (codice_mercato + codice_offerta + tipo_documento) per operatore_scan e data_scansione.
 /// </summary>
-[Description("HERA16 Scansione - query diretta su tabella HERA16")]
+[Description("HERA16 Scansione - query diretta su tabella DatiMailCsvHera16")]
 public sealed class Hera16ScansioneHandler : Hera16QueryHandlerBase
 {
+    /// <summary>Inizializza una nuova istanza di <see cref="Hera16ScansioneHandler"/>.</summary>
     public Hera16ScansioneHandler(
         ILogger<Hera16ScansioneHandler> logger,
-        IServiceScopeFactory scopeFactory)
-        : base(logger, scopeFactory) { }
+        ILavorazioniConfigManager configManager)
+        : base(logger, configManager) { }
 
+    /// <inheritdoc />
     public override string HandlerCode => LavorazioniCodes.HERA16_SCANSIONE;
 
-    protected override async Task<(List<DatiLavorazione> Dati, List<int> Ids)> QueryHera16Async(
-        DematReportsContext db,
-        DateTime startDate,
-        DateTime endDate,
-        CancellationToken ct)
-    {
-        var start = startDate.Date;
-        var end   = endDate.Date.AddDays(1);
+    /// <inheritdoc />
+    protected override string GetQuery() => QuerySql;
 
-        var rows = await db.DatiMailCsvHera16
-            .Where(h => h.DataScansione.HasValue
-                     && h.DataScansione >= start
-                     && h.DataScansione < end)
-            .Select(h => new
-            {
-                h.IdCounter,
-                h.OperatoreScan,
-                h.DataScansione,
-                h.CodiceMercato,
-                h.CodiceOfferta,
-                h.TipoDocumento
-            })
-            .ToListAsync(ct);
-
-        var ids  = rows.Select(r => r.IdCounter).ToList();
-        var dati = AggregaPerOperatore(
-            rows,
-            r => r.OperatoreScan,
-            r => r.DataScansione!.Value.Date,
-            r => (r.CodiceMercato ?? "") + (r.CodiceOfferta ?? "") + (r.TipoDocumento ?? ""));
-
-        return (dati, ids);
-    }
+    private const string QuerySql = """
+        SELECT
+            operatore_scan                                                       AS Operatore,
+            CONVERT(date, data_scansione)                                        AS DataLavorazione,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento)     AS Documenti,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento)     AS Fogli,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento) * 2 AS Pagine
+        FROM DatiMailCsvHera16
+        WHERE CONVERT(date, data_scansione) >= @startDate
+          AND CONVERT(date, data_scansione) <= @endDate
+        GROUP BY operatore_scan, CONVERT(date, data_scansione)
+        ORDER BY CONVERT(date, data_scansione)
+        """;
 }
 
 /// <summary>
 /// Handler HERA16 per fase Index.
-/// Esclude operatori '-'/'engine' e tipi documento 'BRIT','DR01','XXXX'.
+/// Esclude operatori '-' e 'engine' e tipi documento 'BRIT', 'DR01', 'XXXX'.
 /// </summary>
-[Description("HERA16 Index - query diretta su tabella HERA16")]
+[Description("HERA16 Index - query diretta su tabella DatiMailCsvHera16")]
 public sealed class Hera16IndexHandler : Hera16QueryHandlerBase
 {
-    private static readonly string[] TipiEsclusi = ["BRIT", "DR01", "XXXX"];
-
+    /// <summary>Inizializza una nuova istanza di <see cref="Hera16IndexHandler"/>.</summary>
     public Hera16IndexHandler(
         ILogger<Hera16IndexHandler> logger,
-        IServiceScopeFactory scopeFactory)
-        : base(logger, scopeFactory) { }
+        ILavorazioniConfigManager configManager)
+        : base(logger, configManager) { }
 
+    /// <inheritdoc />
     public override string HandlerCode => LavorazioniCodes.HERA16_INDEX;
 
-    protected override async Task<(List<DatiLavorazione> Dati, List<int> Ids)> QueryHera16Async(
-        DematReportsContext db,
-        DateTime startDate,
-        DateTime endDate,
-        CancellationToken ct)
-    {
-        var start = startDate.Date;
-        var end   = endDate.Date.AddDays(1);
+    /// <inheritdoc />
+    protected override string GetQuery() => QuerySql;
 
-        var rows = await db.DatiMailCsvHera16
-            .Where(h => h.DataIndex.HasValue
-                     && h.DataIndex >= start
-                     && h.DataIndex < end
-                     && h.OperatoreIndex != "-"
-                     && h.OperatoreIndex != "engine"
-                     && !TipiEsclusi.Contains(h.TipoDocumento))
-            .Select(h => new
-            {
-                h.IdCounter,
-                h.OperatoreIndex,
-                h.DataIndex,
-                h.CodiceMercato,
-                h.CodiceOfferta,
-                h.TipoDocumento
-            })
-            .ToListAsync(ct);
-
-        var ids  = rows.Select(r => r.IdCounter).ToList();
-        var dati = AggregaPerOperatore(
-            rows,
-            r => r.OperatoreIndex,
-            r => r.DataIndex!.Value.Date,
-            r => (r.CodiceMercato ?? "") + (r.CodiceOfferta ?? "") + (r.TipoDocumento ?? ""));
-
-        return (dati, ids);
-    }
+    private const string QuerySql = """
+        SELECT
+            operatore_index                                                      AS Operatore,
+            CONVERT(date, data_index)                                            AS DataLavorazione,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento)     AS Documenti,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento)     AS Fogli,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento) * 2 AS Pagine
+        FROM DatiMailCsvHera16
+        WHERE CONVERT(date, data_index) >= @startDate
+          AND CONVERT(date, data_index) <= @endDate
+          AND operatore_index <> '-'
+          AND operatore_index <> 'engine'
+          AND tipo_documento NOT IN ('BRIT', 'DR01', 'XXXX')
+        GROUP BY operatore_index, CONVERT(date, data_index)
+        ORDER BY CONVERT(date, data_index)
+        """;
 }
 
 /// <summary>
 /// Handler HERA16 per fase Classificazione.
-/// Esclude operatori '-'/'engine'.
+/// Esclude operatori '-' e 'engine'.
 /// </summary>
-[Description("HERA16 Classificazione - query diretta su tabella HERA16")]
+[Description("HERA16 Classificazione - query diretta su tabella DatiMailCsvHera16")]
 public sealed class Hera16ClassificazioneHandler : Hera16QueryHandlerBase
 {
+    /// <summary>Inizializza una nuova istanza di <see cref="Hera16ClassificazioneHandler"/>.</summary>
     public Hera16ClassificazioneHandler(
         ILogger<Hera16ClassificazioneHandler> logger,
-        IServiceScopeFactory scopeFactory)
-        : base(logger, scopeFactory) { }
+        ILavorazioniConfigManager configManager)
+        : base(logger, configManager) { }
 
+    /// <inheritdoc />
     public override string HandlerCode => LavorazioniCodes.HERA16_CLASSIFICAZIONE;
 
-    protected override async Task<(List<DatiLavorazione> Dati, List<int> Ids)> QueryHera16Async(
-        DematReportsContext db,
-        DateTime startDate,
-        DateTime endDate,
-        CancellationToken ct)
-    {
-        var start = startDate.Date;
-        var end   = endDate.Date.AddDays(1);
+    /// <inheritdoc />
+    protected override string GetQuery() => QuerySql;
 
-        var rows = await db.DatiMailCsvHera16
-            .Where(h => h.DataClassificazione.HasValue
-                     && h.DataClassificazione >= start
-                     && h.DataClassificazione < end
-                     && h.OperatoreClassificazione != "-"
-                     && h.OperatoreClassificazione != "engine")
-            .Select(h => new
-            {
-                h.IdCounter,
-                h.OperatoreClassificazione,
-                h.DataClassificazione,
-                h.CodiceMercato,
-                h.CodiceOfferta,
-                h.TipoDocumento
-            })
-            .ToListAsync(ct);
-
-        var ids  = rows.Select(r => r.IdCounter).ToList();
-        var dati = AggregaPerOperatore(
-            rows,
-            r => r.OperatoreClassificazione,
-            r => r.DataClassificazione!.Value.Date,
-            r => (r.CodiceMercato ?? "") + (r.CodiceOfferta ?? "") + (r.TipoDocumento ?? ""));
-
-        return (dati, ids);
-    }
+    private const string QuerySql = """
+        SELECT
+            operatore_classificazione                                            AS Operatore,
+            CONVERT(date, data_classificazione)                                  AS DataLavorazione,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento)     AS Documenti,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento)     AS Fogli,
+            COUNT(DISTINCT codice_mercato + codice_offerta + tipo_documento) * 2 AS Pagine
+        FROM DatiMailCsvHera16
+        WHERE CONVERT(date, data_classificazione) >= @startDate
+          AND CONVERT(date, data_classificazione) <= @endDate
+          AND operatore_classificazione <> '-'
+          AND operatore_classificazione <> 'engine'
+        GROUP BY operatore_classificazione, CONVERT(date, data_classificazione)
+        ORDER BY CONVERT(date, data_classificazione)
+        """;
 }
-

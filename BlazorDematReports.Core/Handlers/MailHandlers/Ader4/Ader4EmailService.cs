@@ -96,13 +96,13 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             }
 
             if (attachment.FileName.Contains("EQTMN4_Scatole_Scansionate"))
-                AggiungiRigheScatoleScansionate(csvData, dataRif, idEvento, centro);
+                AggiungiRigheScatoleScansionate(csvData, dataRif, idEvento, centro, attachment.FileName);
             else if (attachment.FileName.Contains("EQTMN4_Dispacci_Preaccettati"))
-                AggiungiRigheDispacci(csvData, "PreAccettazione", dataRif, idEvento, centro);
+                AggiungiRigheDispacci(csvData, "PreAccettazione", dataRif, idEvento, centro, attachment.FileName);
             else if (attachment.FileName.Contains("EQTMN4_Dispacci_Ripartiti"))
-                AggiungiRigheDispacci(csvData, "Ripartizione", dataRif, idEvento, centro);
+                AggiungiRigheDispacci(csvData, "Ripartizione", dataRif, idEvento, centro, attachment.FileName);
             else if (attachment.FileName.Contains("EQTMN4_Scatole_Restituite"))
-                AggiungiRigheDispacci(csvData, "Restituzione", dataRif, idEvento, centro);
+                AggiungiRigheDispacci(csvData, "Restituzione", dataRif, idEvento, centro, attachment.FileName);
 
             Logger.LogInformation("Allegato ADER4 {FileName} processato: {RowCount} righe CSV", attachment.FileName, csvData.Rows.Count);
 
@@ -117,7 +117,8 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             DataTable csvData,
             DateOnly dataRif,
             string? idEvento,
-            string? centro)
+            string? centro,
+            string? nomeFile)
         {
             var righeValide = csvData.AsEnumerable()
                 .Where(r =>
@@ -150,11 +151,11 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
                     .Sum(r => ParseDoc(r.Field<string>("Numero documenti")));
 
                 if (captiva > 0)
-                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneCaptiva", captiva, idEvento, centro));
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneCaptiva", captiva, idEvento, centro, nomeFile));
                 if (sorter > 0)
-                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneSorter", sorter, idEvento, centro));
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneSorter", sorter, idEvento, centro, nomeFile));
                 if (sorterBuste > 0)
-                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneSorterBuste", sorterBuste, idEvento, centro));
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneSorterBuste", sorterBuste, idEvento, centro, nomeFile));
             }
 
             Logger.LogInformation(
@@ -170,7 +171,8 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             string tipoRisultato,
             DateOnly dataRif,
             string? idEvento,
-            string? centro)
+            string? centro,
+            string? nomeFile)
         {
             Logger.LogInformation("Elaborazione Dispacci {Tipo}: {RowCount} righe", tipoRisultato, csvData.Rows.Count);
 
@@ -186,7 +188,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             {
                 var totale = gruppo.Sum(r => ParseDoc(r.Field<string>("Numero Documenti")));
                 if (totale > 0)
-                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, gruppo.Key, tipoRisultato, totale, idEvento, centro));
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, gruppo.Key, tipoRisultato, totale, idEvento, centro, nomeFile));
             }
         }
 

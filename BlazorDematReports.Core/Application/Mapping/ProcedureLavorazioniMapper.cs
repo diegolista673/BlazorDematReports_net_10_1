@@ -34,20 +34,34 @@ public partial class ProcedureLavorazioniMapper
 
     /// <summary>
     /// Mapping custom per LavorazioniFasiDataReadingsDto.
-    /// Arricchisce ogni task con IdProceduraLavorazione, IdFaseLavorazione e FaseLavorazione
-    /// recuperandoli dal parent LavorazioniFasiDataReading (evita navigation non incluse in EF).
+    /// Arricchisce ogni task con IdProceduraLavorazione, IdFaseLavorazione, FaseLavorazione,
+    /// TaskName (← IdTaskHangFire), Descrizione (← DescrizioneConfigurazione) e TipoFonte
+    /// direttamente dalle entità originali, bypassando il mapping inline generato da Mapperly.
     /// </summary>
     private List<LavorazioniFasiDataReadingDto> MapFasiCollection(ICollection<LavorazioniFasiDataReading> fasi)
         => (fasi ?? [])
             .Select(fase =>
             {
                 var dto = _fasiMapper.FaseReadingToDto(fase);
+
+                // Lookup O(1) dalle entità originali (navigation properties già caricate da EF)
+                var entityById = (fase.TaskDaEseguires ?? [])
+                    .ToDictionary(t => t.IdTaskDaEseguire);
+
                 foreach (var task in dto.TaskDaEseguireDto)
                 {
                     task.IdProceduraLavorazione = fase.IdProceduraLavorazione;
-                    task.IdFaseLavorazione = fase.IdFaseLavorazione;
-                    task.FaseLavorazione = dto.FaseLavorazione;
+                    task.IdFaseLavorazione       = fase.IdFaseLavorazione;
+                    task.FaseLavorazione         = dto.FaseLavorazione;
+
+                    if (!entityById.TryGetValue(task.IdTaskDaEseguire, out var entity))
+                        continue;
+
+                    task.TaskName    = entity.IdConfigurazioneDatabaseNavigation?.HandlerClassName;
+                    task.Descrizione = entity.IdConfigurazioneDatabaseNavigation?.DescrizioneConfigurazione;
+                    task.TipoFonte   = entity.IdConfigurazioneDatabaseNavigation?.TipoFonte.ToString();
                 }
+
                 return dto;
             })
             .ToList();
@@ -75,6 +89,6 @@ public partial class ProcedureLavorazioniMapper
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.ProduzioneSistemas))]
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.QueryProcedureLavorazionis))]
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.ConfigurazioneFaseCentros))]
-    [MapperIgnoreTarget(nameof(ProcedureLavorazioni.TaskServiceLavorazionis))]
+
     public partial ProcedureLavorazioni DtoToProcedura(ProcedureLavorazioniDto dto);
 }

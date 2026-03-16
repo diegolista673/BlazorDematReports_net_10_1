@@ -52,4 +52,5 @@ public sealed record DatiMailCsvDto(
     string TipoRisultato,
     int Documenti,
     string? IdEvento = null,
-    string? Centro = null);
+    string? Centro = null,
+    string? NomeFile = null);

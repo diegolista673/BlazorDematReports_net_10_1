@@ -53,5 +53,5 @@ public partial class ProcedureLavorazioni
 
     public virtual ICollection<QueryProcedureLavorazioni> QueryProcedureLavorazionis { get; set; } = new List<QueryProcedureLavorazioni>();
 
-    public virtual ICollection<TaskServiceLavorazioni> TaskServiceLavorazionis { get; set; } = new List<TaskServiceLavorazioni>();
+
 }

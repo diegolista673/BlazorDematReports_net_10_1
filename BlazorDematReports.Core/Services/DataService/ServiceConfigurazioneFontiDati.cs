@@ -439,36 +439,46 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <summary>
-        /// Verifica che non ci siano duplicati di lavorazione tra le configurazioni.
+        /// Verifica che non esista già un mapping con la stessa combinazione
+        /// (IdProceduraLavorazione + IdFaseLavorazione + IdCentro) in un'altra configurazione.
+        /// Permette la stessa procedura in configurazioni diverse purché la fase sia diversa.
         /// </summary>
         /// <param name="context">Contesto dati EF.</param>
         /// <param name="mappingFasi">Lista mapping da verificare.</param>
-        /// <param name="currentConfigId">ID configurazione corrente (opzionale).</param>
+        /// <param name="currentConfigId">ID configurazione corrente (opzionale, escluso dal controllo in edit mode).</param>
         private static async Task EnsureUniqueLavorazioneAsync(DematReportsContext context, IEnumerable<ConfigurazioneFaseCentro> mappingFasi, int? currentConfigId = null)
         {
-            var procedures = mappingFasi
+            var mappings = mappingFasi
                 .Where(m => m.IdProceduraLavorazione > 0)
-                .Select(m => m.IdProceduraLavorazione)
-                .Distinct()
                 .ToList();
 
-            if (!procedures.Any())
+            if (!mappings.Any())
                 return;
 
-            var query = context.ConfigurazioneFaseCentros
-                .Where(fc => procedures.Contains(fc.IdProceduraLavorazione));
-
-            if (currentConfigId.HasValue)
-                query = query.Where(fc => fc.IdConfigurazione != currentConfigId.Value);
-
-            var conflict = await query
-                .Include(fc => fc.IdConfigurazioneNavigation)
-                .FirstOrDefaultAsync();
-
-            if (conflict != null)
+            foreach (var mapping in mappings)
             {
-                var configCode = conflict.IdConfigurazioneNavigation?.CodiceConfigurazione ?? conflict.IdConfigurazione.ToString();
-                throw new InvalidOperationException($"La procedura {conflict.IdProceduraLavorazione} � gi� utilizzata dalla configurazione {configCode}.");
+                var query = context.ConfigurazioneFaseCentros
+                    .Where(fc => fc.IdProceduraLavorazione == mapping.IdProceduraLavorazione
+                              && fc.IdFaseLavorazione      == mapping.IdFaseLavorazione
+                              && fc.IdCentro               == mapping.IdCentro
+                              && fc.FlagAttiva             == true);
+
+                if (currentConfigId.HasValue)
+                    query = query.Where(fc => fc.IdConfigurazione != currentConfigId.Value);
+
+                var conflict = await query
+                    .Include(fc => fc.IdConfigurazioneNavigation)
+                    .FirstOrDefaultAsync();
+
+                if (conflict != null)
+                {
+                    var configCode = conflict.IdConfigurazioneNavigation?.CodiceConfigurazione
+                                     ?? conflict.IdConfigurazione.ToString();
+                    throw new InvalidOperationException(
+                        $"La combinazione procedura {mapping.IdProceduraLavorazione} / " +
+                        $"fase {mapping.IdFaseLavorazione} / centro {mapping.IdCentro} " +
+                        $"è già utilizzata dalla configurazione '{configCode}'.");
+                }
             }
         }
 

@@ -61,6 +61,7 @@ public sealed class Ader4MailCsvService : ServiceBase<DatiMailCsvAder4>, IAder4M
             if (dict.TryGetValue(key, out var existing))
             {
                 existing.Documenti      = dto.Documenti;
+                existing.NomeFile       = dto.NomeFile;
                 existing.DataIngestione = DateTime.Now;
                 aggiornati++;
             }
@@ -75,6 +76,7 @@ public sealed class Ader4MailCsvService : ServiceBase<DatiMailCsvAder4>, IAder4M
                     Documenti       = dto.Documenti,
                     IdEvento        = dto.IdEvento,
                     Centro          = dto.Centro,
+                    NomeFile        = dto.NomeFile,
                     DataIngestione  = DateTime.Now
                 };
                 context.DatiMailCsvAder4.Add(nuova);

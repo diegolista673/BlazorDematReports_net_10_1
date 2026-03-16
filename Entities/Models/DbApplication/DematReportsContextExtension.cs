@@ -122,6 +122,7 @@ namespace Entities.Models.DbApplication
                 entity.Property(e => e.TipoRisultato).HasMaxLength(100).IsRequired();
                 entity.Property(e => e.IdEvento).HasMaxLength(100);
                 entity.Property(e => e.Centro).HasMaxLength(50);
+                entity.Property(e => e.NomeFile).HasMaxLength(200);
                 entity.Property(e => e.DataIngestione).HasDefaultValueSql("GETDATE()");
 
             });

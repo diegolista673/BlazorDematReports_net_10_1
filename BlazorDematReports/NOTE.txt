@@ -10,10 +10,15 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-controllare se il delete insert tabella daticsv hera ellimina e poi inserisce il file ogni volta che lo legge, oppure se trova i record non fa nulla
-errore nel caricamento dati hera
+togliere mail ingestion da elenco handler
+hera non deve avere centro selezionato default = true puoi essere fatta sia su verona che su genova
+controllare domani se i dati in produzione sistema per la stessa data vengono sovrascritti
+hera 16 manca nel campo elaborato il la data ( il campo deve diventare elaborato DEmatIl anche per Ader4 ) in ader 4 il campo viene valorizzato
 
-implementare service Hera per fill data tabella DatiMailCsvHera16
+piano per visualizzare lettura dati ader4 e hera e controllo di caricamento e elaborazione ( per ultimo ma forse non necessario)
+
+controllare dimensione dei log perchè quando inserisco i dati di produzione in collaudo i log diventano molto grandi e rallentano tutto, valutare se è possibile ridurli o eliminarli
+soprattutto per inserimento e reinserimento dei dati letti da csv
 
 nelle query dati migliorare le query eliminando nel where la convert date 
 per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
@@ -37,20 +42,7 @@ ipotizzare test con playright per testare l'interfaccia utente e le funzionalit�
 
 
 
-NUOVA ARCHITETTURA MAIL INGESTION (implementata 2026-03-02):
-- Tabella DatiMailIngestion (staging): riceve dati aggregati da tutte le mail
-- GenericMailIngestionHandler: job Hangfire singolo (07:00) che orchestra tutti i processori mail
-- IMailIngestionProcessor: interfaccia per processori specifici (Ader4IngestionProcessor, HeraSu16IngestionProcessor, etc.)
-- Handler produzione fase-specifici: leggono staging filtrato per servizio/tipo/centro, scrivono ProduzioneSistema
-  * Ader4CaptivaHandler → legge DatiMailIngestion WHERE TipoDato='ScansioneCaptiva'
-  * Ader4SorterHandler → legge DatiMailIngestion WHERE TipoDato='ScansioneSorter'
-  * Ader4SorterBusteHandler → legge DatiMailIngestion WHERE TipoDato='ScansioneSorterBuste'
 
-PROSSIMI PASSI:
-1. Eseguire script SQL: Database\Migrations\20260302_AddDatiMailIngestion.sql
-2. Creare ConfigurazioneFontiDati per ADER4_CAPTIVA/SORTER/SORTER_BUSTE (TipoFonte=HandlerIntegrato)
-3. Deprecare EmailDailyFlagService (non più necessario con staging)
-4. Applicare stesso pattern a HERA16 (creare Hera16IngestionProcessor + staging readers)
 
 
 

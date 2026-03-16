@@ -42,6 +42,8 @@ public partial class LavorazioniFasiMapper
         nameof(LavorazioniFasiDataReadingDto.TaskDaEseguireDto))]
     public partial LavorazioniFasiDataReadingDto FaseReadingToDto(LavorazioniFasiDataReading entity);
 
+
+
     /// <summary>
     /// LavorazioniFasiDataReadingDto → LavorazioniFasiDataReading (ignora navigation).
     /// </summary>

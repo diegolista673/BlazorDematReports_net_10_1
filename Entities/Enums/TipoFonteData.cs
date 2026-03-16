@@ -17,6 +17,6 @@ public enum TipoFonteData
     /// Handler C# integrato: classe custom per elaborazione dati complessa.
     /// Include handler mail (HERA16, ADER4) e altri handler personalizzati.
     /// </summary>
-    [Description("Handler C# Integrato")]
+    [Description("Handler Integrato")]
     HandlerIntegrato = 1
 }

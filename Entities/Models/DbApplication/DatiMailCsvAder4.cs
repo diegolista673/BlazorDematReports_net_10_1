@@ -37,6 +37,9 @@ public partial class DatiMailCsvAder4
     /// <summary>Centro: 'VERONA' | 'GENOVA' | null.</summary>
     public string? Centro { get; set; }
 
+    /// <summary>Nome del file CSV di origine (allegato email).</summary>
+    public string? NomeFile { get; set; }
+
     public DateTime DataIngestione { get; set; }
 
     /// <summary>Data/ora in cui il record è stato letto da un handler produzione (solo informativa).</summary>
