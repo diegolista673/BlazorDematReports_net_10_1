@@ -93,7 +93,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             var endDate   = EndDataLavorazione ?? StartDataLavorazione;
 
             _logger.LogInformation(
-                "[RDMKT_RSP] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:d} - {End:d}",
+                "[RDMKT_RSP] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:dd/MM/yyyy} - {End:dd/MM/yyyy}",
                 IDFaseLavorazione, startDate, endDate);
 
             var result = new List<DatiLavorazione>();
@@ -106,8 +106,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                 {
                     var dati = IDFaseLavorazione switch
                     {
-                        // DATA_INDEX usato direttamente senza CONVERT nel WHERE per sfruttare gli indici.
-                        // OP_SCAN rimosso dal GROUP BY perché non presente nel SELECT (era un bug SQL).
+                        // DATA_INDEX
                         5 => await EseguiQueryAsync(
                             $"""
                             SELECT
@@ -119,11 +118,12 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                                 OP_SCAN
                             FROM {tabName}
                             WHERE DATA_INDEX >= @startDate
-                              AND DATA_INDEX <  DATEADD(DAY, 1, @endDate)
-                            GROUP BY OP_INDEX, CONVERT(date, DATA_INDEX), OP_SCAN
+                              AND convert(date, DATA_INDEX) <= @endDate
+                            GROUP BY OP_INDEX, CONVERT(date, DATA_INDEX)
                             """,
                             tabName, includeOperatoreScan: true, startDate, endDate, ct),
 
+                        //Scan
                         4 => await EseguiQueryAsync(
                             $"""
                             SELECT
@@ -134,7 +134,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                                 SUM(CONVERT(int, ISNULL(NUM_PAG, 0))) AS Pagine
                             FROM {tabName}
                             WHERE DATA_SCAN >= @startDate
-                              AND DATA_SCAN <  DATEADD(DAY, 1, @endDate)
+                              AND convert(date, DATA_SCAN) <= @endDate
                             GROUP BY OP_SCAN, CONVERT(date, DATA_SCAN)
                             ORDER BY CONVERT(date, DATA_SCAN)
                             """,

@@ -1,6 +1,6 @@
-﻿using AutoMapper;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -16,7 +16,7 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceRepartiProduzione : IServiceRepartiProduzione
     {
-        private readonly IMapper mapper;
+        private readonly AltriDatiMapper _mapper;
         private readonly ConfigUser configUser;
         private readonly IDbContextFactory<DematReportsContext> contextFactory;
         private readonly ILogger<ServiceRepartiProduzione> logger;
@@ -24,13 +24,13 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione dei reparti di produzione.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entità e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per conversioni RepartiProduzione ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceRepartiProduzione(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceRepartiProduzione> logger)
+        public ServiceRepartiProduzione(AltriDatiMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceRepartiProduzione> logger)
         {
-            this.mapper = mapper;
+            _mapper = mapper;
             this.configUser = configUser;
             this.contextFactory = contextFactory;
             this.logger = logger;
@@ -83,7 +83,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<RepartiProduzione>(repartiProduzioneDto);
+            var entity = _mapper.DtoToReparto(repartiProduzioneDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.RepartiProduziones.Add(entity);
             await context.SaveChangesAsync();

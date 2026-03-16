@@ -1,7 +1,9 @@
 ﻿@using BlazorDematReports.Core.Services.Validation
 @using BlazorDematReports.Core.Services.Wizard
+@using BlazorDematReports.Core.Lavorazioni.Interfaces
 @using Entities.Enums
 @inject SqlValidationService SqlValidator
+@inject IUnifiedHandlerRegistry HandlerRegistry
 
 <MudText Typo="Typo.h6" Class="mb-4">Configura i mapping Fase/Centro</MudText>
 
@@ -181,6 +183,24 @@ else
                      Max="365" />
 </MudItem>
 
+@if (State.TipoFonte == TipoFonteData.HandlerIntegrato)
+{
+    <MudItem xs="12" sm="6" md="5">
+        <MudSelect @bind-Value="@_selectedHandlerCode"
+                   Label="Handler per questa fase"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Required
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Filled.Code">
+            @foreach (var handler in _availableHandlers)
+            {
+                <MudSelectItem Value="@handler">@handler</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+}
+
     @if (State.TipoFonte == TipoFonteData.SQL)
     {
         <MudItem xs="12">
@@ -275,6 +295,8 @@ group by OP_INDEX, convert(date, DATA_INDEX)
     private int _selectedFaseId = 0;
     private string _selectedCron = "0 5 * * *";
     private int _giorniPrecedenti = 10;
+    private string? _selectedHandlerCode;
+    private List<string> _availableHandlers = new();
     private string? _queryText;
     private bool _validatingQuery = false;
     private string? _validationMessage;
@@ -305,7 +327,16 @@ group by OP_INDEX, convert(date, DATA_INDEX)
         {
             _selectedFaseId = State.FasiDisponibili.First().IdFaseLavorazione;
         }
-        
+
+        if (_availableHandlers.Count == 0)
+        {
+            _availableHandlers = HandlerRegistry.GetAllCodes().Order().ToList();
+        }
+
+        if (State.TipoFonte == TipoFonteData.HandlerIntegrato && string.IsNullOrWhiteSpace(_selectedHandlerCode))
+        {
+            _selectedHandlerCode = State.HandlerClassName;
+        }
     }
     
     private async Task ValidateQueryAsync()

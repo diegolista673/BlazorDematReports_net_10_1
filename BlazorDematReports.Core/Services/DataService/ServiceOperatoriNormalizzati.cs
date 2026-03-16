@@ -1,6 +1,6 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -10,21 +10,23 @@ using Microsoft.Extensions.Logging;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// Servizio per la gestione degli operatori normalizzati e delle relative operazioni sui dati.
+    /// Servizio per la gestione degli operatori normalizzati.
     /// </summary>
     public class ServiceOperatoriNormalizzati : ServiceBase<OperatoriNormalizzati>, IServiceOperatoriNormalizzati
     {
+        private readonly OperatoriMapper _mapper;
 
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione degli operatori normalizzati.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per OperatoriNormalizzati ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceOperatoriNormalizzati(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceOperatoriNormalizzati> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceOperatoriNormalizzati(OperatoriMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceOperatoriNormalizzati> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <inheritdoc/>
@@ -43,8 +45,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
             await using var context = await contextFactory.CreateDbContextAsync();
             var lstOper = await context.OperatoriNormalizzatis.ToListAsync();
-            var listOperatoriNormalizzati = mapper.Map<List<OperatoriNormalizzati>, List<OperatoriNormalizzatiDto>>(lstOper);
-            listOperatoriNormalizzati = listOperatoriNormalizzati.OrderBy(x => x.OperatoreNormalizzato).ToList();
+            var listOperatoriNormalizzati = lstOper.Select(_mapper.NormalizzatoToDto).OrderBy(x => x.OperatoreNormalizzato).ToList();
             return listOperatoriNormalizzati;
         }
 
@@ -53,7 +54,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<OperatoriNormalizzati>(operatoriNormalizzatiDto);
+            var entity = _mapper.DtoToNormalizzato(operatoriNormalizzatiDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.OperatoriNormalizzatis.Add(entity);
             await context.SaveChangesAsync();

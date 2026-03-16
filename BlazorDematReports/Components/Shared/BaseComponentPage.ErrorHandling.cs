@@ -1,4 +1,3 @@
-using AutoMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
@@ -79,10 +78,6 @@ namespace BlazorDematReports.Components.Shared
                         547 => "Vincolo di integrità violato.",
                         _ => $"Errore SQL: {sqlEx.Message}"
                     };
-                    break;
-
-                case AutoMapperConfigurationException autoEx:
-                    message = $"Errore di configurazione AutoMapper: {autoEx.Message}";
                     break;
 
                 case NullReferenceException:

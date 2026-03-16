@@ -1,7 +1,6 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using ClosedXML.Excel;
 using Entities.Helpers;
@@ -17,20 +16,23 @@ using System.Globalization;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// ServiceProduzioneOperatori per la gestione della produzione operatori e delle relative operazioni sui dati
+    /// ServiceProduzioneOperatori per la gestione della produzione operatori.
     /// </summary>
     public class ServiceProduzioneOperatori : ServiceBase<ProduzioneOperatori>, IServiceProduzioneOperatori
     {
+        private readonly ProduzioneOperatoriMapper _mapper;
+
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione della produzione operatori.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entità e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per ProduzioneOperatori ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceProduzioneOperatori(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneOperatori> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceProduzioneOperatori(ProduzioneOperatoriMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneOperatori> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -59,15 +61,17 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProduzioneOperatoris
-                .Where(x => x.IdOperatore.Equals(IdOperatore) && x.DataLavorazione.Date == startDataLavorazione.Date)
-                .Include(x => x.IdRepartiNavigation)
-                .Include(x => x.TipologieTotaliProduziones)
-                .Include(x => x.IdOperatoreNavigation)
-                .Include(x => x.IdTurnoNavigation)
-                .AsNoTracking()
-                .ProjectTo<ProduzioneOperatoriDto>(mapper.ConfigurationProvider)
-                .ToListAsync();
+            return (await context.ProduzioneOperatoris
+               .Where(x => x.IdOperatore.Equals(IdOperatore) && x.DataLavorazione.Date == startDataLavorazione.Date)
+               .Include(x => x.IdRepartiNavigation)
+               .Include(x => x.TipologieTotaliProduziones)
+               .Include(x => x.IdOperatoreNavigation)
+               .Include(x => x.IdTurnoNavigation)
+               .Include(x => x.IdProceduraLavorazioneNavigation)
+               .Include(x => x.IdFaseLavorazioneNavigation)
+               .AsNoTracking()
+               .ToListAsync())
+               .Select(_mapper.OperatoreToDto).ToList();
         }
 
         /// <summary>
@@ -219,9 +223,11 @@ namespace BlazorDematReports.Core.Services.DataService
                     .AsNoTracking()
                     .ToListAsync();
 
-                // Raggruppamento dei dati per chiave composita
+                // Raggruppamento dei dati per chiave composita.
+                // OperatoreNonRiconosciuto è incluso perché più righe con IdOperatore=180 (Not_Found_Oper)
+                // possono rappresentare persone distinte identificate solo da questo campo.
                 var groupedReports = lstReport.GroupBy(
-                    x => new { x.IdOperatore, x.IdProceduraLavorazione, x.IdFaseLavorazione, x.DataLavorazione })
+                    x => new { x.IdOperatore, x.IdProceduraLavorazione, x.IdFaseLavorazione, x.DataLavorazione, x.OperatoreNonRiconosciuto })
                     .ToList();
 
                 // Elaborazione dei report raggruppati
@@ -233,7 +239,7 @@ namespace BlazorDematReports.Core.Services.DataService
                     // Unisce i dati di tutte le righe del gruppo
                     foreach (var item in group)
                     {
-                        report = mapper.Map(item, report);
+                        MergeReport(item, report);
                     }
 
                     lstReportProduzioneCompleta.Add(report);
@@ -321,20 +327,6 @@ namespace BlazorDematReports.Core.Services.DataService
             var filteredAggiornamenti = aggiornamenti
                 .Where(x => x.DataFineLavorazione!.Value.Date == endDate.Date)
                 .ToList();
-
-            // Raggruppamento per lavorazione e selezione dell'aggiornamento con ID massimo
-            var aggiornamentoByLavorazione = filteredAggiornamenti
-                .GroupBy(x => new
-                {
-                    DataInizio = x.DataInizioLavorazione.Date,
-                    IdLavorazione = x.IdLavorazione,
-                    IdFase = x.IdFase,
-                    Lavorazione = x.Lavorazione  // Includiamo anche Lavorazione nella chiave
-                })
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.Where(x => x.IdAggiornamento == g.Max(i => i.IdAggiornamento)).ToList()
-                );
 
             foreach (var report in lstReportProduzioneCompleta)
             {
@@ -825,7 +817,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            ProduzioneOperatori ProduzioneOperatori = mapper.Map<ProduzioneOperatori>(produzioneOperatoriDto);
+            ProduzioneOperatori ProduzioneOperatori = _mapper.DtoToOperatore(produzioneOperatoriDto);
 
             foreach (var el in totaliProduzioneDto)
             {
@@ -853,6 +845,38 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await DeleteAsync(id);
+        }
+
+        /// <summary>
+        /// Merge condizionale: copia i campi di identità/metadati al primo incontro (??=) e
+        /// accumula i valori numerici di produzione solo se > 0.
+        /// Replica la logica AutoMapper con Condition precedentemente in ReportsProfile.
+        /// </summary>
+        private static void MergeReport(ReportProduzioneCompleta source, ReportProduzioneCompleta target)
+        {
+            // Campi di identità e metadati: imposta solo se ancora null
+            target.DataLavorazione        ??= source.DataLavorazione;
+            target.IdOperatore            ??= source.IdOperatore;
+            target.IdCentro               ??= source.IdCentro;
+            target.Operatore              ??= source.Operatore;
+            target.OperatoreNonRiconosciuto ??= source.OperatoreNonRiconosciuto;
+            target.AltraUtenza            ??= source.AltraUtenza;
+            target.IdFaseLavorazione      ??= source.IdFaseLavorazione;
+            target.IdProceduraLavorazione ??= source.IdProceduraLavorazione;
+            target.NomeProcedura          ??= source.NomeProcedura;
+            target.FaseLavorazione        ??= source.FaseLavorazione;
+            target.IdProduzioneSistema    ??= source.IdProduzioneSistema;
+
+            // FlagDataReading: true se almeno una riga del gruppo lo prevede
+            target.FlagDataReading = target.FlagDataReading || source.FlagDataReading;
+
+            // Campi numerici di produzione: sovrascrive solo se il valore sorgente è significativo
+            if (source.TempoLavOreCent > 0)    target.TempoLavOreCent    = source.TempoLavOreCent;
+            if (source.Documenti > 0)          target.Documenti          = source.Documenti;
+            if (source.Fogli > 0)              target.Fogli              = source.Fogli;
+            if (source.Pagine > 0)             target.Pagine             = source.Pagine;
+            if (source.PagineSenzaBianco > 0)  target.PagineSenzaBianco  = source.PagineSenzaBianco;
+            if (source.Scarti > 0)             target.Scarti             = source.Scarti;
         }
 
         #endregion

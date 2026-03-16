@@ -127,13 +127,15 @@ namespace BlazorDematReports.Core.Application.Dto
 
         /// <summary>
         /// Collezione delle fasi di lavorazione con data reading associate alla procedura.
+        /// Inizializzata come lista vuota per evitare NullReferenceException nei componenti Razor.
         /// </summary>
-        public virtual ICollection<LavorazioniFasiDataReadingDto>? LavorazioniFasiDataReadingsDto { get; set; }
+        public virtual ICollection<LavorazioniFasiDataReadingDto> LavorazioniFasiDataReadingsDto { get; set; } = [];
 
         /// <summary>
         /// Collezione delle query associate alla procedura di lavorazione.
+        /// Inizializzata come lista vuota per evitare NullReferenceException nei componenti Razor.
         /// </summary>
-        public virtual ICollection<QueryProcedureLavorazioniDto>? QueryProcedureLavorazioniDto { get; set; }
+        public virtual ICollection<QueryProcedureLavorazioniDto> QueryProcedureLavorazioniDto { get; set; } = [];
 
         /// <summary>
         /// File del logo caricato tramite l'interfaccia utente.

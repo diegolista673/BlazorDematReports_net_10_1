@@ -1,4 +1,7 @@
-﻿namespace Entities.Models.DbApplication;
+﻿using System;
+using System.Collections.Generic;
+
+namespace Entities.Models.DbApplication;
 
 public partial class ProcedureLavorazioni
 {
@@ -50,5 +53,5 @@ public partial class ProcedureLavorazioni
 
     public virtual ICollection<QueryProcedureLavorazioni> QueryProcedureLavorazionis { get; set; } = new List<QueryProcedureLavorazioni>();
 
-    public virtual ICollection<TaskServiceLavorazioni> TaskServiceLavorazionis { get; set; } = new List<TaskServiceLavorazioni>();
+
 }

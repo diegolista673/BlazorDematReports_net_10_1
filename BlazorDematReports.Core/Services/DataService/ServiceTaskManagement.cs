@@ -228,6 +228,8 @@ namespace BlazorDematReports.Core.Services.DataService
             if (mapping == null)
                 return null;
 
+            var tipoFonte = mapping.IdConfigurazioneNavigation?.TipoFonte ?? TipoFonteData.SQL;
+
             return new ConfigurazioneTaskEditDto
             {
                 IdFaseCentro = mapping.IdFaseCentro,
@@ -235,7 +237,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 IdProceduraLavorazione = mapping.IdProceduraLavorazione,
                 IdFaseLavorazione = mapping.IdFaseLavorazione,
                 IdCentro = mapping.IdCentro,
-                TipoTask = mapping.IdConfigurazioneNavigation?.TipoFonte ?? TipoFonteData.SQL,
+                TipoTask = tipoFonte,
                 CronExpression = mapping.CronExpression ?? TaskConfigurationDefaults.DefaultCronExpression,
                 TestoQueryTask = mapping.TestoQueryTask,
                 HandlerClassName = mapping.HandlerClassName ?? mapping.IdConfigurazioneNavigation?.HandlerClassName,

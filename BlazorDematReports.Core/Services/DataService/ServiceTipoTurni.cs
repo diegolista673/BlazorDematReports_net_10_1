@@ -1,4 +1,3 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
@@ -19,11 +18,10 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione dei tipi di turno.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceTipoTurni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTipoTurni> logger) : base(contextFactory, logger, mapper, configUser)
+        public ServiceTipoTurni(ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceTipoTurni> logger) : base(contextFactory, logger, configUser)
         {
         }
 

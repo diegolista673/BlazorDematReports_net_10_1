@@ -1,4 +1,7 @@
-﻿namespace Entities.Models.DbApplication;
+﻿using System;
+using System.Collections.Generic;
+
+namespace Entities.Models.DbApplication;
 
 public partial class QueryProcedureLavorazioni
 {

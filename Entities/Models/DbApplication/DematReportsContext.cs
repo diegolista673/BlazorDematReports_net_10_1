@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
 
 namespace Entities.Models.DbApplication;
 
@@ -35,7 +37,6 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Counter> Counters { get; set; }
 
-    public virtual DbSet<ElaborazioneEmailGiornaliera> ElaborazioneEmailGiornalieras { get; set; }
 
     public virtual DbSet<FasiLavorazione> FasiLavoraziones { get; set; }
 
@@ -43,7 +44,7 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Hash> Hashes { get; set; }
 
-    public virtual DbSet<Hera16> Hera16s { get; set; }
+    public virtual DbSet<DatiMailCsvHera16> DatiMailCsvHera16 { get; set; }
 
     public virtual DbSet<Job> Jobs { get; set; }
 
@@ -75,8 +76,6 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<QueryProcedureLavorazioni> QueryProcedureLavorazionis { get; set; }
 
-    public virtual DbSet<QueryProcedureLavorazioniBackup> QueryProcedureLavorazioniBackups { get; set; }
-
     public virtual DbSet<RepartiProduzione> RepartiProduziones { get; set; }
 
     public virtual DbSet<Ruoli> Ruolis { get; set; }
@@ -93,8 +92,6 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<TaskDataReadingAggiornamento> TaskDataReadingAggiornamentos { get; set; }
 
-    public virtual DbSet<TaskServiceLavorazioni> TaskServiceLavorazionis { get; set; }
-
     public virtual DbSet<TipoTurni> TipoTurnis { get; set; }
 
     public virtual DbSet<TipologieTotali> TipologieTotalis { get; set; }
@@ -103,9 +100,6 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<Turni> Turnis { get; set; }
 
-    public virtual DbSet<VwConfigurazioneTaskSummary> VwConfigurazioneTaskSummaries { get; set; }
-
-    public virtual DbSet<VwConfigurazioniFontiDatiCompletum> VwConfigurazioniFontiDatiCompleta { get; set; }
 
     public virtual DbSet<Z0072370Rdmkt28autGeUdaDettaglio> Z0072370Rdmkt28autGeUdaDettaglios { get; set; }
 
@@ -330,20 +324,7 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.ExpireAt).HasColumnType("datetime");
         });
 
-        modelBuilder.Entity<ElaborazioneEmailGiornaliera>(entity =>
-        {
-            entity.HasKey(e => e.IdElaborazione).HasName("PK__Elaboraz__52A4A5874CD9CA32");
 
-            entity.ToTable("ElaborazioneEmailGiornaliera");
-
-            entity.HasIndex(e => new { e.CodiceServizio, e.DataElaborazione }, "IX_EmailFlag_Service_Date");
-
-            entity.HasIndex(e => new { e.CodiceServizio, e.DataElaborazione }, "UQ_EmailFlag_Service_Date").IsUnique();
-
-            entity.Property(e => e.CodiceServizio).HasMaxLength(50);
-            entity.Property(e => e.ElaborataDaTask).HasMaxLength(200);
-            entity.Property(e => e.ElaborataIl).HasColumnType("datetime");
-        });
 
         modelBuilder.Entity<FasiLavorazione>(entity =>
         {
@@ -380,11 +361,11 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.Field).HasMaxLength(100);
         });
 
-        modelBuilder.Entity<Hera16>(entity =>
+        modelBuilder.Entity<DatiMailCsvHera16>(entity =>
         {
-            entity.HasKey(e => e.IdCounter).HasName("PK_HERA32_1");
+            entity.HasKey(e => e.IdCounter).HasName("PK_DatiMailCsvHera16");
 
-            entity.ToTable("HERA16");
+            entity.ToTable("DatiMailCsvHera16");
 
             entity.Property(e => e.IdCounter).HasColumnName("id_counter");
             entity.Property(e => e.CodiceMercato)
@@ -439,6 +420,9 @@ public partial class DematReportsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("tipo_documento");
+            entity.Property(e => e.ElaboratoIl)
+                .HasColumnType("datetime")
+                .HasColumnName("elaborato_il");
         });
 
         modelBuilder.Entity<Job>(entity =>
@@ -803,25 +787,6 @@ public partial class DematReportsContext : DbContext
                 .HasConstraintName("FK_QueryProcedureLavorazioni_ProcedureLavorazioni");
         });
 
-        modelBuilder.Entity<QueryProcedureLavorazioniBackup>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToTable("QueryProcedureLavorazioni_BACKUP");
-
-            entity.Property(e => e.Connessione)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.DataCreazioneQuery).HasColumnType("datetime");
-            entity.Property(e => e.Descrizione).IsUnicode(false);
-            entity.Property(e => e.IdQuery).ValueGeneratedOnAdd();
-            entity.Property(e => e.IdproceduraLavorazione).HasColumnName("IDProceduraLavorazione");
-            entity.Property(e => e.Note).IsUnicode(false);
-            entity.Property(e => e.Titolo)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-        });
-
         modelBuilder.Entity<RepartiProduzione>(entity =>
         {
             entity.HasKey(e => e.IdReparti);
@@ -942,22 +907,6 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.Lavorazione).IsUnicode(false);
         });
 
-        modelBuilder.Entity<TaskServiceLavorazioni>(entity =>
-        {
-            entity.HasKey(e => e.IdService).HasName("PK_ServiceLavorazioni");
-
-            entity.ToTable("TaskServiceLavorazioni");
-
-            entity.Property(e => e.IdTaskHangFire).HasMaxLength(100);
-            entity.Property(e => e.TaskService)
-                .HasMaxLength(500)
-                .IsFixedLength();
-
-            entity.HasOne(d => d.IdProceduraLavorazioneNavigation).WithMany(p => p.TaskServiceLavorazionis)
-                .HasForeignKey(d => d.IdProceduraLavorazione)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ServiceLavorazioni_ProcedureLavorazioni");
-        });
 
         modelBuilder.Entity<TipoTurni>(entity =>
         {
@@ -1013,56 +962,7 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.Turno).IsUnicode(false);
         });
 
-        modelBuilder.Entity<VwConfigurazioneTaskSummary>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToView("vw_ConfigurazioneTaskSummary");
 
-            entity.Property(e => e.CodiceConfigurazione)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.TipoFonte)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<VwConfigurazioniFontiDatiCompletum>(entity =>
-        {
-            entity
-                .HasNoKey()
-                .ToView("vw_ConfigurazioniFontiDatiCompleta");
-
-            entity.Property(e => e.Centro)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.CodiceConfigurazione)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.ConnectionStringName)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.CreatoDa)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.CreatoIl).HasColumnType("datetime");
-            entity.Property(e => e.FaseLavorazione)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.HandlerClassName)
-                .HasMaxLength(200)
-                .IsUnicode(false);
-            entity.Property(e => e.MailServiceCode)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.NomeConfigurazione).HasMaxLength(200);
-            entity.Property(e => e.NomeProcedura)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.TipoFonte)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-        });
 
         modelBuilder.Entity<Z0072370Rdmkt28autGeUdaDettaglio>(entity =>
         {

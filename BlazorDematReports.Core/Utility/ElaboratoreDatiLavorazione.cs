@@ -111,11 +111,19 @@ namespace BlazorDematReports.Core.Utility
         // Helper: costruisce i lookup per ricerche efficienti
         private Lookups BuildLookups()
         {
-            var operatoriDematLookup = _elencoOperatori!.ToLookup(op => op.Operatore, StringComparer.OrdinalIgnoreCase);
+            // La chiave Demat è normalizzata per garantire la stessa rappresentazione usata nella ricerca
+            var operatoriDematLookup = _elencoOperatori!.ToLookup(
+                op => _normalizzatoreOperatori.NormalizzaOperatore(op.Operatore),
+                StringComparer.OrdinalIgnoreCase);
+
             var operatoriMondoByIdUtente = _elencoOperatoriEsterni!.ToLookup(op => op.ID_UTENTE, StringComparer.OrdinalIgnoreCase);
+
             var operatoriMondoBySUtente = _elencoOperatoriEsterni!.ToLookup(op => op.SUTENTE, StringComparer.OrdinalIgnoreCase);
+
             return new Lookups(operatoriDematLookup, operatoriMondoByIdUtente, operatoriMondoBySUtente);
         }
+
+
 
         // Helper: elabora un singolo gruppo Operatore+Data
         private async Task<DatiElaborati?> ProcessGroupAsync(
@@ -149,8 +157,9 @@ namespace BlazorDematReports.Core.Utility
 
             if (operatoreInCentro == null && operatoreInAltriCentri == null)
             {
-                operatoreMondo = lookups.MondoById[operatoreOriginale].FirstOrDefault() ??
-                                 lookups.MondoBySUtente[operatoreOriginale].FirstOrDefault();
+                // La ricerca usa il nome normalizzato perché le chiavi del lookup Mondo sono state normalizzate in SetOperatoriEsterniMondoAsync
+                operatoreMondo = lookups.MondoById[operatoreNormalizzato].FirstOrDefault() ??
+                                 lookups.MondoBySUtente[operatoreNormalizzato].FirstOrDefault();
 
                 // Se trovato esterno e appartiene al centro selezionato, crea l'IdOperatore Demat una sola volta nel batch
                 if (operatoreMondo != null && operatoreMondo.IdCentro == idCentro)

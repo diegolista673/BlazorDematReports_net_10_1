@@ -17,7 +17,6 @@
     <None Remove="Token_Efficiency.md" />
   </ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="AutoMapper" Version="14.0.0" />
 		<PackageReference Include="Azure.Identity" Version="1.17.1" />
 		<PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
 		<PackageReference Include="Hangfire.Core" Version="1.8.23" />

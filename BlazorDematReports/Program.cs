@@ -1,4 +1,4 @@
-using BlazorDematReports.Application;
+﻿using BlazorDematReports.Application;
 using BlazorDematReports.Components;
 using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Core.Application;
@@ -6,16 +6,15 @@ using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.DataReading.Infrastructure;
 using BlazorDematReports.Core.DataReading.Interfaces;
 using BlazorDematReports.Core.DataReading.Services;
-using BlazorDematReports.Core.Handlers;
 using BlazorDematReports.Core.Handlers.LavorazioniHandlers;
+using BlazorDematReports.Core.Handlers.MailHandlers;
 using BlazorDematReports.Core.Handlers.MailHandlers.Ader4;
-using BlazorDematReports.Core.Handlers.MailHandlers.Hera16;
+using BlazorDematReports.Core.Handlers.MailHandlers.DatiMailCsvHera16;
 using BlazorDematReports.Core.Handlers.Registry;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Services;
 using BlazorDematReports.Core.Services.DataService;
-using BlazorDematReports.Core.Services.Email;
 using BlazorDematReports.Core.Services.ProcedureEdit;
 using BlazorDematReports.Core.Services.Validation;
 using BlazorDematReports.Core.Services.Wizard;
@@ -70,11 +69,11 @@ public static class Program
             RegisterFramework(builder);
             RegisterLoginSettings(builder);
             RegisterDb(builder);
+            RegisterMappers(builder);     // ← prima di RegisterServices che usa i mapper
             RegisterServices(builder);
             RegisterHangfire(builder);
             RegisterAuthentication(builder);
             RegisterMudBlazor(builder);
-            RegisterAutoMapper(builder);
 
             var app = builder.Build();
             InitializeApp(app);
@@ -82,6 +81,7 @@ public static class Program
             MapMiddleware(app);
             await SyncRecurringJobsAsync(app);
             ScheduleSystemJobs();
+            ScheduleMailIngestion();
 
             _app = app;
             await app.RunAsync();
@@ -178,7 +178,7 @@ public static class Program
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddCascadingAuthenticationState();
 
-        // Root directory per Razor Pages spostato sotto /Components/Pages cos� /Account/Login viene trovato
+        // Root directory per Razor Pages spostato sotto /Components/Pages così /Account/Login viene trovato
         builder.Services.AddRazorPages(o => { o.RootDirectory = "/Components/Pages"; });
         builder.Services.AddControllers();
     }
@@ -224,18 +224,29 @@ public static class Program
 
     private static void RegisterServices(WebApplicationBuilder builder)
     {
-        //Check diagnostico utilizzato solo all'avvio per verificare la connettivit� e lo stato di Hangfire,
-        //non � un servizio utilizzato direttamente nei job o nelle operazioni quotidiane
+        //Check diagnostico utilizzato solo all'avvio per verificare la connettività e lo stato di Hangfire,
+        //non è un servizio utilizzato direttamente nei job o nelle operazioni quotidiane
         builder.Services.AddSingleton<IHangfireHealthService, HangfireHealthService>();
+
+        // Singleton: configurazione globale condivisa tra tutti gli utenti.
         builder.Services.AddSingleton<ILavorazioniConfigManager, LavorazioniConfigManager>();
 
+        // Scoped: stato UI legato alla sessione del singolo utente.
+        // In Blazor Server, lo "scope" = connessione SignalR dell'utente.
         builder.Services.AddScoped<UiStateService>();
         builder.Services.AddScoped<ConfigUser>();
+
+        // Scoped: servizi di elaborazione dati operatori.
+        // Dipendono da DbContext (Scoped) → devono essere Scoped.
         builder.Services.AddScoped<INormalizzatoreOperatori, NormalizzatoreOperatori>();
         builder.Services.AddScoped<IGestoreOperatoriDatiLavorazione, GestoreOperatoriDatiLavorazione>();
         builder.Services.AddScoped<IElaboratoreDatiLavorazione, ElaboratoreDatiLavorazione>();
+
+        // Scoped: servizi UI ausiliari per clipboard e PDF.
         builder.Services.AddScoped<IClipboardService, ClipboardService>();
         builder.Services.AddScoped<IPdfExportService, PdfExportService>();
+
+        // Scoped: dialog registrato come servizio (pattern Blazor per dialogs riutilizzabili).
         builder.Services.AddScoped<NotificationDialog>();
         
         // Data Access Services 
@@ -263,15 +274,19 @@ public static class Program
         builder.Services.AddScoped<IServiceConfigurazioneFontiDati, ServiceConfigurazioneFontiDati>();
         builder.Services.AddScoped<IServiceMail, ServiceMail>();
         builder.Services.AddScoped<IServiceTaskManagement, ServiceTaskManagement>();
+        builder.Services.AddScoped<IAder4MailCsvService, Ader4MailCsvService>();
         builder.Services.AddScoped<ProcedureEditStateService>();
         builder.Services.AddScoped<ProcedureValidationService>();
 
-        // ? Wizard Multi-Step Configuration Services
+        // Wizard Multi-Step Configuration Services
         builder.Services.AddScoped<ConfigurationWizardStateService>();
         builder.Services.AddScoped<ConfigurationStepValidator>();
 
         // Servizio validazione SQL (sicurezza SQL injection + test connessioni)
         builder.Services.AddScoped<SqlValidationService>();
+
+         // Servizio bulk insert CSV grezzo in tabella HERA16 (usato da Hera16IngestionProcessor)
+         builder.Services.AddSingleton<IHera16DataService, Hera16DataService>();
 
          // Servizio esecuzione di query SQL 
         builder.Services.AddSingleton<IQueryService, QueryService>();
@@ -285,23 +300,58 @@ public static class Program
         builder.Services.AddSingleton<IRecurringJobManagerAdapter, HangfireRecurringJobManagerAdapter>();
 
 
-        // Registrazione handler lavorazioni (SQL/Oracle/Email)
+        // Registrazione handler lavorazioni (SQL/Oracle/)
         // Singleton: tutti dipendono solo da ILavorazioniConfigManager e ILoggerFactory (entrambi Singleton)
         builder.Services.AddSingleton<IProductionDataHandler, Z0072370_28AutHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Z0082041_SoftlineHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Ant_Ader4_Sorter_1_2Handler>();
         builder.Services.AddSingleton<IProductionDataHandler, PraticheSuccessioneHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Rdmkt_RSPHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Hera16EwsHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Ader4Handler>();
+
+        // Handler ADER4: staging readers (uno per TipoRisultato)
+        builder.Services.AddSingleton<IProductionDataHandler, Ader4CaptivaHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterBusteHandler>();
+
+        // Handler HERA16: staging readers (Scansione, Index, Classificazione)
+        builder.Services.AddSingleton<IProductionDataHandler, Hera16ScansioneHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Hera16IndexHandler>();
+        builder.Services.AddSingleton<IProductionDataHandler, Hera16ClassificazioneHandler>();
+
+        // Handler ingestion generico mail (orchestratore MAIL_INGESTION)
+        builder.Services.AddSingleton<IProductionDataHandler, GenericMailIngestionHandler>();
 
         // Registry e servizio unificato: Singleton perche' il dizionario e' immutabile dopo costruzione
         builder.Services.AddSingleton<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
 
-        // Registra servizi email
-        builder.Services.AddSingleton<EmailDailyFlagService>();
-        builder.Services.AddSingleton<Ader4EmailService>();
-        //builder.Services.AddSingleton<Hera16EmailService>(); 
+
+        // Processori mail ingestion (chiamati da GenericMailIngestionHandler)
+        builder.Services.AddSingleton<IMailIngestionProcessor, Ader4IngestionProcessor>();
+        builder.Services.AddSingleton<IMailIngestionProcessor, Hera16IngestionProcessor>();
+
+        // Ader4EmailService registrata come tipo concreto (iniettato in Ader4IngestionProcessor).
+        // In modalita mock, LocalCsvAder4EmailService estende Ader4EmailService e viene usata al suo posto.
+        if (builder.Configuration.GetValue<bool>("MailServices:ADER4:UseMockService"))
+        {
+            builder.Services.AddSingleton<Ader4EmailService, LocalCsvAder4EmailService>();
+            NLog.LogManager.GetCurrentClassLogger().Info("ADER4: modalita mock attiva - lettura CSV da cartella locale");
+        }
+        else
+        {
+            builder.Services.AddSingleton<Ader4EmailService>();
+        }
+
+        //// Hera16EmailService registrata come tipo concreto (iniettato in Hera16IngestionProcessor).
+        //// In modalita mock, LocalCsvHera16EmailService estende Hera16EmailService e viene usata al suo posto.
+        if (builder.Configuration.GetValue<bool>("MailServices:HERA16:UseMockService"))
+        {
+            builder.Services.AddSingleton<Hera16EmailService, LocalCsvHera16EmailService>();
+            NLog.LogManager.GetCurrentClassLogger().Info("HERA16: modalita mock attiva - lettura CSV da cartella locale");
+        }
+        else
+        {
+            builder.Services.AddSingleton<Hera16EmailService>();
+        }
 
 
         // Servizio unificato principale
@@ -313,24 +363,26 @@ public static class Program
     }
 
 
-    private static void RegisterAutoMapper(WebApplicationBuilder builder)
+    /// <summary>
+    /// Registra i mapper Mapperly come Singleton.
+    /// Mapperly genera mapper tipizzati a compile-time (nessun overhead runtime).
+    /// </summary>
+    private static void RegisterMappers(WebApplicationBuilder builder)
     {
-        builder.Services.AddAutoMapper(cfg =>
-        {
-            cfg.AddProfile<ProduzioneOperatoriProfile>();
-            cfg.AddProfile<OperatoriProfile>();
-            cfg.AddProfile<ClientiProfile>();
-            cfg.AddProfile<CentriProfile>();
-            cfg.AddProfile<TurniProfile>();
-            cfg.AddProfile<ProcedureLavorazioniProfile>();
-            cfg.AddProfile<LavorazioniFasiProfile>();
-            cfg.AddProfile<ReportsProfile>();
-            cfg.AddProfile<ProduzioneSistemaProfile>();
-            cfg.AddProfile<TipologieTotaliProfile>();
-            cfg.AddProfile<ConfigProcedureLavorazioniProfile>();
-            cfg.AddProfile<QueryProcedureLavorazioniProfile>();
-            cfg.AddProfile<TaskDataReadingAggiornamentoProfile>();
-        });
+        builder.Services.AddSingleton<ProduzioneSistemaMapper>();
+        builder.Services.AddSingleton<ProduzioneOperatoriMapper>();
+        builder.Services.AddSingleton<OperatoriMapper>();
+        builder.Services.AddSingleton<CentriMapper>();
+        builder.Services.AddSingleton<ClientiMapper>();
+        builder.Services.AddSingleton<TurniMapper>();
+        builder.Services.AddSingleton<TipologieTotaliMapper>();
+        builder.Services.AddSingleton<LavorazioniFasiMapper>();
+        builder.Services.AddSingleton<ProcedureLavorazioniMapper>();
+        builder.Services.AddSingleton<QueryProcedureLavorazioniMapper>();
+        builder.Services.AddSingleton<TaskDaEseguireMapper>();
+        builder.Services.AddSingleton<TaskDataReadingAggiornamentoMapper>();
+        builder.Services.AddSingleton<ReportsMapper>();
+        builder.Services.AddSingleton<AltriDatiMapper>();
     }
 
     private static void RegisterAuthentication(WebApplicationBuilder builder)
@@ -418,6 +470,12 @@ public static class Program
         });
     }
 
+    /// <summary>
+    /// Sincronizza i recurring job Hangfire con la configurazione attuale delle lavorazioni.
+    /// Crea uno scope temporaneo per risolvere <see cref="IProductionJobScheduler"/> e chiama
+    /// <c>SyncAllAsync</c> che aggiunge, aggiorna o rimuove i job in base alle fasi/centri configurati.
+    /// </summary>
+    /// <param name="app">L'istanza di <see cref="WebApplication"/> usata per creare lo scope DI.</param>
     private static async Task SyncRecurringJobsAsync(WebApplication app)
     {
         using var scope = app.Services.CreateScope();
@@ -425,11 +483,81 @@ public static class Program
         await scheduler.SyncAllAsync();
     }
 
+
+    /// <summary>
+    /// Registra i recurring job di manutenzione del sistema in Hangfire.
+    /// Attualmente schedula <c>system:cleanup-orphans</c> ogni giorno alle 02:30
+    /// per rimuovere i job orfani (configurazioni eliminate ma job ancora presenti in Hangfire).
+    /// </summary>
     private static void ScheduleSystemJobs()
     {
         RecurringJob.AddOrUpdate("system:cleanup-orphans",() => CleanupJobsOrfani(), "30 2 * * *");
     }
+
+
+    /// <summary>
+    /// Registra il recurring job di ingestion email in Hangfire.
+    /// Schedula <c>MAIL_INGESTION</c> ogni 2 ore per orchestrare tutti i processori mail
+    /// registrati (ADER4, HERA16, ecc.) tramite <see cref="ExecuteMailIngestionAsync"/>.
+    /// </summary>
+    private static void ScheduleMailIngestion()
+    {
+        RecurringJob.AddOrUpdate(
+            "MAIL_INGESTION",
+            () => ExecuteMailIngestionAsync(),
+            "0 */2 * * *");  // Ogni 2 ore
+
+    }
+
+    /// <summary>
+    /// Esegue il job di ingestion mail generico.
+    /// Chiamato da Hangfire recurring job MAIL_INGESTION.
+    /// Questo job orchestra tutti i processori mail registrati (ADER4, HERA16, etc.)
+    /// e salva i dati aggregati nella tabella staging DatiMailIngestion.
+    /// </summary>
+    public static async Task ExecuteMailIngestionAsync()
+    {
+        using var scope = _app.Services.CreateScope();
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("MailIngestion");
+
+        try
+        {
+            logger.LogInformation("Inizio job MAIL_INGESTION");
+
+            var handler = scope.ServiceProvider
+                .GetServices<IProductionDataHandler>()
+                .FirstOrDefault(h => h.HandlerCode == "MAIL_INGESTION");
+
+            if (handler is null)
+            {
+                logger.LogError("Handler MAIL_INGESTION (GenericMailIngestionHandler) non trovato nel registry");
+                return;
+            }
+
+            // Context minimale per handler ingestion (non legato a TaskDaEseguire)
+            var context = new BlazorDematReports.Core.Lavorazioni.Models.ProductionExecutionContext
+            {
+                StartDataLavorazione = DateTime.Today,
+                EndDataLavorazione = DateTime.Today,
+                IDProceduraLavorazione = 0,
+                IDFaseLavorazione = 0,
+                IDCentro = 0
+            };
+
+            await handler.ExecuteAsync(context, CancellationToken.None);
+            logger.LogInformation("Job MAIL_INGESTION completato con successo");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Errore durante esecuzione job MAIL_INGESTION");
+            throw;
+        }
+    }
+
+
     #endregion
+
 
     #region Maintenance Jobs
     /// <summary>

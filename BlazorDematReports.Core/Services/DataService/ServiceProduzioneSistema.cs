@@ -1,7 +1,6 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models;
@@ -12,10 +11,11 @@ using Microsoft.Extensions.Logging;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// ServiceProduzioneSistema per la gestione della produzione di sistema e delle relative operazioni sui dati.
+    /// ServiceProduzioneSistema per la gestione della produzione di sistema.
     /// </summary>
     public class ServiceProduzioneSistema : ServiceBase<ProduzioneSistema>, IServiceProduzioneSistema
     {
+        private readonly ProduzioneSistemaMapper _mapper;
 
         // Compiled queries (nessun DefaultIfEmpty per evitare DateTime.Min se assente)
         private static readonly Func<DematReportsContext, int, int, DateTime?> _getMinDateCompiled =
@@ -33,14 +33,15 @@ namespace BlazorDematReports.Core.Services.DataService
                    .Max());
 
         /// <summary>
-        /// ServiceProduzioneSistema per la gestione della produzione di sistema e delle relative operazioni sui dati.
+        /// Costruttore che inizializza le dipendenze necessarie.
         /// </summary>
-        /// <param name="mapper"></param>
-        /// <param name="configUser"></param>
-        /// <param name="contextFactory"></param>
-        /// <param name="logger"></param>
-        public ServiceProduzioneSistema(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneSistema> logger) : base(contextFactory, logger, mapper, configUser)
+        /// <param name="mapper">Mapper Mapperly per ProduzioneSistema ↔ DTO.</param>
+        /// <param name="configUser">Configurazione utente corrente.</param>
+        /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
+        /// <param name="logger">Logger per il tracking delle operazioni.</param>
+        public ServiceProduzioneSistema(ProduzioneSistemaMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceProduzioneSistema> logger) : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <inheritdoc/>
@@ -147,7 +148,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            ProduzioneSistema produzioneSistema = mapper.Map<ProduzioneSistema>(produzioneSistemaDto);
+            ProduzioneSistema produzioneSistema = _mapper.ApplicationDtoToEntity(produzioneSistemaDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.ProduzioneSistemas.Add(produzioneSistema);
             await context.SaveChangesAsync();
@@ -188,14 +189,15 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             await using var context = await contextFactory.CreateDbContextAsync();
-            return await context.ProduzioneSistemas
+            return (await context.ProduzioneSistemas
                 .Include(x => x.IdProceduraLavorazioneNavigation)
                 .Include(x => x.IdFaseLavorazioneNavigation)
                 .Include(x => x.IdOperatoreNavigation)
                 .Where(x => x.IdOperatore.Equals(IdOperatore) && x.DataLavorazione.Date == startDataLavorazione!.Value.Date)
                 .AsNoTracking()
-                .ProjectTo<ProduzioneSistemaDto>(mapper.ConfigurationProvider)
-                .ToListAsync();
+                .ToListAsync())
+                .Select(_mapper.EntityToDto)
+                .ToList();
         }
 
         /// <inheritdoc/>

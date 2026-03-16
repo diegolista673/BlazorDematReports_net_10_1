@@ -1,6 +1,6 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -14,17 +14,19 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceClienti : ServiceBase<Clienti>, IServiceClienti
     {
+        private readonly ClientiMapper _mapper;
 
         /// <summary>
         /// Costruttore che inizializza le dipendenze necessarie per la gestione dei clienti.
         /// </summary>
-        /// <param name="mapper">Servizio per la mappatura tra entità e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per Clienti ↔ DTO.</param>
         /// <param name="configUser">Configurazione dell'utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceClienti(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceClienti> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceClienti(ClientiMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceClienti> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -36,7 +38,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<Clienti>(clienteDto);
+            var entity = _mapper.DtoToCliente(clienteDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.Clientis.Add(entity);
             await context.SaveChangesAsync();

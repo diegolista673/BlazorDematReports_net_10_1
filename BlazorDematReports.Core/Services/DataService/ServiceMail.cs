@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Enums;
 using Entities.Helpers;
@@ -15,7 +14,6 @@ namespace BlazorDematReports.Core.Services.DataService
     /// </summary>
     public class ServiceMail : IServiceMail
     {
-        private readonly IMapper mapper;
         private readonly ConfigUser configUser;
         private readonly IDbContextFactory<DematReportsContext> contextFactory;
         private readonly ILogger<ServiceMail> logger;
@@ -24,19 +22,16 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione dell'invio email e configurazioni mail.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entità e DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="fluentEmail">Servizio FluentEmail per invio email.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
         public ServiceMail(
-            IMapper mapper,
             ConfigUser configUser,
             IDbContextFactory<DematReportsContext> contextFactory,
             IFluentEmail fluentEmail,
             ILogger<ServiceMail> logger)
         {
-            this.mapper = mapper;
             this.configUser = configUser;
             this.contextFactory = contextFactory;
             this.fluentEmail = fluentEmail;

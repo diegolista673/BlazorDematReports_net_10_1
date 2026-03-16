@@ -1,8 +1,8 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
-using Entities.Helpers; // AGGIORNATO: Usando il QueryLoggingHelper unificato
+using Entities.Helpers;
 using Entities.Models.DbApplication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -10,21 +10,23 @@ using Microsoft.Extensions.Logging;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// Servizio per la gestione delle fasi di lavorazione e delle relative operazioni sui dati.
+    /// Servizio per la gestione delle fasi di lavorazione.
     /// </summary>
     public class ServiceFasiLavorazioni : ServiceBase<FasiLavorazione>, IServiceFasiLavorazioni
     {
+        private readonly LavorazioniFasiMapper _mapper;
 
         /// <summary>
-        /// Inizializza una nuova istanza della classe <see cref="ServiceFasiLavorazioni"/>.
+        /// Inizializza una nuova istanza di <see cref="ServiceFasiLavorazioni"/>.
         /// </summary>
-        /// <param name="mapper">Mapper per la conversione tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per FasiLavorazione ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente corrente.</param>
         /// <param name="contextFactory">Factory per la creazione del contesto dati.</param>
         /// <param name="logger">Logger per la registrazione delle operazioni.</param>
-        public ServiceFasiLavorazioni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceFasiLavorazioni> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceFasiLavorazioni(LavorazioniFasiMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceFasiLavorazioni> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -49,8 +51,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
             await using var context = await contextFactory.CreateDbContextAsync();
             var lstFasi = await context.FasiLavoraziones.ToListAsync();
-            var LstFasiLavorazione = mapper.Map<List<FasiLavorazione>, List<FasiLavorazioneDto>>(lstFasi);
-            LstFasiLavorazione = LstFasiLavorazione.OrderBy(x => x.FaseLavorazione).ToList();
+            var LstFasiLavorazione = lstFasi.Select(_mapper.FaseToDto).OrderBy(x => x.FaseLavorazione).ToList();
 
             return LstFasiLavorazione;
         }
@@ -82,7 +83,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<FasiLavorazione>(arg);
+            var entity = _mapper.DtoToFase(arg);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.FasiLavoraziones.Add(entity);
             await context.SaveChangesAsync();

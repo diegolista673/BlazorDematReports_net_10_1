@@ -1,7 +1,6 @@
-﻿using AutoMapper;
-using AutoMapper.QueryableExtensions;
-using BlazorDematReports.Core.Application;
+﻿using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -12,22 +11,22 @@ namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
     /// Servizio per la gestione delle query associate alle procedure di lavorazione.
-    /// Fornisce operazioni CRUD per le query personalizzate utilizzate nei task di elaborazione dati.
     /// </summary>
     public class ServiceQueryProcedureLavorazioni : ServiceBase<QueryProcedureLavorazioni>, IServiceQueryProcedureLavorazioni
     {
+        private readonly QueryProcedureLavorazioniMapper _mapper;
 
         /// <summary>
-        /// Inizializza una nuova istanza del servizio per la gestione delle query delle procedure di lavorazione.
+        /// Inizializza una nuova istanza del servizio.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per QueryProcedureLavorazioni ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
-        /// <param name="lettoreDati">Servizio per l'elaborazione dati e scheduling.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceQueryProcedureLavorazioni(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceQueryProcedureLavorazioni> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceQueryProcedureLavorazioni(QueryProcedureLavorazioniMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceQueryProcedureLavorazioni> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <inheritdoc/>
@@ -56,23 +55,23 @@ namespace BlazorDematReports.Core.Services.DataService
             await using var context = await contextFactory.CreateDbContextAsync();
             if (configUser.IsAdminRole)
             {
-                return await context.QueryProcedureLavorazionis
+                return (await context.QueryProcedureLavorazionis
                     .Include(x => x.IdproceduraLavorazioneNavigation)
                     .OrderBy(x => x.IdproceduraLavorazioneNavigation.NomeProcedura)
-                    .ProjectTo<QueryProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                    .ToListAsync();
+                    .ToListAsync())
+                    .Select(_mapper.EntityToDto).ToList();
             }
             else
             {
-                return await context.QueryProcedureLavorazionis
+                return (await context.QueryProcedureLavorazionis
                     .Include(x => x.IdproceduraLavorazioneNavigation)
                     .ThenInclude(x => x!.IdproceduraClienteNavigation)
                     .ThenInclude(p => p!.IdclienteNavigation)
                     .ThenInclude(p => p!.IdCentroLavorazioneNavigation)
                     .Where(x => x.IdproceduraLavorazioneNavigation!.Idcentro == configUser.IdCentroOrigine)
                     .OrderBy(x => x.IdproceduraLavorazioneNavigation.NomeProcedura)
-                    .ProjectTo<QueryProcedureLavorazioniDto>(mapper.ConfigurationProvider)
-                    .ToListAsync();
+                    .ToListAsync())
+                    .Select(_mapper.EntityToDto).ToList();
             }
         }
 
@@ -81,7 +80,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<QueryProcedureLavorazioni>(arg);
+            var entity = _mapper.DtoToEntity(arg);
             entity.Titolo = entity.Titolo != null ? entity.Titolo.ToUpper() : entity.Titolo;
             await using var context = await contextFactory.CreateDbContextAsync();
             context.QueryProcedureLavorazionis.Add(entity);

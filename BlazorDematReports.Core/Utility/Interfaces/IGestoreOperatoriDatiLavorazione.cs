@@ -3,6 +3,11 @@ using Entities.Models.DbApplication;
 
 namespace BlazorDematReports.Core.Utility.Interfaces
 {
+    /// <summary>
+    /// Servizio per la gestione e il recupero dell'elenco completo degli operatori di lavorazione.
+    /// Fornisce metodi per caricare e restituire la lista degli operatori dal database, 
+    /// garantendo che i dati siano normalizzati.
+    /// </summary>
     public interface IGestoreOperatoriDatiLavorazione
     {
         Task SetOperatoriAsync();

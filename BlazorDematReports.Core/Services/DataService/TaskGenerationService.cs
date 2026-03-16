@@ -93,6 +93,16 @@ namespace BlazorDematReports.Core.Services.DataService
                             "LavorazioneFasiDataReading creata con ID {Id}",
                             lavorazioneFase.IdlavorazioneFaseDateReading);
                     }
+                    else if (!lavorazioneFase.FlagDataReading)
+                    {
+                        // Record esistente ma con FlagDataReading=false: abilitarlo perché ora
+                        // ha un task associato che richiede la visibilità nel DataManager.
+                        lavorazioneFase.FlagDataReading = true;
+                        await context.SaveChangesAsync();
+                        _logger.LogInformation(
+                            "LavorazioneFasiDataReading {Id}: FlagDataReading aggiornato a true",
+                            lavorazioneFase.IdlavorazioneFaseDateReading);
+                    }
 
                     // Verifica se esiste già un task per questo mapping (fase + proc + centro della proc)
                     // Il centro è ricavato da ProcedureLavorazioni.Idcentro tramite la navigation.
@@ -203,6 +213,14 @@ namespace BlazorDematReports.Core.Services.DataService
 
                 _logger.LogInformation(
                     "LavorazioneFasiDataReading creata con ID {Id}",
+                    lavorazioneFase.IdlavorazioneFaseDateReading);
+            }
+            else if (!lavorazioneFase.FlagDataReading)
+            {
+                lavorazioneFase.FlagDataReading = true;
+                await context.SaveChangesAsync();
+                _logger.LogInformation(
+                    "LavorazioneFasiDataReading {Id}: FlagDataReading aggiornato a true",
                     lavorazioneFase.IdlavorazioneFaseDateReading);
             }
 

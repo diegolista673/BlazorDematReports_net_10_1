@@ -1,4 +1,3 @@
-using AutoMapper;
 using BlazorDematReports.Components.Dialog;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
@@ -20,14 +19,13 @@ namespace BlazorDematReports.Components.Shared
         public BaseComponentPage() { }
 
         public BaseComponentPage(
-            IMapper mapper,
             NotificationDialog notificationDialog,
             ILogger<TLogger> logger,
             ConfigUser configUser,
             IJSRuntime jsinterop,
             IDialogService dialogService,
             ILavorazioniConfigManager lavorazioniConfigManager)
-            : base(mapper, notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
+            : base(notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
         { }
 
         /// <summary>
@@ -80,15 +78,19 @@ namespace BlazorDematReports.Components.Shared
         public BaseComponentPage() { }
 
         public BaseComponentPage(
-            IMapper mapper,
             NotificationDialog notificationDialog,
             ILogger<TLogger> logger,
             ConfigUser configUser,
             IJSRuntime jsinterop,
             IDialogService dialogService,
             ILavorazioniConfigManager lavorazioniConfigManager)
-            : base(mapper, notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
+            : base(notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
         { }
+
+        /// <summary>Deep clone via JSON — sostituto del clone AutoMapper same-type.</summary>
+        protected static T DeepClone<T>(T source)
+            => System.Text.Json.JsonSerializer.Deserialize<T>(
+                   System.Text.Json.JsonSerializer.Serialize(source))!;
 
         /// <summary>
         /// Model used by the form
@@ -121,7 +123,7 @@ namespace BlazorDematReports.Components.Shared
         {
             try
             {
-                ValueBeforeEdit = Mapper!.Map<TValueBeforeEdit>(item);
+                ValueBeforeEdit = DeepClone(item);
             }
             catch (Exception ex)
             {
@@ -134,7 +136,7 @@ namespace BlazorDematReports.Components.Shared
         protected void CanceledEditingItem(TValueBeforeEdit item)
         {
             if (ValueBeforeEdit != null)
-                item = Mapper!.Map<TValueBeforeEdit>(ValueBeforeEdit);
+                item = DeepClone(ValueBeforeEdit);
         }
 
         protected ValidationMessageStore? ValidationMessages { get; private set; }
@@ -168,14 +170,13 @@ namespace BlazorDematReports.Components.Shared
         public BaseComponentPage() { }
 
         public BaseComponentPage(
-            IMapper mapper,
             NotificationDialog notificationDialog,
             ILogger<TLogger> logger,
             ConfigUser configUser,
             IJSRuntime jsinterop,
             IDialogService dialogService,
             ILavorazioniConfigManager lavorazioniConfigManager)
-            : base(mapper, notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
+            : base(notificationDialog, logger, configUser, jsinterop, dialogService, lavorazioniConfigManager)
         { }
 
         /// <summary>
@@ -211,7 +212,8 @@ namespace BlazorDematReports.Components.Shared
         {
             try
             {
-                ValueBeforeEdit = Mapper!.Map<TValueBeforeEdit>(item);
+                ValueBeforeEdit = System.Text.Json.JsonSerializer.Deserialize<TValueBeforeEdit>(
+                    System.Text.Json.JsonSerializer.Serialize(item))!;
             }
             catch (Exception ex)
             {
@@ -227,7 +229,8 @@ namespace BlazorDematReports.Components.Shared
         protected void CanceledEditingItem(TValueBeforeEdit item)
         {
             if (ValueBeforeEdit != null)
-                item = Mapper!.Map<TValueBeforeEdit>(ValueBeforeEdit);
+                item = System.Text.Json.JsonSerializer.Deserialize<TValueBeforeEdit>(
+                    System.Text.Json.JsonSerializer.Serialize(ValueBeforeEdit))!;
         }
 
         /// <summary>
@@ -263,7 +266,8 @@ namespace BlazorDematReports.Components.Shared
         {
             try
             {
-                uValueBeforeEdit = Mapper!.Map<UValueBeforeEdit>(item);
+                uValueBeforeEdit = System.Text.Json.JsonSerializer.Deserialize<UValueBeforeEdit>(
+                    System.Text.Json.JsonSerializer.Serialize(item))!;
             }
             catch (Exception ex)
             {
@@ -279,18 +283,30 @@ namespace BlazorDematReports.Components.Shared
         protected void CanceledEditingItem1(UValueBeforeEdit item)
         {
             if (uValueBeforeEdit != null)
-                item = Mapper!.Map<UValueBeforeEdit>(uValueBeforeEdit);
+                item = System.Text.Json.JsonSerializer.Deserialize<UValueBeforeEdit>(
+                    System.Text.Json.JsonSerializer.Serialize(uValueBeforeEdit))!;
         }
 
         /// <summary>
-        /// Reset all properties of the second model
+        /// Reset all properties of the second model.
+        /// Reference types and nullable value types are set to null;
+        /// non-nullable value types are set to their default (0, false, DateTime.MinValue, …)
+        /// to avoid ArgumentException thrown by reflection on struct properties.
         /// </summary>
         protected void ResetUModel()
         {
             if (uModel == null)
                 return;
-            foreach (var p in typeof(UModel).GetProperties())
-                p.SetValue(uModel, null);
+
+            foreach (var p in typeof(UModel).GetProperties().Where(p => p.CanWrite))
+            {
+                var resetValue = p.PropertyType.IsValueType &&
+                                 Nullable.GetUnderlyingType(p.PropertyType) == null
+                    ? Activator.CreateInstance(p.PropertyType)   // default(int/bool/DateTime/…)
+                    : (object?)null;                             // null for classes and Nullable<T>
+
+                p.SetValue(uModel, resetValue);
+            }
         }
     }
 }

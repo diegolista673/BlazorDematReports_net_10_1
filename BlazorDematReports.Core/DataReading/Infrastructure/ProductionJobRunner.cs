@@ -39,6 +39,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             _scopeFactory = factory;
         }
 
+
         /// <summary>Entry point Hangfire: esegue il task con date calcolate da GiorniPrecedenti.</summary>
         public static async Task RunAsync(int idTaskDaEseguire, CancellationToken cancellationToken = default)
             => await RunAsync(idTaskDaEseguire, startDate: null, endDate: null, cancellationToken);
@@ -111,10 +112,12 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             DateTime? endDate,
             CancellationToken ct)
         {
-            var db          = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
-            var elaboratore = scope.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
-            var logger      = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-                                  .CreateLogger("ProductionJobRunner");
+            var db               = scope.ServiceProvider.GetRequiredService<DematReportsContext>();
+            var elaboratore      = scope.ServiceProvider.GetRequiredService<IElaboratoreDatiLavorazione>();
+            var gestoreOperatori = scope.ServiceProvider.GetRequiredService<IGestoreOperatoriDatiLavorazione>();
+            var logger           = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                                       .CreateLogger("ProductionJobRunner");
+
             var fase = entity.IdLavorazioneFaseDateReadingNavigation;
 
             var config = await db.ConfigurazioneFontiDatis
@@ -149,6 +152,22 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 return;
             }
 
+            // Carica gli elenchi operatori prima dell'elaborazione.
+            // Senza questi Set*, le cache di ElaboratoreDatiLavorazione restano vuote
+            // e tutti gli operatori finiscono in Not_Found_Oper.
+            await gestoreOperatori.SetOperatoriAsync();
+
+            try
+            {
+                await gestoreOperatori.SetOperatoriEsterniMondoAsync();
+            }
+            catch (Exception exMondo)
+            {
+                logger.LogWarning(exMondo,
+                    "Task {TaskId}: impossibile caricare operatori Mondo. Si procede senza operatori esterni",
+                    entity.IdTaskDaEseguire);
+            }
+
             var datiElaborati = await elaboratore.ElaboraDatiLavorazioneAsync(
                 datiLavorazione,
                 mapping.IdCentro,
@@ -177,7 +196,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             DateTime? endDate,
             CancellationToken ct)
         {
-            return config.TipoFonte switch
+            var tipoFonte = config.TipoFonte;
+            return tipoFonte switch
             {
                 TipoFonteData.SQL              => AcquireFromSqlAsync(scope, entity, config, mapping, startDate, endDate, ct),
                 TipoFonteData.HandlerIntegrato => AcquireFromHandlerAsync(scope, entity, config, mapping, startDate, endDate, ct),
@@ -228,7 +248,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             if (results.Count == 0)
             {
                 logger.LogInformation(
-                    "Task {TaskId}: nessun dato dalla query SQL per periodo {Start:d}-{End:d}",
+                    "Task {TaskId}: nessun dato dalla query SQL per periodo {Start:dd/MM/yyyy}-{End:dd/MM/yyyy}",
                     entity.IdTaskDaEseguire, effectiveStart, effectiveEnd);
                 return [];
             }
@@ -420,7 +440,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>Marca il task come completato con successo.</summary>
         private static void MarkSuccess(TaskDaEseguire entity)
         {
-            entity.LastRunUtc = DateTime.UtcNow;
+            entity.LastRunUtc = DateTime.Now;
             entity.LastError  = null;
             entity.Stato      = "COMPLETED";
             entity.DataStato  = DateTime.Now;
@@ -429,7 +449,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>Marca il task come fallito, salvando il messaggio di errore.</summary>
         private static void MarkFailure(TaskDaEseguire entity, Exception ex)
         {
-            entity.LastRunUtc = DateTime.UtcNow;
+            entity.LastRunUtc = DateTime.Now;
             entity.LastError  = ex.Message;
             entity.Stato      = "ERROR";
             entity.DataStato  = DateTime.Now;

@@ -148,7 +148,7 @@ public record ConfigurationWizardState
             IdConfigurazione = IdConfigurazioneEdit ?? 0,
             CodiceConfigurazione = codiceConfigurazione,
             DescrizioneConfigurazione = DescrizioneConfigurazione ?? $"Config_{NomeProcedura}",
-            TipoFonte = TipoFonte ?? TipoFonteData.SQL, // ? Nessuna conversione necessaria!
+            TipoFonte = TipoFonte ?? TipoFonteData.SQL,
             ConnectionStringName = ConnectionStringName,
             HandlerClassName = HandlerClassName,
             CreatoIl = DateTime.Now,
@@ -199,14 +199,15 @@ public class ConfigurationWizardStateService
     /// <param name="fasi">Fasi disponibili (opzionale).</param>
     public void LoadEditState(ConfigurazioneFontiDati config, List<ConfigurazioneFaseCentro> mappings, int? idProcedura = null, int? idCentro = null, string? nomeProcedura = null, List<FasiLavorazione>? fasi = null)
     {
+        var tipoFonte = config.TipoFonte;
         _state = new ConfigurationWizardState
         {
             IdConfigurazioneEdit = config.IdConfigurazione,
             CodiceConfigurazioneOriginal = config.CodiceConfigurazione,
-            TipoFonte = config.TipoFonte, // ? Già enum!
+            TipoFonte = tipoFonte,
             ConnectionStringName = config.ConnectionStringName,
             HandlerClassName = config.HandlerClassName,
-            ConnectionTestPassed = config.TipoFonte == TipoFonteData.SQL && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
+            ConnectionTestPassed = tipoFonte == TipoFonteData.SQL && !string.IsNullOrWhiteSpace(config.ConnectionStringName),
             DescrizioneConfigurazione = config.DescrizioneConfigurazione,
             Mappings = mappings.ToImmutableList(),
             IdProcedura = idProcedura,

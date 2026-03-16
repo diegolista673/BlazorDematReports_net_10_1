@@ -1,6 +1,6 @@
-﻿using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Application.Dto;
+using BlazorDematReports.Core.Application.Mapping;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Entities.Helpers;
 using Entities.Models.DbApplication;
@@ -10,21 +10,23 @@ using Microsoft.Extensions.Logging;
 namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
-    /// Servizio per la gestione dei formati dati e delle relative operazioni sui dati.
+    /// Servizio per la gestione dei formati dati.
     /// </summary>
     public class ServiceFormatoDati : ServiceBase<FormatoDati>, IServiceFormatoDati
     {
+        private readonly AltriDatiMapper _mapper;
 
         /// <summary>
         /// Inizializza una nuova istanza del servizio per la gestione dei formati dati.
         /// </summary>
-        /// <param name="mapper">Mapper per conversioni tra entit� e DTO.</param>
+        /// <param name="mapper">Mapper Mapperly per FormatoDati ↔ DTO.</param>
         /// <param name="configUser">Configurazione utente per controllo autorizzazioni.</param>
         /// <param name="contextFactory">Factory per la creazione di contesti database.</param>
         /// <param name="logger">Logger per registrare operazioni e errori.</param>
-        public ServiceFormatoDati(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceFormatoDati> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceFormatoDati(AltriDatiMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceFormatoDati> logger)
+            : base(contextFactory, logger, configUser)
         {
+            _mapper = mapper;
         }
 
         /// <inheritdoc/>
@@ -32,7 +34,7 @@ namespace BlazorDematReports.Core.Services.DataService
         {
             QueryLoggingHelper.LogQueryExecution(logger);
 
-            var entity = mapper.Map<FormatoDati>(formatoDatiDto);
+            var entity = _mapper.DtoToFormato(formatoDatiDto);
             await using var context = await contextFactory.CreateDbContextAsync();
             context.FormatoDatis.Add(entity);
             await context.SaveChangesAsync();

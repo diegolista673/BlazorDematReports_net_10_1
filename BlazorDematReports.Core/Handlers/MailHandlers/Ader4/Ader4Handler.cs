@@ -1,46 +1,52 @@
 using BlazorDematReports.Core.Constants;
 using BlazorDematReports.Core.Lavorazioni.Interfaces;
 using BlazorDematReports.Core.Lavorazioni.Models;
-using BlazorDematReports.Core.Services.Email;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using BlazorDematReports.Core.Utility.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 
 namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 {
     /// <summary>
-    /// Handler per l'importazione dati dal servizio ADER4/Equitalia via Exchange Web Services.
-    /// Gestisce email da Verona e Genova inserendo in ProduzioneSistema.
+    /// Handler base per task produzione ADER4 che leggono righe per-operatore da DatiMailCsv.
+    /// Ogni implementazione specifica quale TipoRisultato leggere.
+    /// L'operatore e' preso direttamente dal record staging (colonna 'postazione' del CSV).
     /// </summary>
-    [Description("Import dati ADER4/Equitalia da allegati email CSV (Verona + Genova)")]
-    public sealed class Ader4Handler : IProductionDataHandler
+    public abstract class Ader4StagingHandlerBase : IProductionDataHandler
     {
-        private readonly ILogger<Ader4Handler> _logger;
-        private readonly EmailDailyFlagService _flagService;
-        private readonly Ader4EmailService _emailService;
+        protected readonly ILogger Logger;
+        protected readonly IServiceScopeFactory ScopeFactory;
 
-        public Ader4Handler(
-            ILogger<Ader4Handler> logger,
-            EmailDailyFlagService flagService,
-            Ader4EmailService emailService)
+        protected Ader4StagingHandlerBase(
+            ILogger logger,
+            IServiceScopeFactory scopeFactory)
         {
-            _logger       = logger;
-            _flagService  = flagService;
-            _emailService = emailService;
+            Logger = logger;
+            ScopeFactory = scopeFactory;
         }
 
-        /// <inheritdoc />
-        public string HandlerCode => LavorazioniCodes.ADER4;
+        /// <summary>TipoRisultato da leggere in DatiMailCsv (es. 'ScansioneCaptiva').</summary>
+        protected abstract string TipoRisultatoStaging { get; }
+
+        /// <summary>
+        /// Calcola Fogli da Documenti. Default: Documenti / 2.
+        /// </summary>
+        protected virtual int CalcolaFogli(int documenti) => documenti / 2;
 
         /// <inheritdoc />
-        public string? GetServiceCode() => LavorazioniCodes.ADER4;
+        public abstract string HandlerCode { get; }
+
+        /// <inheritdoc />
+        public string? GetServiceCode() => "";
 
         /// <inheritdoc />
         public HandlerMetadata GetMetadata() => new()
         {
             ServiceCode = LavorazioniCodes.ADER4,
-            RequiresEmailService = true,
-            Category = "Mail Import"
+            RequiresEmailService = false,
+            Category = "Staging Reader"
         };
 
         /// <inheritdoc />
@@ -48,147 +54,106 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             ProductionExecutionContext context,
             CancellationToken ct = default)
         {
-            string taskName = $"ADER4_P{context.IDProceduraLavorazione}_F{context.IDFaseLavorazione}";
-
-            _logger.LogInformation(
-                "Inizio elaborazione {TaskName} per Periodo={Start}-{End}",
-                taskName,
+            Logger.LogInformation(
+                "Handler {Code}: lettura staging {TipoRisultato}, periodo {Start:dd/MM/yyyy}-{End:dd/MM/yyyy}",
+                HandlerCode,
+                TipoRisultatoStaging,
                 context.StartDataLavorazione,
-                context.EndDataLavorazione
-            );
+                context.EndDataLavorazione ?? context.StartDataLavorazione);
 
-            bool isFirstToday = await _flagService.TryMarkAsProcessingAsync(
+            var dataMin = DateOnly.FromDateTime(context.StartDataLavorazione);
+            var dataMax = context.EndDataLavorazione.HasValue
+                ? DateOnly.FromDateTime(context.EndDataLavorazione.Value)
+                : DateOnly.FromDateTime(context.StartDataLavorazione);
+
+            using var scope = ScopeFactory.CreateScope();
+            var mailCsvService = scope.ServiceProvider.GetRequiredService<IAder4MailCsvService>();
+
+            var stagingRecords = await mailCsvService.GetUnprocessedAsync(
                 LavorazioniCodes.ADER4,
-                taskName,
-                ct
-            );
+                TipoRisultatoStaging,
+                dataMin,
+                dataMax,
+                centro: null,
+                ct);
 
-            if (isFirstToday)
+            if (stagingRecords.Count == 0)
             {
-                _logger.LogInformation("Primo task oggi. Elaborazione email completa per TUTTE le fasi...");
-                try
-                {
-                    return await ProcessEmailAndInsertAllDataAsync(context, ct);
-                }
-                catch (Exception ex)
-                {
-                    // Rollback del flag: se l'elaborazione fallisce il giorno non deve restare bloccato.
-                    // MarkAsFailedAsync usa CancellationToken.None per garantire il reset
-                    // anche quando il token originale è già cancellato.
-                    _logger.LogError(ex, "Errore durante elaborazione ADER4 in {TaskName}", taskName);
-                    await _flagService.MarkAsFailedAsync(LavorazioniCodes.ADER4, taskName);
-                    throw;
-                }
+                Logger.LogInformation("Nessun dato staging per {TipoRisultato}", TipoRisultatoStaging);
+                return [];
             }
-            else
+
+            // Operatore reale dal CSV (colonna 'postazione'), non piu hardcoded
+            var datiLavorazione = stagingRecords.Select(s => new DatiLavorazione
             {
-                _logger.LogInformation("Email gia elaborata oggi da altro task. Skip elaborazione.");
-                return new List<DatiLavorazione>();
-            }
-        }
+                Operatore               = s.Operatore,
+                DataLavorazione         = s.DataLavorazione.ToDateTime(TimeOnly.MinValue),
+                Documenti               = s.Documenti,
+                Fogli                   = CalcolaFogli(s.Documenti),
+                Pagine                  = s.Documenti,
+                AppartieneAlCentroSelezionato = true
+            }).ToList();
 
-        /// <summary>
-        /// Processa email e inserisce dati per TUTTE le fasi in un colpo solo.
-        /// Chiamato solo dal primo task che esegue oggi.
-        /// </summary>
-        private async Task<List<DatiLavorazione>> ProcessEmailAndInsertAllDataAsync(
-            ProductionExecutionContext context,
-            CancellationToken ct)
-        {
-            var emailResults = await _emailService.ProcessEmailsAsync(ct);
+            var ids = stagingRecords.Select(s => s.Id).ToList();
+            await mailCsvService.MarkAsProcessedAsync(ids, ct);
 
-            _logger.LogInformation(
-                "Email processate: Totali={Total}, Successi={Success}, Allegati={Attachments}",
-                emailResults.TotalEmailsFound,
-                emailResults.SuccessfulEmails.Count,
-                emailResults.TotalAttachmentsDownloaded
-            );
-
-            var datiLavorazione = ConvertEmailResultsToDatiLavorazione(emailResults, context);
-
-            _logger.LogInformation(
-                "Dati estratti per TUTTE le fasi: {Count} record totali",
-                datiLavorazione.Count
-            );
+            Logger.LogInformation(
+                "Handler {Code}: {Count} record letti da DatiMailCsv e marcati come elaborati",
+                HandlerCode, datiLavorazione.Count);
 
             return datiLavorazione;
         }
+    }
 
-        /// <summary>
-        /// Converte risultati elaborazione email in lista DatiLavorazione.
-        /// </summary>
-        private List<DatiLavorazione> ConvertEmailResultsToDatiLavorazione(
-            BatchEmailProcessingResult emailResults,
-            ProductionExecutionContext context)
+    /// <summary>
+    /// Handler per Scansione Captiva ADER4.
+    /// </summary>
+    [Description("ADER4 Captiva - legge staging ScansioneCaptiva")]
+    public sealed class Ader4CaptivaHandler : Ader4StagingHandlerBase
+    {
+        public Ader4CaptivaHandler(
+            ILogger<Ader4CaptivaHandler> logger,
+            IServiceScopeFactory scopeFactory)
+            : base(logger, scopeFactory)
         {
-            var datiLavorazione = new List<DatiLavorazione>();
-
-            foreach (var email in emailResults.SuccessfulEmails)
-            {
-                if (!email.ExtractedMetadata.TryGetValue("DataRiferimento", out var dataRifStr))
-                    continue;
-
-                if (!DateTime.TryParse(dataRifStr, out var dataRiferimento))
-                    continue;
-
-                // Estrai totali da metadata
-                var scansioneCaptiva = GetIntMetadata(email.ExtractedMetadata, "ScansioneCaptiva");
-                var scansioneSorter = GetIntMetadata(email.ExtractedMetadata, "ScansioneSorter");
-                var scansioneSorterBuste = GetIntMetadata(email.ExtractedMetadata, "ScansioneSorterBuste");
-
-                // Aggiungi record per ogni tipo scansione (se > 0)
-                if (scansioneCaptiva > 0)
-                {
-                    datiLavorazione.Add(new DatiLavorazione
-                    {
-                        Operatore = "SISTEMA", // Dati aggregati sistema
-                        DataLavorazione = dataRiferimento,
-                        Documenti = scansioneCaptiva,
-                        Fogli = scansioneCaptiva / 2, // Convenzione: 2 pagine = 1 foglio
-                        Pagine = scansioneCaptiva,
-                        AppartieneAlCentroSelezionato = true
-                    });
-                }
-
-                if (scansioneSorter > 0)
-                {
-                    datiLavorazione.Add(new DatiLavorazione
-                    {
-                        Operatore = "SISTEMA_SORTER",
-                        DataLavorazione = dataRiferimento,
-                        Documenti = scansioneSorter,
-                        Fogli = scansioneSorter / 2,
-                        Pagine = scansioneSorter,
-                        AppartieneAlCentroSelezionato = true
-                    });
-                }
-
-                if (scansioneSorterBuste > 0)
-                {
-                    datiLavorazione.Add(new DatiLavorazione
-                    {
-                        Operatore = "SISTEMA_SORTER_BUSTE",
-                        DataLavorazione = dataRiferimento,
-                        Documenti = scansioneSorterBuste,
-                        Fogli = scansioneSorterBuste,
-                        Pagine = scansioneSorterBuste,
-                        AppartieneAlCentroSelezionato = true
-                    });
-                }
-            }
-
-            return datiLavorazione;
         }
 
-        /// <summary>
-        /// Estrae valore intero da metadata dictionary.
-        /// </summary>
-        private static int GetIntMetadata(Dictionary<string, string>? metadata, string key)
-        {
-            if (metadata == null || !metadata.TryGetValue(key, out var value))
-                return 0;
+        public override string HandlerCode => LavorazioniCodes.ADER4_CAPTIVA;
+        protected override string TipoRisultatoStaging => "ScansioneCaptiva";
+    }
 
-            return int.TryParse(value, out var result) ? result : 0;
+    /// <summary>
+    /// Handler per Scansione Sorter ADER4.
+    /// </summary>
+    [Description("ADER4 Sorter - legge staging ScansioneSorter")]
+    public sealed class Ader4SorterHandler : Ader4StagingHandlerBase
+    {
+        public Ader4SorterHandler(
+            ILogger<Ader4SorterHandler> logger,
+            IServiceScopeFactory scopeFactory)
+            : base(logger, scopeFactory)
+        {
         }
+
+        public override string HandlerCode => LavorazioniCodes.ADER4_SORTER;
+        protected override string TipoRisultatoStaging => "ScansioneSorter";
+    }
+
+    /// <summary>
+    /// Handler per Scansione Sorter Buste ADER4.
+    /// </summary>
+    [Description("ADER4 Sorter Buste - legge staging ScansioneSorterBuste")]
+    public sealed class Ader4SorterBusteHandler : Ader4StagingHandlerBase
+    {
+        public Ader4SorterBusteHandler(
+            ILogger<Ader4SorterBusteHandler> logger,
+            IServiceScopeFactory scopeFactory)
+            : base(logger, scopeFactory)
+        {
+        }
+
+        public override string HandlerCode => LavorazioniCodes.ADER4_SORTER_BUSTE;
+        protected override string TipoRisultatoStaging => "ScansioneSorterBuste";
+        protected override int CalcolaFogli(int documenti) => documenti; // 1 busta = 1 foglio
     }
 }

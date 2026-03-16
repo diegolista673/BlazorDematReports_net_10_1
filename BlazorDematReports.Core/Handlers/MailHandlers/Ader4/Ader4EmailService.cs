@@ -1,4 +1,5 @@
 using BlazorDematReports.Core.Services.Email;
+using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Data;
@@ -7,11 +8,19 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 {
     /// <summary>
     /// Implementazione servizio email per ADER4 (Equitalia 4).
-    /// Gestisce import CSV da allegati email con logica specifica Sorter/Captiva.
+    /// Legge allegati CSV, raggruppa per colonna 'postazione' (operatore reale)
+    /// e popola la lista RigheElaborate con DatiMailCsvDto per-operatore.
     /// </summary>
-    public sealed class Ader4EmailService : BaseEwsEmailService
+    public class Ader4EmailService : BaseEwsEmailService, IEmailBatchProcessor
     {
         private readonly IConfiguration _configuration;
+        private readonly List<DatiMailCsvDto> _righeElaborate = [];
+
+        /// <summary>Righe per-operatore estratte dall'ultima elaborazione email.</summary>
+        public IReadOnlyList<DatiMailCsvDto> RigheElaborate => _righeElaborate;
+
+        /// <summary>Svuota la lista righe prima di una nuova elaborazione.</summary>
+        protected void RigheElaborate_Clear() => _righeElaborate.Clear();
 
         /// <summary>
         /// Inizializza una nuova istanza di Ader4EmailService.
@@ -59,7 +68,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         }
 
         /// <summary>
-        /// Processa allegato CSV specifico per ADER4.
+        /// Processa allegato CSV ADER4: raggruppa per 'postazione' (operatore) e accumula righe.
         /// </summary>
         protected override async Task ProcessAttachmentAsync(
             AttachmentInfo attachment,
@@ -68,7 +77,6 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         {
             Logger.LogInformation("Elaborazione allegato ADER4: {FileName}", attachment.FileName);
 
-            // Leggi CSV
             var csvData = ReadCsvFile(attachment.LocalFilePath);
 
             if (csvData.Rows.Count == 0)
@@ -77,180 +85,111 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
                 return;
             }
 
-            // Logica specifica per tipo file
+            metadata.TryGetValue("DataLavorazione", out var dataRifStr);
+            metadata.TryGetValue("IdEvento", out var idEvento);
+            metadata.TryGetValue("Centro", out var centro);
+
+            if (!DateOnly.TryParse(dataRifStr, out var dataRif))
+            {
+                Logger.LogWarning("DataLavorazione non valida '{Data}' in {FileName}, riga ignorata", dataRifStr, attachment.FileName);
+                return;
+            }
+
             if (attachment.FileName.Contains("EQTMN4_Scatole_Scansionate"))
-            {
-                await ProcessScatoleScansionateAsync(csvData, metadata, ct);
-            }
+                AggiungiRigheScatoleScansionate(csvData, dataRif, idEvento, centro, attachment.FileName);
             else if (attachment.FileName.Contains("EQTMN4_Dispacci_Preaccettati"))
-            {
-                await ProcessDispacciAsync(csvData, "PreAccettazione", metadata, ct);
-            }
+                AggiungiRigheDispacci(csvData, "PreAccettazione", dataRif, idEvento, centro, attachment.FileName);
             else if (attachment.FileName.Contains("EQTMN4_Dispacci_Ripartiti"))
-            {
-                await ProcessDispacciAsync(csvData, "Ripartizione", metadata, ct);
-            }
+                AggiungiRigheDispacci(csvData, "Ripartizione", dataRif, idEvento, centro, attachment.FileName);
             else if (attachment.FileName.Contains("EQTMN4_Scatole_Restituite"))
+                AggiungiRigheDispacci(csvData, "Restituzione", dataRif, idEvento, centro, attachment.FileName);
+
+            Logger.LogInformation("Allegato ADER4 {FileName} processato: {RowCount} righe CSV", attachment.FileName, csvData.Rows.Count);
+
+            await Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Aggiunte righe per-operatore da Scatole_Scansionate, raggruppate per 'postazione'.
+        /// Ogni gruppo produce tre TipoRisultato: ScansioneCaptiva, ScansioneSorter, ScansioneSorterBuste.
+        /// </summary>
+        private void AggiungiRigheScatoleScansionate(
+            DataTable csvData,
+            DateOnly dataRif,
+            string? idEvento,
+            string? centro,
+            string? nomeFile)
+        {
+            var righeValide = csvData.AsEnumerable()
+                .Where(r =>
+                {
+                    var doc = r.Field<string>("Numero documenti");
+                    var cod = r.Field<string>("Codice Scatola");
+                    return !string.IsNullOrWhiteSpace(doc) && int.TryParse(doc, out _)
+                        && !string.IsNullOrWhiteSpace(cod);
+                })
+                .ToList();
+
+            // Raggruppa per postazione
+            var perPostazione = righeValide
+                .GroupBy(r => r.Field<string>("postazione") ?? "SCONOSCIUTO");
+
+            foreach (var gruppo in perPostazione)
             {
-                await ProcessDispacciAsync(csvData, "Restituzione", metadata, ct);
+                var operatore = gruppo.Key;
+
+                var captiva = gruppo
+                    .Where(r => IsCaptiva(r.Field<string>("Codice Scatola")!))
+                    .Sum(r => ParseDoc(r.Field<string>("Numero documenti")));
+
+                var sorter = gruppo
+                    .Where(r => IsSorter(r.Field<string>("Codice Scatola")!))
+                    .Sum(r => ParseDoc(r.Field<string>("Numero documenti")));
+
+                var sorterBuste = gruppo
+                    .Where(r => IsSorterBuste(r.Field<string>("Codice Scatola")!))
+                    .Sum(r => ParseDoc(r.Field<string>("Numero documenti")));
+
+                if (captiva > 0)
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneCaptiva", captiva, idEvento, centro, nomeFile));
+                if (sorter > 0)
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneSorter", sorter, idEvento, centro, nomeFile));
+                if (sorterBuste > 0)
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, operatore, "ScansioneSorterBuste", sorterBuste, idEvento, centro, nomeFile));
             }
 
             Logger.LogInformation(
-                "Allegato ADER4 {FileName} processato: {RowCount} righe",
-                attachment.FileName,
-                csvData.Rows.Count
-            );
+                "ScatoleScansionate: {Operatori} operatori trovati, {Righe} righe aggiunte",
+                perPostazione.Count(), _righeElaborate.Count);
         }
 
         /// <summary>
-        /// Processa file scatole scansionate (logica Sorter/Captiva).
+        /// Aggiunge righe per-operatore dai file Dispacci, raggruppate per 'postazione'.
         /// </summary>
-        private async Task ProcessScatoleScansionateAsync(
+        private void AggiungiRigheDispacci(
             DataTable csvData,
-            Dictionary<string, string> metadata,
-            CancellationToken ct)
+            string tipoRisultato,
+            DateOnly dataRif,
+            string? idEvento,
+            string? centro,
+            string? nomeFile)
         {
-            Logger.LogInformation("Elaborazione Scatole Scansionate: {RowCount} righe", csvData.Rows.Count);
+            Logger.LogInformation("Elaborazione Dispacci {Tipo}: {RowCount} righe", tipoRisultato, csvData.Rows.Count);
 
-            // Estrai totali per tipo scansione
-            var totali = CalculateTotaliScansionati(csvData);
-
-            metadata["ScansioneCaptiva"] = totali.ScansioneCaptiva.ToString();
-            metadata["ScansioneSorter"] = totali.ScansioneSorter.ToString();
-            metadata["ScartiScansioneSorter"] = totali.ScartiScansioneSorter.ToString();
-            metadata["ScansioneSorterBuste"] = totali.ScansioneSorterBuste.ToString();
-            metadata["ScartiScansioneSorterBuste"] = totali.ScartiScansioneSorterBuste.ToString();
-
-            Logger.LogInformation(
-                "Totali Scansionati - Captiva:{Captiva}, Sorter:{Sorter}, ScartiSorter:{ScartiS}, SorterBuste:{SorterB}, ScartiBuste:{ScartiB}",
-                totali.ScansioneCaptiva,
-                totali.ScansioneSorter,
-                totali.ScartiScansioneSorter,
-                totali.ScansioneSorterBuste,
-                totali.ScartiScansioneSorterBuste
-            );
-
-            // TODO: Inserimento dati in database (implementare in classe derivata o via DI)
-            await Task.CompletedTask;
-        }
-
-
-        /// <summary>
-        /// Processa file dispacci (Pre-accettazione, Ripartizione, Restituzione).
-        /// </summary>
-        private async Task ProcessDispacciAsync(
-            DataTable csvData,
-            string tipoDispaccio,
-            Dictionary<string, string> metadata,
-            CancellationToken ct)
-        {
-            Logger.LogInformation("Elaborazione Dispacci {Tipo}: {RowCount} righe", tipoDispaccio, csvData.Rows.Count);
-
-            int totale = CalculateTotaleDocumenti(csvData);
-            metadata[tipoDispaccio] = totale.ToString();
-
-            Logger.LogInformation("Totale Dispacci {Tipo}: {Totale}", tipoDispaccio, totale);
-
-            // TODO: Inserimento dati in database
-            await Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Calcola totali per file scatole scansionate (logica specifica ADER4).
-        /// </summary>
-        private TotaliScansionati CalculateTotaliScansionati(DataTable csvData)
-        {
-            var totali = new TotaliScansionati();
-
-            // Captiva: codiceScatola[4:9] != "999X9"
-            totali.ScansioneCaptiva = csvData.AsEnumerable()
+            var perPostazione = csvData.AsEnumerable()
                 .Where(r =>
                 {
-                    var numeroDoc = r.Field<string>("Numero documenti");
-                    var codiceScatola = r.Field<string>("Codice Scatola");
-                    return !string.IsNullOrEmpty(numeroDoc) &&
-                           int.TryParse(numeroDoc, out _) &&
-                           !string.IsNullOrEmpty(codiceScatola) &&
-                           codiceScatola.Length >= 9 &&
-                           codiceScatola.Substring(4, 5) != "999X9";
+                    var doc = r.Field<string>("Numero Documenti");
+                    return !string.IsNullOrWhiteSpace(doc) && int.TryParse(doc, out _);
                 })
-                .Sum(r => int.Parse(r.Field<string>("Numero documenti")?.Trim() ?? "0"));
+                .GroupBy(r => r.Field<string>("postazione") ?? "SCONOSCIUTO");
 
-            // Sorter: codiceScatola[4:10] == "999X91" || "999X92", codiceScatola[0:3] == "MN4"
-            totali.ScansioneSorter = csvData.AsEnumerable()
-                .Where(r =>
-                {
-                    var numeroDoc = r.Field<string>("Numero documenti");
-                    var codiceScatola = r.Field<string>("Codice Scatola");
-                    return !string.IsNullOrEmpty(numeroDoc) &&
-                           int.TryParse(numeroDoc, out _) &&
-                           !string.IsNullOrEmpty(codiceScatola) &&
-                           codiceScatola.Length >= 10 &&
-                           (codiceScatola.Substring(4, 6) == "999X91" || codiceScatola.Substring(4, 6) == "999X92") &&
-                           codiceScatola.Substring(0, 3) == "MN4";
-                })
-                .Sum(r => int.Parse(r.Field<string>("Numero documenti")?.Trim() ?? "0"));
-
-            // Scarti Sorter: codiceScatola[4:10] == "999X91" || "999X92", codiceScatola[0:3] != "MN4"
-            totali.ScartiScansioneSorter = csvData.AsEnumerable()
-                .Where(r =>
-                {
-                    var numeroDoc = r.Field<string>("Numero documenti");
-                    var codiceScatola = r.Field<string>("Codice Scatola");
-                    return !string.IsNullOrEmpty(numeroDoc) &&
-                           int.TryParse(numeroDoc, out _) &&
-                           !string.IsNullOrEmpty(codiceScatola) &&
-                           codiceScatola.Length >= 10 &&
-                           (codiceScatola.Substring(4, 6) == "999X91" || codiceScatola.Substring(4, 6) == "999X92") &&
-                           codiceScatola.Substring(0, 3) != "MN4";
-                })
-                .Sum(r => int.Parse(r.Field<string>("Numero documenti")?.Trim() ?? "0"));
-
-            // Sorter Buste: codiceScatola[4:10] == "999X93", codiceScatola[0:3] == "MN4"
-            totali.ScansioneSorterBuste = csvData.AsEnumerable()
-                .Where(r =>
-                {
-                    var numeroDoc = r.Field<string>("Numero documenti");
-                    var codiceScatola = r.Field<string>("Codice Scatola");
-                    return !string.IsNullOrEmpty(numeroDoc) &&
-                           int.TryParse(numeroDoc, out _) &&
-                           !string.IsNullOrEmpty(codiceScatola) &&
-                           codiceScatola.Length >= 10 &&
-                           codiceScatola.Substring(4, 6) == "999X93" &&
-                           codiceScatola.Substring(0, 3) == "MN4";
-                })
-                .Sum(r => int.Parse(r.Field<string>("Numero documenti")?.Trim() ?? "0"));
-
-            // Scarti Sorter Buste: codiceScatola[4:10] == "999X93", codiceScatola[0:3] != "MN4"
-            totali.ScartiScansioneSorterBuste = csvData.AsEnumerable()
-                .Where(r =>
-                {
-                    var numeroDoc = r.Field<string>("Numero documenti");
-                    var codiceScatola = r.Field<string>("Codice Scatola");
-                    return !string.IsNullOrEmpty(numeroDoc) &&
-                           int.TryParse(numeroDoc, out _) &&
-                           !string.IsNullOrEmpty(codiceScatola) &&
-                           codiceScatola.Length >= 10 &&
-                           codiceScatola.Substring(4, 6) == "999X93" &&
-                           codiceScatola.Substring(0, 3) != "MN4";
-                })
-                .Sum(r => int.Parse(r.Field<string>("Numero documenti")?.Trim() ?? "0"));
-
-            return totali;
-        }
-
-        /// <summary>
-        /// Calcola totale documenti da colonna "Numero Documenti".
-        /// </summary>
-        private int CalculateTotaleDocumenti(DataTable csvData)
-        {
-            return csvData.AsEnumerable()
-                .Where(r =>
-                {
-                    var numeroDoc = r.Field<string>("Numero Documenti");
-                    return !string.IsNullOrEmpty(numeroDoc) && int.TryParse(numeroDoc, out _);
-                })
-                .Sum(r => int.Parse(r.Field<string>("Numero Documenti")?.Trim() ?? "0"));
+            foreach (var gruppo in perPostazione)
+            {
+                var totale = gruppo.Sum(r => ParseDoc(r.Field<string>("Numero Documenti")));
+                if (totale > 0)
+                    _righeElaborate.Add(new DatiMailCsvDto("ADER4", dataRif, gruppo.Key, tipoRisultato, totale, idEvento, centro, nomeFile));
+            }
         }
 
         /// <summary>
@@ -260,23 +199,25 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         {
             base.ExtractMetadataFromBody(bodyText, metadata);
 
-            // Metadata aggiuntivi ADER4
             ExtractMetadataField(bodyText, "Identificativo evento:", metadata, "IdEvento");
-            ExtractMetadataField(bodyText, "Periodo di riferimento:", metadata, "DataRiferimento");
+            ExtractMetadataField(bodyText, "Periodo di riferimento:", metadata, "DataLavorazione");
         }
 
+        // Classificazione codice scatola (regole ADER4)
+        private static bool IsCaptiva(string cod)
+            => cod.Length >= 9 && cod.Substring(4, 5) != "999X9";
 
+        private static bool IsSorter(string cod)
+            => cod.Length >= 10
+            && (cod.Substring(4, 6) == "999X91" || cod.Substring(4, 6) == "999X92")
+            && cod.StartsWith("MN4", StringComparison.Ordinal);
 
-        /// <summary>
-        /// DTO per totali scansionati.
-        /// </summary>
-        private sealed class TotaliScansionati
-        {
-            public int ScansioneCaptiva { get; set; }
-            public int ScansioneSorter { get; set; }
-            public int ScartiScansioneSorter { get; set; }
-            public int ScansioneSorterBuste { get; set; }
-            public int ScartiScansioneSorterBuste { get; set; }
-        }
+        private static bool IsSorterBuste(string cod)
+            => cod.Length >= 10
+            && cod.Substring(4, 6) == "999X93"
+            && cod.StartsWith("MN4", StringComparison.Ordinal);
+
+        private static int ParseDoc(string? value)
+            => int.TryParse(value?.Trim(), out var n) ? n : 0;
     }
 }

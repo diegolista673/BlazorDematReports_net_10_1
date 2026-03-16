@@ -222,18 +222,18 @@
                         </PropertyColumn>
                         <PropertyColumn Property="x => x.DataLavorazione" Title="Data" Editable=false Filterable="false" Sortable="true" Format="yyyy-MM-dd" Groupable="false">
                             <CellTemplate>
-                                @context.Item.DataLavorazione!.Value.ToShortDateString()
+                                @(context.Item.DataLavorazione?.ToShortDateString() ?? "-")
                             </CellTemplate>
                         </PropertyColumn>
                         <PropertyColumn Property="x => x.Operatore" Title="Operatore" Editable=false Sortable="false" Filterable="false" Groupable="true">
                             <CellTemplate>
                                 <MudLink Href="@string.Format("produzione-operatore/{0}/{1}/{2}/{3}/{4}",
-                                                                @context.Item.DataLavorazione!.Value.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture),
-                                                                @context.Item.DataLavorazione.Value.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture),
-                                                                @context.Item.IdOperatore,
-                                                                @context.Item.IdCentro,
-                                                                @SelectOption.Type)">
-                                    <MudText Typo="Typo.body2">@context.Item.Operatore!.ToUpper()</MudText>
+                                                                context.Item.DataLavorazione?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "-",
+                                                                context.Item.DataLavorazione?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "-",
+                                                                context.Item.IdOperatore,
+                                                                context.Item.IdCentro,
+                                                                SelectOption.Type)">
+                                    <MudText Typo="Typo.body2">@(context.Item.Operatore?.ToUpper() ?? "-")</MudText>
                                 </MudLink>
                             </CellTemplate>
                         </PropertyColumn>

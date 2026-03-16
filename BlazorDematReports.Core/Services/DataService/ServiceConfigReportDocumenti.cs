@@ -1,4 +1,3 @@
-using AutoMapper;
 using BlazorDematReports.Core.Application;
 using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using ClosedXML.Excel;
@@ -16,7 +15,7 @@ namespace BlazorDematReports.Core.Services.DataService
 {
     /// <summary>
     /// Servizio che gestisce la configurazione e la generazione di report e grafici per documenti lavorati.
-    /// Fornisce funzionalità per l'aggregazione dei dati di produzione, la visualizzazione grafica
+    /// Fornisce funzionalitï¿½ per l'aggregazione dei dati di produzione, la visualizzazione grafica
     /// e l'esportazione in formato Excel dei report generati.
     /// </summary>
     public class ServiceConfigReportDocumenti : ServiceBase<ConfigReportDocumenti>, IServiceConfigReportDocumenti
@@ -25,12 +24,11 @@ namespace BlazorDematReports.Core.Services.DataService
         /// <summary>
         /// Inizializza una nuova istanza del servizio di configurazione report documenti.
         /// </summary>
-        /// <param name="mapper">Servizio di mapping tra entità e DTO utilizzato per trasformare i dati tra diversi modelli.</param>
         /// <param name="configUser">Configurazione dell'utente corrente con informazioni su permessi e centro di appartenenza.</param>
         /// <param name="contextFactory">Factory per la creazione di istanze del contesto database DematReports.</param>
         /// <param name="logger">Logger per il tracking delle operazioni.</param>
-        public ServiceConfigReportDocumenti(IMapper mapper, ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigReportDocumenti> logger)
-            : base(contextFactory, logger, mapper, configUser)
+        public ServiceConfigReportDocumenti(ConfigUser configUser, IDbContextFactory<DematReportsContext> contextFactory, ILogger<ServiceConfigReportDocumenti> logger)
+            : base(contextFactory, logger, configUser)
         {
         }
 
@@ -510,10 +508,10 @@ namespace BlazorDematReports.Core.Services.DataService
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
             if (idProceduraLavorazione == null)
-                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non può essere null");
+                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non puï¿½ essere null");
 
             if (idFaseLavorazione == null)
-                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non può essere null");
+                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non puï¿½ essere null");
 
             await using var context = await contextFactory.CreateDbContextAsync();
 
@@ -614,10 +612,10 @@ namespace BlazorDematReports.Core.Services.DataService
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
             if (idProceduraLavorazione == null)
-                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non può essere null");
+                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non puï¿½ essere null");
 
             if (idFaseLavorazione == null)
-                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non può essere null");
+                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non puï¿½ essere null");
 
             await using var context = await contextFactory.CreateDbContextAsync();
 
@@ -713,10 +711,10 @@ namespace BlazorDematReports.Core.Services.DataService
                 throw new ArgumentException("La data di inizio deve essere precedente alla data di fine");
 
             if (idProceduraLavorazione == null)
-                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non può essere null");
+                throw new ArgumentNullException(nameof(idProceduraLavorazione), "IdProceduraLavorazione non puï¿½ essere null");
 
             if (idFaseLavorazione == null)
-                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non può essere null");
+                throw new ArgumentNullException(nameof(idFaseLavorazione), "IdFaseLavorazione non puï¿½ essere null");
 
             await using var context = await contextFactory.CreateDbContextAsync();
 

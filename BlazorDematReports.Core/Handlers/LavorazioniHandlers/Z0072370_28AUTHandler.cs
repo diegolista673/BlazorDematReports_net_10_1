@@ -93,7 +93,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             var endDate   = EndDataLavorazione ?? StartDataLavorazione;
 
             _logger.LogInformation(
-                "[Z0072370_28AUT] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:d} - {End:d}",
+                "[Z0072370_28AUT] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:dd/MM/yyyy} - {End:dd/MM/yyyy}",
                 IDFaseLavorazione, startDate, endDate);
 
             var result = IDFaseLavorazione switch
@@ -110,7 +110,6 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
         }
 
         // Query fase 4: scansione documenti.
-        // DATA_SCAN usato direttamente senza CONVERT nella WHERE per sfruttare gli indici.
         private const string QueryFase4 = """
             SELECT
                 OP_SCAN                     AS operatore,
@@ -120,7 +119,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                 SUM(CONVERT(int, NUM_PAG)) AS Pagine
             FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
             WHERE DATA_SCAN >= @startDate
-              AND DATA_SCAN <  DATEADD(DAY, 1, @endDate)
+              AND convert(date, DATA_SCAN) <= @endDate
               AND department  = 'GENOVA'
             GROUP BY OP_SCAN, CONVERT(date, DATA_SCAN)
             """;
@@ -135,7 +134,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                 SUM(CONVERT(int, NUM_PAG)) AS Pagine
             FROM Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
             WHERE DATA_INDEX >= @startDate
-              AND DATA_INDEX <  DATEADD(DAY, 1, @endDate)
+              AND convert(date, DATA_INDEX) <= @endDate
               AND department   = 'GENOVA'
             GROUP BY OP_INDEX, CONVERT(date, DATA_INDEX)
             """;

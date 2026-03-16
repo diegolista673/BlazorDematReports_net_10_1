@@ -93,7 +93,7 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
             var endDate   = EndDataLavorazione ?? StartDataLavorazione;
 
             _logger.LogInformation(
-                "[ANT_ADER4_SORTER_1_2] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:d} - {End:d}",
+                "[ANT_ADER4_SORTER_1_2] Elaborazione dati per IDFaseLavorazione: {IdFase}, Periodo: {Start:dd/MM/yyyy} - {End:dd/MM/yyyy}",
                 IDFaseLavorazione, startDate, endDate);
 
             var result = new List<DatiLavorazione>();
@@ -109,8 +109,8 @@ namespace BlazorDematReports.Core.Handlers.LavorazioniHandlers
                         COUNT(coduniF)                   AS Fogli,
                         COUNT(coduniF) * 2               AS Pagine
                     FROM [GesimCheck_Local_Produzione].[dbo].[Tab_Lavorato]
-                    WHERE dateTime_acquisizione >= @startDate
-                      AND dateTime_acquisizione <  DATEADD(DAY, 1, @endDate)
+                    WHERE CONVERT(date, dateTime_acquisizione) >= @startDate
+                      AND CONVERT(date, dateTime_acquisizione) <= @endDate
                     GROUP BY Username, CONVERT(date, dateTime_acquisizione)
                     """;
 

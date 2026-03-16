@@ -1,0 +1,3 @@
+﻿# Architettura Mail Ingestion v2
+
+**Versione**: 2.0 - Per-Operatore (ADER4 + HERA16)

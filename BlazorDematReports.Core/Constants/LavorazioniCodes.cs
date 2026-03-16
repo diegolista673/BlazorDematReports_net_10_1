@@ -22,6 +22,21 @@ namespace BlazorDematReports.Core.Constants
         public const string ANT_ADER4_SORTER_1_2 = "ANT_ADER4_SORTER_1_2";
 
         /// <summary>
+        /// Lavorazione ADER4_CAPTIVA.
+        /// </summary>
+        public const string ADER4_CAPTIVA = "ADER4_CAPTIVA";
+
+        /// <summary>
+        /// Lavorazione ADER4_SORTER.
+        /// </summary>
+        public const string ADER4_SORTER = "ADER4_SORTER";
+
+        /// <summary>
+        /// Lavorazione ADER4_SORTER_BUSTE.
+        /// </summary>
+        public const string ADER4_SORTER_BUSTE = "ADER4_SORTER_BUSTE";
+
+        /// <summary>
         /// Lavorazione Pratiche Successione.
         /// </summary>
         public const string PRATICHE_SUCCESSIONE = "PRATICHE_SUCCESSIONE";
@@ -31,14 +46,20 @@ namespace BlazorDematReports.Core.Constants
         /// </summary>
         public const string RDMKT_RSP = "RDMKT_RSP";
 
-        /// <summary>
-        /// Servizio HERA16 via Exchange Web Services per importazione dati da email.
-        /// </summary>
+        /// <summary>Lavorazione HERA16.</summary>
         public const string HERA16 = "HERA16";
 
-        /// <summary>
-        /// Servizio ADER4/Equitalia via Exchange Web Services per importazione dati da email (Verona + Genova).
-        /// </summary>
+        /// <summary>HERA16 Scansione - legge staging DatiMailCsv tipo 'Scansione'.</summary>
+        public const string HERA16_SCANSIONE = "HERA16_SCANSIONE";
+
+        /// <summary>HERA16 Index - legge staging DatiMailCsv tipo 'Index'.</summary>
+        public const string HERA16_INDEX = "HERA16_INDEX";
+
+        /// <summary>HERA16 Classificazione - legge staging DatiMailCsv tipo 'Classificazione'.</summary>
+        public const string HERA16_CLASSIFICAZIONE = "HERA16_CLASSIFICAZIONE";
+
+        /// <summary>Lavorazione ADER4.</summary>
         public const string ADER4 = "ADER4";
+
     }
 }
