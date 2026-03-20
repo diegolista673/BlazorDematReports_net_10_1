@@ -48,12 +48,8 @@ namespace BlazorDematReports.Core.Utility.Interfaces
         string? CnxnCaptiva206 { get; }
         string? DematReportsContext { get; }
         string? CnxnDematReports { get; }
-        string? CnxnEquitaliaVR { get; }
-        string? CnxnDimar { get; }
         string? CnxnUnicredit { get; }
-        string? CnxnPosteMobile { get; }
         string? CnxnPdP { get; }
-        string? CnxnHera { get; }
         string? CnxnAder4SorterVips { get; }
         string? CnxnAder4Sorter1 { get; }
         string? CnxnAder4Sorter2 { get; }

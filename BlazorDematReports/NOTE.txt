@@ -11,7 +11,7 @@ with (firstrow = 170,
       maxerrors=10);
 
 
-
+pratiche di successione da vedre su oracle ? chiedere a Luca
 
 
 nelle query dati migliorare le query eliminando nel where la convert date 
@@ -19,9 +19,6 @@ per data scan o index e indicare la date comprese tra datascan >= @date e dataSa
 esempio :
 
 controllare come vengono passate le date alle query per passarle come formato 'yyddmm' oppure senza convert(date) per velocizzarle
-6 viene gestito il centro di appartenenza nel leggere e inserire i dati di produzione 
-inivare mail se lettura dati non è avvenuta correttamente per hera e ader4
-
 
 controllare dimensione dei log perchè quando inserisco i dati di produzione in collaudo i log diventano molto grandi e rallentano tutto, valutare se è possibile ridurli o eliminarli
 soprattutto per inserimento e reinserimento dei dati letti da csv
