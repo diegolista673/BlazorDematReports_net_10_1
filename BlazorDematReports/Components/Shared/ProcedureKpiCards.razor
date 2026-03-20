@@ -34,20 +34,7 @@
     }
     
     
-    @if (ShowQueryPersonalizzate)
-    {
-        <MudItem xs="12" sm="6" md="4">
-            <MudPaper Class="pa-3" Elevation="3">
-                <div class="d-flex align-center gap-2">
-                    <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Tertiary" Size="Size.Large" />
-                    <div>
-                        <MudText Typo="Typo.caption" Class="text-muted">Query Personalizzate</MudText>
-                        <MudText Typo="Typo.h4">@GetQueryCount()</MudText>
-                    </div>
-                </div>
-            </MudPaper>
-        </MudItem>
-    }
+
 </MudGrid>
 
 @code {
@@ -66,14 +53,7 @@
     /// </summary>
     [Parameter] public bool ShowTaskConfigurati { get; set; } = true;
     
-    
-    /// <summary>
-    /// Mostra KPI Query Personalizzate
-    /// </summary>
-    [Parameter] public bool ShowQueryPersonalizzate { get; set; } = true;
-    
-
-    
+       
     private int GetFasiCount() => 
         Model?.LavorazioniFasiDataReadingsDto?.Count(f => f.IdFaseLavorazione != 0) ?? 0;
     
@@ -82,7 +62,5 @@
             .SelectMany(f => f.TaskDaEseguireDto ?? Enumerable.Empty<TaskDaEseguireDto>())
             .Count() ?? 0;
     
-    
-    private int GetQueryCount() => 
-        Model?.QueryProcedureLavorazioniDto?.Count ?? 0;
+ 
 }

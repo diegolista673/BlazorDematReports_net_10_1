@@ -162,10 +162,7 @@ public class ProcedureEditStateService : IDisposable
             target.LavorazioniFasiDataReadingsDto = source.LavorazioniFasiDataReadingsDto.ToList();
         }
 
-        if (source.QueryProcedureLavorazioniDto != null)
-        {
-            target.QueryProcedureLavorazioniDto = source.QueryProcedureLavorazioniDto.ToList();
-        }
+
     }
 
     /// <summary>

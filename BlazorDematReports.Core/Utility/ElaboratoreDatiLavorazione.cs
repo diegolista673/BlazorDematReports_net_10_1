@@ -67,7 +67,10 @@ namespace BlazorDematReports.Core.Utility
                 var datiRaggruppati = new List<DatiElaborati>(datiOriginali.Count);
                 var operatoriAggiunti = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (var gruppo in datiOriginali.GroupBy(d => (d.Operatore, d.DataLavorazione)))
+                // Raggruppa per Operatore + Data (solo parte Date, senza ora).
+                // Necessario per consolidare in un unico gruppo i record con lo stesso giorno
+                // ma orari diversi (es. query SQL senza CONVERT(date, ...) nel SELECT).
+                foreach (var gruppo in datiOriginali.GroupBy(d => (d.Operatore, d.DataLavorazione.Date)))
                 {
                     ct.ThrowIfCancellationRequested();
 
@@ -184,8 +187,20 @@ namespace BlazorDematReports.Core.Utility
             // Calcolo valori aggregati
             var (documentiTotali, fogliTotali, pagineTotali) = ComputeAggregates(gruppo);
 
-            // Se la fonte garantisce il centro ma l'operatore non è riconosciuto, forziamo il caso Not_Found_Oper
-            bool forzaNotFoundOper = appartieneAlCentroSelezionato && operatoreInCentro == null && operatoreMondo == null && operatoreInAltriCentri == null;
+            // Operatore censito in un altro centro:
+            // - se la fonte garantisce il centro (appartieneAlCentroSelezionato = true, es. handler HERA16)
+            //   → escludi: l'operatore appartiene sicuramente ad un altro centro.
+            // - se la fonte non garantisce il centro (appartieneAlCentroSelezionato = false, es. task SQL)
+            //   → escludi ugualmente: anche se non sappiamo il centro di provenienza,
+            //     l'operatore è registrato altrove e non deve finire in questo centro.
+            if (operatoreInAltriCentri is not null)
+                return null;
+
+            // Se la fonte garantisce il centro (flag = true) ma l'operatore non è riconosciuto in alcun
+            // centro né in Mondo → forza Not_Found_Oper per non perdere la produzione.
+            // Se il flag è false (fonte SQL senza euristica centro) → Not_Found_Oper solo se
+            // non c'è un'indicazione contraria (stesso comportamento: unknowns diventano Not_Found_Oper).
+            bool forzaNotFoundOper = operatoreInCentro == null && operatoreMondo == null && operatoreInAltriCentri == null;
 
             // Creo oggetto DatiElaborati in base alla casistica corretta
             return CreaRecordDatiElaborati(

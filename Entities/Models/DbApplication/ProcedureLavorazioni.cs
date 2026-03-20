@@ -51,7 +51,5 @@ public partial class ProcedureLavorazioni
 
     public virtual ICollection<ProduzioneSistema> ProduzioneSistemas { get; set; } = new List<ProduzioneSistema>();
 
-    public virtual ICollection<QueryProcedureLavorazioni> QueryProcedureLavorazionis { get; set; } = new List<QueryProcedureLavorazioni>();
-
 
 }

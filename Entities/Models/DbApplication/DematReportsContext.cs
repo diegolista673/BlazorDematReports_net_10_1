@@ -15,13 +15,7 @@ public partial class DematReportsContext : DbContext
     {
     }
 
-    public virtual DbSet<AderEquitalia4OperatoriGe> AderEquitalia4OperatoriGes { get; set; }
 
-    public virtual DbSet<AderEquitalia4OperatoriVr> AderEquitalia4OperatoriVrs { get; set; }
-
-    public virtual DbSet<AderEquitalia4ProduzioneGe> AderEquitalia4ProduzioneGes { get; set; }
-
-    public virtual DbSet<AderEquitalia4ProduzioneVr> AderEquitalia4ProduzioneVrs { get; set; }
 
     public virtual DbSet<AggregatedCounter> AggregatedCounters { get; set; }
 
@@ -74,8 +68,6 @@ public partial class DematReportsContext : DbContext
 
     public virtual DbSet<ProduzioneSistema> ProduzioneSistemas { get; set; }
 
-    public virtual DbSet<QueryProcedureLavorazioni> QueryProcedureLavorazionis { get; set; }
-
     public virtual DbSet<RepartiProduzione> RepartiProduziones { get; set; }
 
     public virtual DbSet<Ruoli> Ruolis { get; set; }
@@ -109,69 +101,7 @@ public partial class DematReportsContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<AderEquitalia4OperatoriGe>(entity =>
-        {
-            entity.HasKey(e => e.IdCount).HasName("PK_Ader_Operatori_ge");
 
-            entity.ToTable("Ader_Equitalia4_Operatori_GE");
-
-            entity.Property(e => e.IdCount).HasColumnName("ID_COUNT");
-            entity.Property(e => e.DataScansione).HasColumnType("datetime");
-            entity.Property(e => e.IdEvento)
-                .HasMaxLength(10)
-                .IsUnicode(false);
-            entity.Property(e => e.Operatore)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.TipoScansione)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<AderEquitalia4OperatoriVr>(entity =>
-        {
-            entity.HasKey(e => e.IdCount).HasName("PK_Ader_Equitalia4_Produzione_Operatori");
-
-            entity.ToTable("Ader_Equitalia4_Operatori_VR");
-
-            entity.Property(e => e.IdCount).HasColumnName("ID_COUNT");
-            entity.Property(e => e.DataScansione).HasColumnType("datetime");
-            entity.Property(e => e.IdEvento)
-                .HasMaxLength(10)
-                .IsUnicode(false);
-            entity.Property(e => e.Operatore)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.TipoScansione)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<AderEquitalia4ProduzioneGe>(entity =>
-        {
-            entity.HasKey(e => e.Idequitalia4).HasName("PK_Ader_Produzione_GE");
-
-            entity.ToTable("Ader_Equitalia4_Produzione_GE");
-
-            entity.Property(e => e.Idequitalia4).HasColumnName("IDEquitalia4");
-            entity.Property(e => e.DataLavorazione).HasColumnType("datetime");
-            entity.Property(e => e.IdEvento)
-                .HasMaxLength(20)
-                .IsUnicode(false);
-        });
-
-        modelBuilder.Entity<AderEquitalia4ProduzioneVr>(entity =>
-        {
-            entity.HasKey(e => e.Idequitalia4).HasName("PK_Table_1_2");
-
-            entity.ToTable("Ader_Equitalia4_Produzione_VR");
-
-            entity.Property(e => e.Idequitalia4).HasColumnName("IDEquitalia4");
-            entity.Property(e => e.DataLavorazione).HasColumnType("datetime");
-            entity.Property(e => e.IdEvento)
-                .HasMaxLength(20)
-                .IsUnicode(false);
-        });
 
         modelBuilder.Entity<AggregatedCounter>(entity =>
         {
@@ -420,9 +350,9 @@ public partial class DematReportsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("tipo_documento");
-            entity.Property(e => e.ElaboratoIl)
+            entity.Property(e => e.elaborato_demat_reports_il)
                 .HasColumnType("datetime")
-                .HasColumnName("elaborato_il");
+                .HasColumnName("elaborato_demat_reports_il");
         });
 
         modelBuilder.Entity<Job>(entity =>
@@ -727,17 +657,8 @@ public partial class DematReportsContext : DbContext
 
             entity.HasIndex(e => new { e.IdOperatore, e.IdProceduraLavorazione, e.IdFaseLavorazione, e.DataLavorazione, e.IdCentro }, "IX_ProduzioneSistema");
 
-            entity.Property(e => e.CentroElaborazione)
-                .HasMaxLength(50)
-                .IsUnicode(false);
             entity.Property(e => e.DataAggiornamento).HasColumnType("datetime");
             entity.Property(e => e.DataLavorazione).HasColumnType("datetime");
-            entity.Property(e => e.EventoId)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.NomeAllegato)
-                .HasMaxLength(500)
-                .IsUnicode(false);
             entity.Property(e => e.Operatore).IsUnicode(false);
             entity.Property(e => e.OperatoreNonRiconosciuto).IsUnicode(false);
 
@@ -762,30 +683,7 @@ public partial class DematReportsContext : DbContext
                 .HasConstraintName("FK_ProduzioneSistema_ProcedureLavorazioni");
         });
 
-        modelBuilder.Entity<QueryProcedureLavorazioni>(entity =>
-        {
-            entity.HasKey(e => e.IdQuery);
 
-            entity.ToTable("QueryProcedureLavorazioni");
-
-            entity.HasIndex(e => new { e.Titolo, e.IdproceduraLavorazione }, "IX_QueryProcedureLavorazioni").IsUnique();
-
-            entity.Property(e => e.Connessione)
-                .HasMaxLength(100)
-                .IsUnicode(false);
-            entity.Property(e => e.DataCreazioneQuery).HasColumnType("datetime");
-            entity.Property(e => e.Descrizione).IsUnicode(false);
-            entity.Property(e => e.IdproceduraLavorazione).HasColumnName("IDProceduraLavorazione");
-            entity.Property(e => e.Note).IsUnicode(false);
-            entity.Property(e => e.Titolo)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-
-            entity.HasOne(d => d.IdproceduraLavorazioneNavigation).WithMany(p => p.QueryProcedureLavorazionis)
-                .HasForeignKey(d => d.IdproceduraLavorazione)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_QueryProcedureLavorazioni_ProcedureLavorazioni");
-        });
 
         modelBuilder.Entity<RepartiProduzione>(entity =>
         {

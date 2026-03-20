@@ -123,7 +123,9 @@ protected override void OnInitialized()
 {
     // Carica connection strings
     var section = Configuration.GetSection("ConnectionStrings");
-    _connectionStrings = section.GetChildren().Select(c => c.Key).ToList();
+    _connectionStrings = section.GetChildren()
+                .Where(c => c.Key.ToLower() != "dematreportscontext" && c.Key.ToLower() != "hangfireconnection")
+        .Select(c => c.Key).ToList();
 
     // Carica tutti gli handler disponibili dal registry
     var allHandlers = HandlerRegistry.GetAllCodes();
@@ -133,7 +135,7 @@ protected override void OnInitialized()
         ClassName = code ?? "Unknown",
         Code = code,
         Description = code
-    }).OrderBy(handlers=>handlers.ClassName).ToList();
+    }).Where(handlers=>handlers.ClassName.ToLower() != "mail_ingestion").OrderBy(handlers=>handlers.ClassName).ToList();
 }
 
 /// <summary>

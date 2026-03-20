@@ -266,7 +266,6 @@ public static class Program
         builder.Services.AddScoped<IServiceConfigReportDocumenti, ServiceConfigReportDocumenti>();
         builder.Services.AddScoped<IServiceOperatoriNormalizzati, ServiceOperatoriNormalizzati>();
         builder.Services.AddScoped<IServiceTaskDataReadingAggiornamento, ServiceTaskDataReadingAggiornamento>();
-        builder.Services.AddScoped<IServiceQueryProcedureLavorazioni, ServiceQueryProcedureLavorazioni>();
         builder.Services.AddScoped<IServiceCentriVisibili, ServiceCentriVisibili>();
         builder.Services.AddScoped<IServiceTipoTurni, ServiceTipoTurni>();
         builder.Services.AddScoped<IServiceTaskDaEseguire, ServiceTaskDaEseguire>();
@@ -308,22 +307,12 @@ public static class Program
         builder.Services.AddSingleton<IProductionDataHandler, PraticheSuccessioneHandler>();
         builder.Services.AddSingleton<IProductionDataHandler, Rdmkt_RSPHandler>();
 
-        // Handler ADER4: staging readers (uno per TipoRisultato)
-        builder.Services.AddSingleton<IProductionDataHandler, Ader4CaptivaHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Ader4SorterBusteHandler>();
-
-        // Handler HERA16: staging readers (Scansione, Index, Classificazione)
-        builder.Services.AddSingleton<IProductionDataHandler, Hera16ScansioneHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Hera16IndexHandler>();
-        builder.Services.AddSingleton<IProductionDataHandler, Hera16ClassificazioneHandler>();
 
         // Handler ingestion generico mail (orchestratore MAIL_INGESTION)
         builder.Services.AddSingleton<IProductionDataHandler, GenericMailIngestionHandler>();
 
         // Registry e servizio unificato: Singleton perche' il dizionario e' immutabile dopo costruzione
         builder.Services.AddSingleton<IUnifiedHandlerRegistry, UnifiedHandlerRegistry>();
-
 
         // Processori mail ingestion (chiamati da GenericMailIngestionHandler)
         builder.Services.AddSingleton<IMailIngestionProcessor, Ader4IngestionProcessor>();
@@ -378,7 +367,6 @@ public static class Program
         builder.Services.AddSingleton<TipologieTotaliMapper>();
         builder.Services.AddSingleton<LavorazioniFasiMapper>();
         builder.Services.AddSingleton<ProcedureLavorazioniMapper>();
-        builder.Services.AddSingleton<QueryProcedureLavorazioniMapper>();
         builder.Services.AddSingleton<TaskDaEseguireMapper>();
         builder.Services.AddSingleton<TaskDataReadingAggiornamentoMapper>();
         builder.Services.AddSingleton<ReportsMapper>();

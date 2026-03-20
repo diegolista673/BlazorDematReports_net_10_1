@@ -14,8 +14,6 @@ public partial class ProcedureLavorazioniMapper
     /// <summary>Dependency: mapper per le fasi nested.</summary>
     private readonly LavorazioniFasiMapper _fasiMapper = new();
 
-    /// <summary>Dependency: mapper per le query nested.</summary>
-    private readonly QueryProcedureLavorazioniMapper _queryMapper = new();
 
     /// <summary>
     /// ProcedureLavorazioni → ProcedureLavorazioniDto (projection con denormalizzazione).
@@ -29,7 +27,6 @@ public partial class ProcedureLavorazioniMapper
     [MapProperty("IdproceduraClienteNavigation.IdclienteNavigation.IdCentroLavorazioneNavigation.Centro", "Centro")]
     [MapProperty("NomeServizio", "ServizioElaborazione")]
     [MapProperty("LavorazioniFasiDataReadings", "LavorazioniFasiDataReadingsDto")]
-    [MapProperty("QueryProcedureLavorazionis", "QueryProcedureLavorazioniDto")]
     public partial ProcedureLavorazioniDto ProceduraToDto(ProcedureLavorazioni entity);
 
     /// <summary>
@@ -66,9 +63,7 @@ public partial class ProcedureLavorazioniMapper
             })
             .ToList();
 
-    /// <summary>Mapping custom per QueryProcedureLavorazioniDto (collection).</summary>
-    private List<QueryProcedureLavorazioniDto> MapQueryCollection(ICollection<QueryProcedureLavorazioni> queries)
-        => (queries ?? []).Select(_queryMapper.EntityToDto).ToList();
+
 
     /// <summary>
     /// ProcedureLavorazioniDto → ProcedureLavorazioni (ignora navigation e collection).
@@ -87,7 +82,6 @@ public partial class ProcedureLavorazioniMapper
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.LavorazioniFasiTipoTotales))]
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.ProduzioneOperatoris))]
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.ProduzioneSistemas))]
-    [MapperIgnoreTarget(nameof(ProcedureLavorazioni.QueryProcedureLavorazionis))]
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.ConfigurazioneFaseCentros))]
 
     public partial ProcedureLavorazioni DtoToProcedura(ProcedureLavorazioniDto dto);

@@ -28,12 +28,7 @@ public interface IAder4MailCsvService
         string? centro = null,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Aggiorna ElaborataIl sui record indicati come informazione di audit (quando sono stati letti).
-    /// </summary>
-    Task MarkAsProcessedAsync(
-        IReadOnlyList<int> ids,
-        CancellationToken ct = default);
+
 
     /// <summary>
     /// Elimina record di staging con DataLavorazione precedente alla data indicata.

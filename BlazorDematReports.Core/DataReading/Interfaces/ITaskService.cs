@@ -19,13 +19,7 @@ public interface ITaskService
     /// is found.</returns>
     Task<TaskDaEseguire> GetTaskDaEseguireAsync(int idTaskDaEseguire);
 
-    /// <summary>
-    /// Recupera una query associata a una lavorazione tramite il suo identificativo.
-    /// </summary>
-    /// <param name="idQuery">Identificativo della query.</param>
-    /// <returns>Oggetto <see cref="QueryProcedureLavorazioni"/> corrispondente all'ID specificato.</returns>
-    /// <exception cref="NullReferenceException">Se la query non è presente.</exception>
-    Task<QueryProcedureLavorazioni> GetQueryAsync(int idQuery);
+
 
     /// <summary>
     /// Costruisce un oggetto <see cref="TaskDaEseguireDto"/> a partire da un task, un job Hangfire serializzato e parametri aggiuntivi.

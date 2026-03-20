@@ -10,6 +10,8 @@ namespace BlazorDematReports.Core.Lavorazioni.Models
         public int IDFaseLavorazione { get; init; }
         public int IDProceduraLavorazione { get; init; }
         public int IDCentro { get; init; }
+        /// <summary>Nome del centro (es. 'GENOVA') — usato dall'euristica level-3 come in AcquireFromSqlAsync.</summary>
+        public string? NomeCentro { get; init; }
         public DateTime StartDataLavorazione { get; init; }
         public DateTime? EndDataLavorazione { get; init; }
         public int? IdConfigurazioneDatabase { get; init; }
@@ -31,12 +33,13 @@ namespace BlazorDematReports.Core.Lavorazioni.Models
         {
             return new ProductionExecutionContext
             {
-                IDProceduraLavorazione = IDProceduraLavorazione,
-                IDFaseLavorazione = Parameters.GetValueOrDefault("IDFaseLavorazione", 0) as int? ?? 0,
-                IDCentro = (int)Parameters.GetValueOrDefault("IDCentro")!,
-                NomeProcedura = Parameters.GetValueOrDefault("NomeProcedura") as string,
-                StartDataLavorazione = Parameters.GetValueOrDefault("StartDataLavorazione", DateTime.Now) as DateTime? ?? DateTime.Now,
-                EndDataLavorazione = Parameters.GetValueOrDefault("EndDataLavorazione") as DateTime?,
+                IDProceduraLavorazione  = IDProceduraLavorazione,
+                IDFaseLavorazione       = Parameters.GetValueOrDefault("IDFaseLavorazione", 0) as int? ?? 0,
+                IDCentro                = (int)Parameters.GetValueOrDefault("IDCentro")!,
+                NomeCentro              = Parameters.GetValueOrDefault("NomeCentro") as string,
+                NomeProcedura           = Parameters.GetValueOrDefault("NomeProcedura") as string,
+                StartDataLavorazione    = Parameters.GetValueOrDefault("StartDataLavorazione", DateTime.Now) as DateTime? ?? DateTime.Now,
+                EndDataLavorazione      = Parameters.GetValueOrDefault("EndDataLavorazione") as DateTime?,
                 IdConfigurazioneDatabase = Parameters.GetValueOrDefault("IdConfigurazioneDatabase") as int?
             };
         }

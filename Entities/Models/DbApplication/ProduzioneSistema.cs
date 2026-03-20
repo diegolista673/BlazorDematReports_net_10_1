@@ -37,11 +37,7 @@ public partial class ProduzioneSistema
 
     public int IdCentro { get; set; }
 
-    public string? EventoId { get; set; }
 
-    public string? NomeAllegato { get; set; }
-
-    public string? CentroElaborazione { get; set; }
 
     public virtual CentriLavorazione IdCentroNavigation { get; set; } = null!;
 

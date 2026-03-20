@@ -42,6 +42,5 @@ public partial class DatiMailCsvAder4
 
     public DateTime DataIngestione { get; set; }
 
-    /// <summary>Data/ora in cui il record è stato letto da un handler produzione (solo informativa).</summary>
-    public DateTime? ElaborataIl { get; set; }
+
 }

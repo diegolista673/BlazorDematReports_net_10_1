@@ -44,6 +44,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         public static async Task RunAsync(int idTaskDaEseguire, CancellationToken cancellationToken = default)
             => await RunAsync(idTaskDaEseguire, startDate: null, endDate: null, cancellationToken);
 
+
         /// <summary>
         /// Entry point per esecuzione manuale con range date custom.
         /// Se <paramref name="startDate"/>/<paramref name="endDate"/> sono null, usa GiorniPrecedenti del task.
@@ -100,6 +101,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         }
 
         #region Execution Pipeline
+
+
 
         /// <summary>
         /// Pipeline unificata: Acquire → Elaborate → Persist.
@@ -184,6 +187,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 entity.IdTaskDaEseguire, saved, datiElaborati.Count);
         }
 
+
         /// <summary>
         /// Strategy selector: delega l'acquisizione dati al path corretto in base a TipoFonte.
         /// </summary>
@@ -205,6 +209,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     $"TipoFonte '{config.TipoFonte}' non supportato per task {entity.IdTaskDaEseguire}")
             };
         }
+
+
 
         /// <summary>
         /// Strategy SQL: esegue la query configurata nel mapping, converte i risultati in DatiLavorazione.
@@ -264,6 +270,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             }).ToList();
         }
 
+
+
         /// <summary>
         /// Strategy Handler: esegue l'handler integrato custom tramite UnifiedHandlerService.
         /// </summary>
@@ -297,6 +305,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                 {
                     { "IDFaseLavorazione",        fase.IdFaseLavorazione },
                     { "IDCentro",                 mapping.IdCentro },
+                    { "NomeCentro",               mapping.IdCentroNavigation?.Centro ?? string.Empty },
                     { "NomeProcedura",            fase.IdProceduraLavorazioneNavigation?.NomeProceduraProgramma ?? "UNKNOWN" },
                     { "StartDataLavorazione",     effectiveStart },
                     { "EndDataLavorazione",       effectiveEnd },
@@ -321,6 +330,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         }
 
         #endregion
+
+
 
         #region Persistence & Audit
 
@@ -399,6 +410,8 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
             await db.SaveChangesAsync(ct);
             return inserted;
         }
+
+
 
         /// <summary>
         /// Registra l'esecuzione del task nella tabella di audit TaskDataReadingAggiornamento.

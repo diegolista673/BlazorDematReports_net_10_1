@@ -86,11 +86,11 @@ public sealed class Hera16DataService : IHera16DataService
         await context.DatiMailCsvHera16
             .Where(h => ids.Contains(h.IdCounter))
             .ExecuteUpdateAsync(s => s
-                .SetProperty(h => h.ElaboratoIl, now),
+                .SetProperty(h => h.elaborato_demat_reports_il, now),
                 ct);
 
         _logger.LogInformation(
-            "HERA16: aggiornato ElaboratoIl su {Count} record",
+            "HERA16: aggiornato elaborato_demat_reports_il su {Count} record",
             ids.Count);
     }
 

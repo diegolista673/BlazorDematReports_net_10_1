@@ -121,29 +121,7 @@ public sealed class Ader4MailCsvService : ServiceBase<DatiMailCsvAder4>, IAder4M
             .ToListAsync(ct);
     }
 
-    /// <inheritdoc />
-    public async Task MarkAsProcessedAsync(
-        IReadOnlyList<int> ids,
-        CancellationToken ct = default)
-    {
-        if (ids.Count == 0)
-            return;
 
-        QueryLoggingHelper.LogQueryExecution(logger);
-
-        await using var context = await contextFactory.CreateDbContextAsync(ct);
-
-        var now = DateTime.Now;
-        await context.DatiMailCsvAder4
-            .Where(d => ids.Contains(d.Id))
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(d => d.ElaborataIl, now),
-                ct);
-
-        logger.LogInformation(
-            "Aggiornato ElaborataIl su {Count} record DatiMailCsv",
-            ids.Count);
-    }
 
     /// <inheritdoc />
     public async Task<int> CleanupOldProcessedAsync(DateTime olderThan, CancellationToken ct = default)
