@@ -170,7 +170,7 @@
 
         Add("INTRODUZIONE", s =>
         {
-            s.Paragraphs.Add("DeaggiornamatReports consente agli operatori di inserire, controllare e analizzare la produzione documentale giornaliera.");
+            s.Paragraphs.Add("DematReports consente agli operatori di inserire, controllare e analizzare la produzione documentale giornaliera.");
             s.Subsections.Add(new("Scopo", [
                 "Guidare l'utente nell'utilizzo quotidiano della piattaforma.",
                 "Descrivere flussi base e funzioni chiave."]));
@@ -215,50 +215,89 @@
 
         Add("INSERIMENTO PRODUZIONE", s =>
         {
-            s.Subsections.Add(new("Carica Dati - Procedura", [
-                "1. Aprire Produzione -> Carica Dati.",
-                "2. Selezionare la data di lavorazione e l'operatore.",
-                "3. Scegliere la lavorazione e la fase.",
-                "4. Inserire i valori (Documenti / Fogli / Pagine / Scarti).",
-                "5. Salvare — il sistema verifica duplicati e campi obbligatori."]));
+            s.Paragraphs.Add("La pagina Carica Dati è il punto di ingresso principale per la registrazione della produzione manuale. I campi sono a cascata: ogni selezione determina le opzioni successive.");
+            s.Subsections.Add(new("Cosa vede l'operatore", [
+                "Un form strutturato con campi a cascata: Centro, poi Lavorazione, poi Fase.",
+                "I campi Documenti, Fogli, Pagine e Scarti accettano solo valori numerici interi non negativi.",
+                "Il bottone Salva è abilitato solo quando tutti i campi obbligatori sono compilati.",
+                "Una griglia in basso mostra i record gia inseriti per la data selezionata."]));
+            s.Subsections.Add(new("Cosa deve fare l'operatore", [
+                "1. Selezionare la Data di lavorazione (default: oggi).",
+                "2. Scegliere il Centro di appartenenza.",
+                "3. Scegliere la Lavorazione disponibile per quel centro.",
+                "4. Scegliere la Fase (es. Scansione, Classificazione, Index).",
+                "5. Inserire i valori: Documenti, Fogli, Pagine (e Scarti se previsti dalla fase).",
+                "6. Premere Salva e verificare la riga nella griglia sottostante."]));
+            s.Subsections.Add(new("Diagramma compilazione form", [
+                "<div class='diagram-block'>Seleziona Data\n     |\n     v\nSeleziona Centro\n     |\n     v\nSeleziona Lavorazione   <-- lista dipende dal Centro scelto\n     |\n     v\nSeleziona Fase          <-- lista dipende dalla Lavorazione\n     |\n     v\nInserisci Documenti / Fogli / Pagine / Scarti\n     |\n     v\n[Salva]\n     |\n     +-- OK    --> Riga aggiunta in griglia + messaggio di successo\n     |\n     +-- Errore --> Messaggio dettagliato (duplicato / campo mancante)</div>"], true));
             s.Subsections.Add(new("Validazioni", [
-                "Campi obbligatori richiesti.",
+                "Campi obbligatori: data, centro, lavorazione, fase.",
                 "Nessun valore negativo.",
                 "Almeno un totale > 0.",
-                "Controllo univocita (data + operatore + fase)."]));
+                "Controllo univocita: stessa data + operatore + fase non può essere inserita due volte."]));
             s.Subsections.Add(new("Errori Comuni", [
-                "Record duplicato -> verificare se gia inserito per quella data.",
-                "Campi disabilitati -> completare i dati richiesti precedenti.",
-                "Valori respinti -> controllare il formato numerico."]));
+                "Record duplicato: il record esiste gia per quella data, modificare quello esistente.",
+                "Campi disabilitati: completare prima le selezioni obbligatorie precedenti.",
+                "Valori respinti: controllare il formato numerico (solo interi positivi)."]));
         });
 
         Add("GESTIONE OPERATORI", s =>
         {
-            s.Paragraphs.Add("Disponibile per Supervisori e ruoli superiori. Consente l'analisi della produttivita e il rilevamento di anomalie.");
-            s.Subsections.Add(new("Passi", [
-                "Accedere a Produzione -> Gestione Operatori.",
-                "Impostare l'intervallo date.",
-                "Filtrare per centro.",
-                "Analizzare gli indicatori aggregati."]));
-            s.Subsections.Add(new("Output", [
-                "Totali per operatore.",
-                "Anomalie evidenziate.",
-                "Aggregati per centro."]));
+            s.Paragraphs.Add("Disponibile per Supervisori e ruoli superiori. Permette di analizzare la produttività per operatore, rilevare anomalie e confrontare i dati tra centri.");
+            s.Subsections.Add(new("Cosa vede il supervisor", [
+                "Una griglia con un record per operatore: nome, centro, totali aggregati (Documenti, Fogli, Pagine).",
+                "Filtri in alto: intervallo date, centro, lavorazione.",
+                "Righe evidenziate per operatori con codice non riconosciuto (Not_Found_Oper)."]));
+            s.Subsections.Add(new("Cosa deve fare il supervisor", [
+                "1. Impostare l'intervallo date desiderato.",
+                "2. Selezionare il centro da analizzare (o lasciare 'Tutti').",
+                "3. Applicare eventuali filtri per lavorazione.",
+                "4. Leggere i totali e individuare valori anomali o operatori non censiti.",
+                "5. Esportare il report se necessario."]));
+            s.Subsections.Add(new("Diagramma navigazione", [
+                "<div class='diagram-block'>Imposta Filtri (date, centro, lavorazione)\n     |\n     v\n[Griglia operatori]\n     |\n     +-- Totali nella norma  --> Nessuna azione\n     |\n     +-- Valore anomalo      --> Verificare con l'operatore\n     |\n     +-- Not_Found_Oper      --> Contattare admin per censimento in anagrafica</div>"], true));
+            s.Subsections.Add(new("Regole inserimento in ProduzioneSistema", [
+                "Per ogni operatore rilevato nei dati sorgente, il sistema applica una sequenza di controlli per decidere se inserirlo, escluderlo o registrarlo come non riconosciuto.",
+                "La logica è gestita da ElaboraDatiLavorazione e si basa su tre registri: operatori del centro corrente, operatori di altri centri, registro globale (mondo)."]));
+            s.Subsections.Add(new("Schema decisionale operatore", [
+                "<div class='diagram-block'>[Operatore rilevato nei dati sorgente]\n              |\n              v\n  Censito nel centro corrente?\n       |              |\n      SI              NO\n       |              |\n       v              v\n   INSERITO   Censito in un altro centro?\n              (operatoreInAltriCentri)\n                   |              |\n                  SI              NO\n                   |              |\n                   v              v\n              ESCLUSO    Censito nel registro globale?\n                         (operatoreMondo)\n                              |              |\n                             SI              NO\n                              |              |\n                              v              v\n                          INSERITO    INSERITO come\n                          (esterno)   Not_Found_Oper\n\n Legenda:\n  INSERITO          = record salvato in ProduzioneSistema con dati aggregati\n  ESCLUSO           = record scartato, non compare nei report del centro\n  Not_Found_Oper    = inserito con codice speciale, visibile in Gestione Operatori</div>"], true));
+            s.Subsections.Add(new("Note", [
+                "Not_Found_Oper indica dati letti da fonti automatiche con codice operatore non censito in anagrafica.",
+                "Contattare l'amministratore per censire i nuovi operatori.",
+                "I totali dovrebbero essere isolati per centro: i dati Genova non dovrebbero includere mai quelli Verona,perchè ciò avvenga deve essere specificato in modo univoco il centro di appartenenza dell'operatore.",
+                "Esiste quindi un eccezione all'isolamento del centro: se un operatore non è riconducibile a nessun centro (non censito nel centro corrente, non censito in altri centri, non presente nel registro globale), viene comunque inserito come Not_Found_Oper anzichè essere escluso. Questo evita la perdita silente di dati di produzione. La distinzione avviene automaticamente in ElaboraDatiLavorazione."]));
+            s.Subsections.Add(new("Avviso - Rischio doppio conteggio Not_Found_Oper", [
+                "<div style='background:#fff3cd;border:1px solid #ffc107;border-left:5px solid #e65100;border-radius:4px;padding:12px 16px;margin:6px 0;'>" +
+                "<div style='font-weight:700;font-size:14px;margin-bottom:6px;'>ATTENZIONE: Rischio doppio conteggio per operatori sconosciuti</div>" +
+                "<div style='margin-bottom:6px;'>Se piu task di <strong>centri diversi</strong> leggono la <strong>stessa tabella sorgente</strong> senza un filtro WHERE per centro, un operatore sconosciuto può essere inserito come <strong>Not_Found_Oper da ciascun task separatamente</strong>, causando un doppio conteggio dei suoi dati di produzione.</div>" +
+                "<div style='margin-bottom:4px;'><strong>Perche avviene:</strong> il guard di esclusione (operatoreInAltriCentri) si attiva solo per operatori <em>noti</em> in altri centri. Un operatore sconosciuto non viene escluso da nessun task.</div>" +
+                "<div style='margin-bottom:4px;'><strong>Mitigazione:</strong> le query devono sempre includere un filtro esplicito per centro nel WHERE:</div>" +
+                "<div style='font-family:monospace;background:#f5f5f5;padding:6px 10px;border-radius:3px;font-size:11px;'>WHERE department = 'GENOVA' AND col &gt;= @startDate AND col &lt;= @endDate</div>" +
+                "<div style='margin-top:6px;'>In alternativa la tabella sorgente deve contenere <strong>esclusivamente</strong> dati del centro di competenza.</div>" +
+                "</div>"], true));
         });
 
         Add("REPORT E GRAFICI", s =>
         {
-            s.Subsections.Add(new("Report Totali", [
-                "Selezionare intervallo date e filtri.",
-                "Export in Excel o PDF.",
-                "Visualizzazione aggregati per lavorazione."]));
-            s.Subsections.Add(new("Report Completo", [
-                "Dettaglio riga per riga della produzione.",
-                "Analisi performance per operatore."]));
-            s.Subsections.Add(new("Grafico Produzione", [
-                "Distribuzione e trend temporali.",
-                "Filtri dinamici interattivi.",
-                "Supporto decisionale rapido."]));
+            s.Paragraphs.Add("Le sezioni Report consentono di consultare, filtrare ed esportare i dati di produzione in diversi formati e aggregazioni.");
+            s.Subsections.Add(new("Report Totali - Cosa fare", [
+                "1. Accedere a Report -> Totali.",
+                "2. Impostare data inizio e data fine.",
+                "3. Selezionare centro e/o lavorazione (opzionale).",
+                "4. Cliccare Aggiorna per ricaricare la griglia.",
+                "5. Usare il bottone Export per scaricare in Excel o PDF."]));
+            s.Subsections.Add(new("Report Completo - Cosa fare", [
+                "1. Accedere a Report -> Completo.",
+                "2. Applicare i filtri: operatore, fase, intervallo date.",
+                "3. Scorrere la griglia per l'analisi riga per riga.",
+                "4. Ordinare le colonne cliccando sull'intestazione di colonna."]));
+            s.Subsections.Add(new("Grafico Produzione - Cosa fare", [
+                "1. Accedere a Report -> Grafico.",
+                "2. Scegliere la tipologia di visualizzazione (linee, barre).",
+                "3. Impostare l'intervallo temporale.",
+                "4. Usare i filtri dinamici per isolare centri o lavorazioni specifici."]));
+            s.Subsections.Add(new("Diagramma utilizzo report", [
+                "<div class='diagram-block'>Apri sezione Report\n     |\n     v\nImposta filtri (date, centro, lavorazione)\n     |\n     v\n[Clicca Aggiorna]\n     |\n     v\nGriglia / Grafico aggiornati\n     |\n     +-- Analisi completata  --> Fine\n     |\n     +-- Dato anomalo        --> Torna a Carica Dati per correzione\n     |\n     +-- Export              --> Salva in Excel / PDF</div>"], true));
         });
 
         Add("CONFIGURAZIONI", s =>
@@ -295,15 +334,24 @@
                 "3. Acquisizione dati: handler integrato o query SQL parametrica.",
                 "4. Normalizzazione e Elaborazione (ElaboraDatiLavorazioneAsync).",
                 "5. Pulizia record auto nel periodo e inserimento nuovi (per centro).",
-                "6. Aggiornamento campo elaborato_demat_reports_il sulla tabella sorgente.",
-                "7. Salvataggio esito su TaskDataReadingAggiornamento."]));
-            s.Subsections.Add(new("Diagramma Flusso", [
-                "<div class='diagram-block'>Start\n  |\n  v\n[Recupero Task]\n  |\n  v\n[Calcolo date effettive]\n  |\n  +--> [Handler Integrato] ---+\n  |                           |\n  +--> [Query SQL]  ----------+\n                              |\n                              v\n               [ElaboraDatiLavorazioneAsync]\n                  |-- Operatore nel centro   --> Inserito\n                  |-- Operatore altro centro --> Escluso\n                  |-- Operatore sconosciuto  --> Not_Found_Oper\n                              |\n                              v\n               [PersistProduzioneSistema]\n                              |\n                              v\n               [Marca elaborato_demat_reports_il]\n                              |\n                              v\n                            Fine</div>"], true));
+                "6. Salvataggio esito su TaskDataReadingAggiornamento."]));
+            s.Subsections.Add(new("Come vengono calcolate le date di lettura", [
+                "GiorniPrecedenti indica quanti giorni a ritroso rispetto a oggi vengono letti (es. 10 = ultimi 10 giorni).",
+                "E' possibile sovrascrivere le date manualmente in modalita esecuzione manuale del Task.",
+                "Le date sono normalizzate a giornata intera: @startDate = inizio giornata, @endDate = fine giornata."]));
+            s.Subsections.Add(new("Diagramma reperimento dati", [
+                "<div class='diagram-block'>  [GiorniPrecedenti = 10]    [Date manuali utente]\n           |                          |\n           v                          v\n    oggi - 10 giorni             data scelta\n           |__________________________|                        \n                        |\n                        v\n             [Calcolo intervallo date]\n             @startDate = inizio giornata\n             @endDate   = fine giornata\n                        |\n            ____________|____________\n           |                        |\n           v                        v\n      [Query SQL]           [Handler Integrato]\n      col >= @startDate     Legge tabella dati\n      col <= @endDate       Filtra per date\n           |____________________|                              \n                        |\n                        v\n              [Dati grezzi acquisiti]\n                        |\n                        v\n         [Normalizzazione Operatori]\n         Operatore nel centro    --> incluso\n         Operatore altro centro  --> escluso\n         Operatore sconosciuto   --> Not_Found_Oper\n                        |\n                        v\n           [ProduzioneSistema aggiornata]</div>"], true));
+            s.Subsections.Add(new("Diagramma Pipeline Completa", [
+                "<div class='diagram-block'>Start\n  |\n  v\n[Recupero Task]\n  |\n  v\n[Calcolo date effettive]\n  |\n  +--> [Handler Integrato] ---+\n  |                           |\n  +--> [Query SQL]  ----------+\n                              |\n                              v\n               [ElaboraDatiLavorazioneAsync]\n                  |-- Operatore nel centro   --> Inserito\n                  |-- Operatore altro centro --> Escluso\n                  |-- Operatore sconosciuto  --> Not_Found_Oper\n                              |\n                              v\n               [PersistProduzioneSistema]\n                              |\n                              v\n               [Salvataggio esito su DB]\n                              |\n                              v\n                            Fine</div>"], true));
+            s.Subsections.Add(new("Garanzia sui dati manuali", [
+                "<div style='background:#e8f5e9;border:1px solid #a5d6a7;border-left:5px solid #2e7d32;border-radius:4px;padding:12px 16px;margin:6px 0;'>" +
+                "<div style='font-weight:700;font-size:14px;margin-bottom:4px;color:#1b5e20;'>GARANZIA: I dati inseriti manualmente sono protetti</div>" +
+                "<div><strong>I record inseriti manualmente non vengono mai sovrascritti</strong> dal servizio automatico, indipendentemente da quante volte il task venga rieseguito sullo stesso periodo.</div>" +
+                "</div>"], true));
             s.Subsections.Add(new("Note Operative", [
-                "I record inseriti manualmente non vengono mai sovrascritti dal servizio automatico.",
                 "Intervalli di lettura ampi aumentano il tempo di elaborazione: usare range mirati.",
                 "In caso di errori ripetuti verificare la query e i parametri CRON del task.",
-                "Dopo ogni elaborazione il campo elaborato_demat_reports_il viene aggiornato sulla tabella sorgente (HERA16, ADER4)."]));
+                "Not_Found_Oper indica operatori presenti nei dati sorgente ma non censiti in anagrafica: contattare l'amministratore."]));
         });
 
         Add("RISOLUZIONE PROBLEMI", s =>
@@ -333,22 +381,31 @@
 
         Add("WORKFLOW TIPICI", s =>
         {
-            s.Subsections.Add(new("Operatore", [
-                "Login.",
-                "Apertura Carica Dati.",
-                "Inserimento produzione giornaliera.",
-                "Verifica dati salvati.",
-                "Logout."]));
-            s.Subsections.Add(new("Capoturno", [
-                "Login.",
-                "Analisi produzione del team.",
-                "Generazione report turno.",
-                "Correzioni e validazioni.",
-                "Logout."]));
-            s.Subsections.Add(new("Amministratore", [
-                "Verifica stato job schedulati.",
-                "Gestione utenti e ruoli.",
-                "Aggiornamento configurazioni e fonti dati."]));
+            s.Subsections.Add(new("Operatore (giornaliero)", [
+                "1. Login con credenziali aziendali.",
+                "2. Verifica notifiche o avvisi in home.",
+                "3. Apertura Produzione -> Carica Dati.",
+                "4. Seleziona data odierna, centro, lavorazione, fase.",
+                "5. Inserimento valori: Documenti, Fogli, Pagine.",
+                "6. Verifica riga salvata nella griglia sottostante.",
+                "7. Ripete i passi 4-6 per ogni fase/lavorazione della giornata.",
+                "8. Logout al termine del turno."]));
+            s.Subsections.Add(new("Capoturno (fine turno)", [
+                "1. Login.",
+                "2. Apertura Report -> Totali per il giorno corrente.",
+                "3. Verifica completezza inserimenti di tutti gli operatori del turno.",
+                "4. Apertura Gestione Operatori per analisi anomalie.",
+                "5. Eventuale richiesta di correzione agli operatori interessati.",
+                "6. Generazione e salvataggio report turno (Export Excel/PDF).",
+                "7. Logout."]));
+            s.Subsections.Add(new("Amministratore (monitoraggio)", [
+                "1. Verifica stato job schedulati (Data Manager).",
+                "2. Controllo log errori e task falliti.",
+                "3. Gestione utenti: aggiunta, modifica ruoli.",
+                "4. Aggiornamento configurazioni fonti dati se necessario.",
+                "5. Verifica operatori Not_Found_Oper e censimento in anagrafica."]));
+            s.Subsections.Add(new("Diagramma workflow operatore", [
+                "<div class='diagram-block'>Login\n  |\n  v\n[Home - verifica avvisi]\n  |\n  v\n[Produzione -> Carica Dati]\n  |\n  v\nSeleziona data / centro / lavorazione / fase\n  |\n  v\nInserisci Documenti / Fogli / Pagine\n  |\n  v\n[Salva]\n  |\n  +-- OK    --> Altra fase oggi? --> SI: torna a Seleziona Fase\n  |                              --> NO: Logout\n  |\n  +-- Errore --> Leggi messaggio e correggi il campo indicato</div>"], true));
         });
 
         Add("GLOSSARIO", s =>
@@ -361,18 +418,6 @@
                 "Totali: KPI aggregati (Documenti, Fogli, Pagine).",
                 "Turno: finestra temporale operativa.",
                 "Not_Found_Oper: operatore presente nei dati ma non censito in anagrafica."]));
-        });
-
-        Add("SUPPORTO", s =>
-        {
-            s.Subsections.Add(new("Contatti", [
-                "Email supporto: <inserire>",
-                "Telefono: <inserire>",
-                "Orari di disponibilita: <inserire>"]));
-            s.Subsections.Add(new("In caso di emergenza", [
-                "Documentare il problema con screenshot.",
-                "Contattare il supporto tecnico.",
-                "Non modificare configurazioni critiche senza autorizzazione."]));
         });
 
         return list;

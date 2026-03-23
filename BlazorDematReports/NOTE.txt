@@ -13,6 +13,10 @@ with (firstrow = 170,
 
 pratiche di successione da vedre su oracle ? chiedere a Luca
 testare lavorazioni con data in formato yyyy-MM-dd
+scrivere note che le date possono avere parametro startstring e endstring 
+per gestire formati diversi, soprattutto per data di produzione che può essere in formato diverso a seconda della fonte dei dati
+
+formattare meglio pdf manuale operatore 
 
 controllare dimensione dei log perchè quando inserisco i dati di produzione in collaudo i log diventano molto grandi e rallentano tutto, valutare se è possibile ridurli o eliminarli
 soprattutto per inserimento e reinserimento dei dati letti da csv
@@ -41,7 +45,6 @@ scrivere documentazione per la crazione dei task e di tutte le operazioni
 scrivere documentazione completa del progetto , aggiungere note create in instructions per miglioare la documentazione aggiungere grafico delle attivita /sequenze
 documentare come avviene e dove avviene nel codice l'inseriremento degli operatori a partire dalle fonti di dati (es. tabelle captiva)
 in merito al loro riconoscimento e aseganzione al centro
-evidenzia nela doumentazione casi particolari come l'update del campo elaborato _il nella tabella di raccolta dati Hera16 o Ader4 dopo che gli operatori sono stati inseriti in produzionesistema
 
 
 Per quando programma è pronto per la produzione
