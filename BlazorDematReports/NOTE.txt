@@ -12,13 +12,7 @@ with (firstrow = 170,
 
 
 pratiche di successione da vedre su oracle ? chiedere a Luca
-
-
-nelle query dati migliorare le query eliminando nel where la convert date 
-per data scan o index e indicare la date comprese tra datascan >= @date e dataSacn < @date
-esempio :
-
-controllare come vengono passate le date alle query per passarle come formato 'yyddmm' oppure senza convert(date) per velocizzarle
+testare lavorazioni con data in formato yyyy-MM-dd
 
 controllare dimensione dei log perchè quando inserisco i dati di produzione in collaudo i log diventano molto grandi e rallentano tutto, valutare se è possibile ridurli o eliminarli
 soprattutto per inserimento e reinserimento dei dati letti da csv

@@ -30,6 +30,17 @@ namespace BlazorDematReports.Core.DataReading.Services
         /// Le colonne Operatore, DataLavorazione, Documenti, Fogli, Pagine sono cercate case-insensitive.
         /// Gli ordinal sono risolti una sola volta per massimizzare le performance su grandi dataset.
         /// <para>
+        /// Parametri data iniettati automaticamente nella query:
+        /// <list type="bullet">
+        ///   <item><c>@startDate</c> — <c>DateTime2</c>, inizio giornata (<c>00:00:00.0000000</c>).
+        ///   <c>@endDate</c> — <c>DateTime2</c>, fine giornata (<c>23:59:59.9999999</c>).
+        ///   Pattern raccomandato per colonne <c>date/datetime/datetime2</c>:
+        ///   <c>col &gt;= @startDate AND col &lt;= @endDate</c></item>
+        ///   <item><c>@startDateStr</c> / <c>@endDateStr</c> — <c>VarChar(10)</c> in formato <c>yyyy-MM-dd</c>.
+        ///   Per sorgenti con colonne <c>varchar</c>: <c>col &gt;= @startDateStr AND col &lt;= @endDateStr</c></item>
+        /// </list>
+        /// </para>
+        /// <para>
         /// Verifica dell'appartenenza al centro — tre livelli in ordine di priorità:
         /// <list type="number">
         ///   <item><c>IdCentro</c> nel SELECT — confronto numerico per riga con <paramref name="idCentroAtteso"/>.</item>
@@ -61,8 +72,21 @@ namespace BlazorDematReports.Core.DataReading.Services
                 await using var command = new SqlCommand(queryString, connection);
                 command.CommandTimeout = 60;
 
-                command.Parameters.Add("@startDate", SqlDbType.DateTime2).Value = startDate;
-                command.Parameters.Add("@endDate",   SqlDbType.DateTime2).Value = endDate;
+                // @startDate = inizio giornata (00:00:00.0000000)
+                // @endDate   = fine giornata  (23:59:59.9999999) — le query usano col <= @endDate, nessun DATEADD necessario.
+                // Compatibile con date, datetime, datetime2: SQL Server converte automaticamente.
+                var startDateOnly   = startDate.Date;
+                var endDateEndOfDay = endDate.Date.AddDays(1).AddTicks(-1); // 23:59:59.9999999
+
+                // Parametri DateTime2: compatibili con colonne date/datetime/datetime2.
+                // Pattern raccomandato: col >= @startDate AND col <= @endDate
+                command.Parameters.Add("@startDate", SqlDbType.DateTime2).Value = startDateOnly;
+                command.Parameters.Add("@endDate",   SqlDbType.DateTime2).Value = endDateEndOfDay;
+
+                // Parametri stringa yyyy-MM-dd: per sorgenti con colonne varchar date.
+                // Ordinabili lessicograficamente — col >= @startDateStr AND col <= @endDateStr
+                command.Parameters.Add("@startDateStr", SqlDbType.VarChar, 10).Value = startDateOnly.ToString("yyyy-MM-dd");
+                command.Parameters.Add("@endDateStr",   SqlDbType.VarChar, 10).Value = endDate.Date.ToString("yyyy-MM-dd");
 
                 await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 

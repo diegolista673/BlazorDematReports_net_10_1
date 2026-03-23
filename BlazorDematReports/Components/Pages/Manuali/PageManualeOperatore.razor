@@ -19,7 +19,7 @@
     }
     else
     {
-        <MudGrid Class="mb-4" AlignItems="AlignItems.Center">
+        <MudGrid Class="mb-4">
             <MudItem xs="12" md="9">
                 <MudExpansionPanels>
                     <MudExpansionPanel Text="Indice Sezioni">
@@ -29,7 +29,7 @@
                                 <MudButton Variant="Variant.Outlined"
                                            Color="MudBlazor.Color.Primary"
                                            Size="Size.Small"
-                                           Class="@(activeSectionId == s.Id ? "indice-attivo" : "")"
+                                           Class="@GetSectionClass(s.Id)"
                                            OnClick="@(() => ScrollToSection(s.Id))">
                                     @s.Number @s.Title
                                 </MudButton>
@@ -126,6 +126,10 @@
         activeSectionId = id;
         await JSRuntime.InvokeVoidAsync("scrollToManualSection", "manuale-operatore-content", id);
     }
+
+    /// <summary>Restituisce la classe CSS del bottone indice per la sezione attiva.</summary>
+    private string GetSectionClass(string id)
+        => activeSectionId == id ? "indice-attivo" : string.Empty;
 
     private async Task ExportToPdf()
     {

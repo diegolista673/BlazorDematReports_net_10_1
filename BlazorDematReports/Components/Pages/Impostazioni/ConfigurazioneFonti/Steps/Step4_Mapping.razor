@@ -232,7 +232,7 @@ select
     SUM(convert(int,isnull(NUM_PAG,0))) AS Pagine
 from Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
 where DATA_INDEX >= @@startDate 
-  and DATA_INDEX &lt;= DATEADD(DAY, 1, @@endDate) 
+  and DATA_INDEX &lt;= @@endDate
   and department = 'GENOVA'
 group by OP_INDEX, convert(date, DATA_INDEX)
                         </MudText>
