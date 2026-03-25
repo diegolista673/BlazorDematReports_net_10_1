@@ -10,7 +10,6 @@
 @inject IServiceProcedureLavorazioni ServiceProcedureLavorazioni
 @inject BlazorDematReports.Core.DataReading.Infrastructure.IProductionJobScheduler ProductionScheduler
 @inject NavigationManager NavManager
-@inject IDialogService DialogService
 @inject IUnifiedHandlerRegistry HandlerRegistry
 
 
@@ -353,11 +352,11 @@
             var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small };
             var dialog = await DialogService!.ShowAsync<Dialog>("Modifiche non salvate", parameters, options);
             var result = await dialog.Result;
-            
-            if (result.Canceled)
+
+            if (result?.Canceled == true)
                 return;
         }
-        
+
         NavManager.NavigateTo("/procedure-lavorazioni");
     }
     
@@ -383,7 +382,7 @@
         };
     }
     
-    public void Dispose()
+    public override void Dispose()
     {
         StateService.UnsavedChangesChanged -= OnUnsavedChangesChanged;
         base.Dispose();  

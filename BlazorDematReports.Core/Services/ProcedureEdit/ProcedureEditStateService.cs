@@ -107,7 +107,7 @@ public class ProcedureEditStateService : IDisposable
                 Centro = model.Centro,
                 Idcentro = model.Idcentro,
                 DataInserimento = model.DataInserimento,
-                LavorazioniFasiDataReadingsDto = model.LavorazioniFasiDataReadingsDto?.ToList()
+                LavorazioniFasiDataReadingsDto = model.LavorazioniFasiDataReadingsDto?.ToList() ?? []
             };
         }
     }

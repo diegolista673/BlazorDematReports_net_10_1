@@ -132,7 +132,7 @@ namespace BlazorDematReports.Components.Shared
         /// <summary>
         /// Popola la select delle fasi con flag DataReading = true
         /// </summary>
-        protected virtual void SetSelectFasiOnlyWithDataReading(ProcedureLavorazioniDto procedureLavorazioniDto)
+        protected virtual void SetSelectFasiOnlyWithDataReading(ProcedureLavorazioniDto? procedureLavorazioniDto)
         {
             SelectFase = SetSelectList(
                 procedureLavorazioniDto?.LavorazioniFasiDataReadingsDto?.Where(x => x.FlagDataReading),

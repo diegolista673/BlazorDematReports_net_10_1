@@ -1,7 +1,6 @@
 ﻿@page "/manuale-operatore"
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO, USER")]
 @inject IJSRuntime JSRuntime
-@inject BlazorDematReports.Services.IPdfExportService PdfExportService
 @using System.Text.RegularExpressions
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Manuale Operatore</MudText>
@@ -41,19 +40,10 @@
             <MudItem xs="12" md="3">
                 <MudButton Variant="Variant.Filled"
                            Color="MudBlazor.Color.Primary"
-                           StartIcon="@Icons.Material.Filled.PictureAsPdf"
-                           OnClick="ExportToPdf"
-                           FullWidth="true"
-                           Disabled="@isExportingPdf">
-                    @if (isExportingPdf)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        <span class="ml-2">Esportando...</span>
-                    }
-                    else
-                    {
-                        <span>Esporta PDF</span>
-                    }
+                           StartIcon="@Icons.Material.Filled.Print"
+                           OnClick="PrintAsync"
+                           FullWidth="true">
+                    Stampa / Salva PDF
                 </MudButton>
             </MudItem>
         </MudGrid>
@@ -70,6 +60,7 @@
 </MudContainer>
 
 <style>
+    /* --- Stili schermo --- */
     .manuale-sezione-titolo { margin-top:30px; margin-bottom:6px; font-weight:600; font-size:18px; }
     .manuale-sottotitolo    { margin-top:16px; font-weight:600; font-size:15px; }
     .manuale-paragrafo      { margin:2px 0 10px 0; line-height:1.55; }
@@ -77,6 +68,40 @@
     .section-selected       { outline:2px solid var(--mud-palette-primary); background:rgba(0,123,255,.08); border-radius:4px; }
     .anchor-offset          { position:relative; top:-70px; visibility:hidden; }
     .diagram-block          { font-family:monospace; white-space:pre; background:#f5f5f5; padding:12px; border-radius:4px; overflow-x:auto; font-size:12px; margin:8px 0; }
+
+    /* --- Stili stampa / PDF --- */
+    @@media print {
+        /* Nasconde l'intera shell Blazor/MudBlazor tranne il manuale */
+        .mud-appbar, .mud-drawer, .mud-drawer-overlay,
+        .mud-expansion-panels, .mb-4,
+        .mud-button-root, .mud-snackbar-container  { display: none !important; }
+
+        /* Rimuove i limiti di altezza del pannello scorrevole */
+        #manuale-operatore-content {
+            max-height: none    !important;
+            overflow:   visible !important;
+            box-shadow: none    !important;
+            border:     none    !important;
+            padding:    0       !important;
+        }
+
+        /* Evita interruzioni di pagina dentro diagrammi e box colorati */
+        .diagram-block,
+        [style*="background:#fff3cd"],
+        [style*="background:#e8f5e9"],
+        [style*="background:#e3f2fd"] { page-break-inside: avoid; }
+
+        /* Titoli di sezione sempre con il loro contenuto */
+        .manuale-sezione-titolo { page-break-after: avoid; font-size:14pt; }
+        .manuale-sottotitolo    { page-break-after: avoid; font-size:11pt; }
+        .manuale-paragrafo      { font-size:10pt; line-height:1.4; }
+
+        /* I diagrammi vanno a capo invece di scorrere orizzontalmente */
+        .diagram-block { white-space: pre-wrap; overflow-x: visible; font-size:8pt; }
+
+        /* Margini pagina */
+        @@page { margin: 1.5cm 2cm; }
+    }
 </style>
 
 @code {
@@ -98,7 +123,6 @@
 
     private string              errorMessage    = string.Empty;
     private bool                isLoading       = true;
-    private bool                isExportingPdf  = false;
     private string              activeSectionId = string.Empty;
     private List<ManualSection> manualSections  = new();
     private string              manualHtml      = string.Empty;
@@ -131,28 +155,10 @@
     private string GetSectionClass(string id)
         => activeSectionId == id ? "indice-attivo" : string.Empty;
 
-    private async Task ExportToPdf()
-    {
-        isExportingPdf = true;
-        StateHasChanged();
-        try
-        {
-            var plain    = Regex.Replace(manualHtml, "<[^>]+>", string.Empty);
-            var fileName = $"Manuale_Operatore_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-            var pdfBytes = await PdfExportService.GeneratePdfFromTextAsync(plain, "MANUALE OPERATORE");
-            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(pdfBytes), "application/pdf");
-            await JSRuntime.InvokeVoidAsync("showNotification", "Manuale operatore esportato con successo!", "success");
-        }
-        catch (Exception ex)
-        {
-            await JSRuntime.InvokeVoidAsync("showNotification", $"Errore esportazione PDF: {ex.Message}", "error");
-        }
-        finally
-        {
-            isExportingPdf = false;
-            StateHasChanged();
-        }
-    }
+    /// <summary>Apre il dialogo di stampa del browser: l'utente sceglie 'Salva come PDF'.
+    /// Il CSS @media print nasconde la UI e mostra solo il contenuto del manuale.</summary>
+    private async Task PrintAsync()
+        => await JSRuntime.InvokeVoidAsync("window.print");
 
     private static List<ManualSection> BuildOperatorManualSections()
     {
@@ -339,6 +345,24 @@
                 "GiorniPrecedenti indica quanti giorni a ritroso rispetto a oggi vengono letti (es. 10 = ultimi 10 giorni).",
                 "E' possibile sovrascrivere le date manualmente in modalita esecuzione manuale del Task.",
                 "Le date sono normalizzate a giornata intera: @startDate = inizio giornata, @endDate = fine giornata."]));
+            s.Subsections.Add(new("Scrittura query - parametri data disponibili", [
+                "Il sistema inietta automaticamente quattro parametri data nella query a ogni esecuzione. L'autore della query sceglie quali usare in base al tipo della colonna nella fonte dati.",
+                "Parametro @startDate (DateTime2): inizio giornata (es. 2024-01-15 00:00:00). Usare per colonne date / datetime / datetime2.",
+                "Parametro @endDate (DateTime2): fine giornata (es. 2024-01-25 23:59:59.999). Usare per colonne date / datetime / datetime2.",
+                "Parametro @startDateStr (VarChar 10): data inizio in formato 'yyyy-MM-dd'. Usare per colonne varchar che contengono date testuali.",
+                "Parametro @endDateStr (VarChar 10): data fine in formato 'yyyy-MM-dd'. Usare per colonne varchar che contengono date testuali.",
+                "IMPORTANTE: tutti e quattro i parametri vengono sempre iniettati. SQL Server ignora quelli non referenziati nel testo della query. Non e necessario dichiarare quelli inutilizzati."]));
+            s.Subsections.Add(new("Esempi WHERE per tipo colonna", [
+                "<div style='margin:4px 0 8px 0;'>" +
+                "<div style='font-weight:600;margin-bottom:4px;'>Caso 1 - Colonna datetime / date / datetime2 (piu comune)</div>" +
+                "<div class='diagram-block'>SELECT\n    OP_INDEX        AS Operatore,\n    DATA_INDEX      AS DataLavorazione,\n    COUNT(*)        AS Documenti,\n    SUM(NUM_FOGLI)  AS Fogli,\n    SUM(NUM_PAGINE) AS Pagine\nFROM dbo.TABELLA_PRODUZIONE\nWHERE DATA_INDEX >= @startDate\n  AND DATA_INDEX &lt;= @endDate\nGROUP BY OP_INDEX, DATA_INDEX</div>" +
+                "<div style='font-weight:600;margin:8px 0 4px 0;'>Caso 2 - Colonna varchar con formato 'yyyy-MM-dd' (fonte legacy)</div>" +
+                "<div class='diagram-block'>SELECT\n    OPERATORE          AS Operatore,\n    DATA_LAVORAZIONE   AS DataLavorazione,\n    COUNT(*)           AS Documenti,\n    SUM(NUM_FOGLI)     AS Fogli,\n    SUM(NUM_PAGINE)    AS Pagine\nFROM dbo.TABELLA_LEGACY\nWHERE DATA_LAVORAZIONE >= @startDateStr\n  AND DATA_LAVORAZIONE &lt;= @endDateStr\nGROUP BY OPERATORE, DATA_LAVORAZIONE</div>" +
+                "<div style='background:#e3f2fd;border-left:4px solid #1565c0;padding:8px 12px;border-radius:3px;margin-top:8px;font-size:12px;'>" +
+                "<strong>Come scegliere:</strong> verificare il tipo della colonna data nella tabella sorgente.<br/>" +
+                "Se il tipo e <strong>date / datetime / datetime2 / smalldatetime</strong> → usare <strong>@startDate / @endDate</strong>.<br/>" +
+                "Se il tipo e <strong>varchar / nvarchar</strong> con valori come '2024-01-15' → usare <strong>@startDateStr / @endDateStr</strong>." +
+                "</div></div>"], true));
             s.Subsections.Add(new("Diagramma reperimento dati", [
                 "<div class='diagram-block'>  [GiorniPrecedenti = 10]    [Date manuali utente]\n           |                          |\n           v                          v\n    oggi - 10 giorni             data scelta\n           |__________________________|                        \n                        |\n                        v\n             [Calcolo intervallo date]\n             @startDate = inizio giornata\n             @endDate   = fine giornata\n                        |\n            ____________|____________\n           |                        |\n           v                        v\n      [Query SQL]           [Handler Integrato]\n      col >= @startDate     Legge tabella dati\n      col <= @endDate       Filtra per date\n           |____________________|                              \n                        |\n                        v\n              [Dati grezzi acquisiti]\n                        |\n                        v\n         [Normalizzazione Operatori]\n         Operatore nel centro    --> incluso\n         Operatore altro centro  --> escluso\n         Operatore sconosciuto   --> Not_Found_Oper\n                        |\n                        v\n           [ProduzioneSistema aggiornata]</div>"], true));
             s.Subsections.Add(new("Diagramma Pipeline Completa", [

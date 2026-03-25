@@ -12,7 +12,6 @@
 @inject BlazorDematReports.Core.Services.Interfaces.IDataService.IServiceTaskDataReadingAggiornamento ServiceTaskDataReadingAggiornamento
 @inherits BaseComponentPage<PageTotaliLavorazioneFasi,ReportAnnualeDto,ReportAnnualeDto>
 @inject NavigationManager NavManager
-@inject IJSRuntime JSInterop
 
 <MudText Typo="Typo.h4" Class="titolo ml-4">Totali Lavorazione per Fasi</MudText>
 <MudDivider Class="border-solid border-1 mud-border-primary"></MudDivider>
@@ -235,7 +234,7 @@
             if (batchCurrent.Any())
             {
                 var jsonBatch = JsonConvert.SerializeObject(batchCurrent);
-                await JSInterop.InvokeVoidAsync("CreateEChartPhaseMiniBarBatch", jsonBatch);
+                await JSInterop!.InvokeVoidAsync("CreateEChartPhaseMiniBarBatch", jsonBatch);
             }
             var batchLast5Years = _fasiReportData.Where(f => f.ReportDataLast5Years?.Any() == true)
                 .Select(f => new
@@ -252,7 +251,7 @@
             if (batchLast5Years.Any())
             {
                 var jsonBatch5Years = JsonConvert.SerializeObject(batchLast5Years);
-                await JSInterop.InvokeVoidAsync("CreateEChartPhaseLast5YearsBatch", jsonBatch5Years);
+                await JSInterop!.InvokeVoidAsync("CreateEChartPhaseLast5YearsBatch", jsonBatch5Years);
             }
         }
         catch (Exception ex)

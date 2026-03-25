@@ -282,7 +282,7 @@
             var dialog = await DialogService.ShowAsync<Dialog>("Conferma Rimozione", parameters, options);
             var result = await dialog.Result;
             
-            if (!result.Canceled)
+            if (result is { Canceled: false })
             {
                 // Rimuovi la fase
                 Model.LavorazioniFasiDataReadingsDto?.Remove(fase);

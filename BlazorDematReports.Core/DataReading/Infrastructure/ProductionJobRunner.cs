@@ -236,7 +236,7 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
                     $"Nessuna query configurata per task {entity.IdTaskDaEseguire}. " +
                     "Configurare TestoQueryTask nel mapping Fase/Centro.");
 
-            var connectionString = lavorazioniConfig.GetConnectionString(config.ConnectionStringName);
+            var connectionString = lavorazioniConfig.GetConnectionString(config.ConnectionStringName ?? string.Empty);
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException(
                     $"Connection string '{config.ConnectionStringName}' non trovata in appsettings.");

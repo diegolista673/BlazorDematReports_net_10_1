@@ -420,7 +420,7 @@
             if (procedura != null && procedura.IdproceduraLavorazione > 0)
             {
                 int idProcedura = procedura.IdproceduraLavorazione;
-                ProcedureLavorazioniDto = await ServiceProcedureLavorazioni.GetProceduraLavorazioneDtoAsync(idProcedura);
+                ProcedureLavorazioniDto = await ServiceProcedureLavorazioni.GetProceduraLavorazioneDtoAsync(idProcedura) ?? new ProcedureLavorazioniDto();
                 uModel!.IdProceduraLavorazione = idProcedura;
                 IsDisabledFase = false;
                 SetSelectFasiOnlyWithDataReading(ProcedureLavorazioniDto);

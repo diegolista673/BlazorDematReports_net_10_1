@@ -24,7 +24,7 @@
 
                         <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
 
-                            <MudDatePicker Label="Data" DateChanged="@OnChangeDataAsync" Date="@Model!.DataLavorazione" Required="true" Disabled=@isDisableDatePicker />
+                            <MudDatePicker Label="Data" DateChanged="@OnChangeDataAsync" Date="@Model!.DataLavorazione" Required="true" Disabled=@isDisableDatePicker Editable="true" />
 
                             <MudAutocomplete T="string"
                                              Label="Operatore"
@@ -180,7 +180,7 @@
     bool isDisableOperatore { get; set; } = false;
 
     DialogOptions maxWidth = new DialogOptions() { MaxWidth = MaxWidth.Small };
-    ProcedureLavorazioniDto ProcedureLavorazioniDto { get; set; } = new ProcedureLavorazioniDto();
+    ProcedureLavorazioniDto? ProcedureLavorazioniDto { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -509,11 +509,6 @@
 
             // 3. Imposta lo stato del pulsante
             IsFormValid = campiObbligatoriCompilati && almenoUnCampoNumerico;
-
-            // 4. Log per debug
-            Console.WriteLine($"ValidateForm: Model={Model != null}, CampiObbligatori={campiObbligatoriCompilati}, AlmenoUnCampoNumerico={almenoUnCampoNumerico}, IsFormValid={IsFormValid}");
-            Console.WriteLine($"Dettagli: Data={Model.DataLavorazione}, Operatore={Model.Operatore}, IdOperatore={Model.IdOperatore}, Lavorazione={Model.Lavorazione}, IdProceduraLavorazione={Model.IdProceduraLavorazione}, Fase={Model.Fase}, IdFaseLavorazione={Model.IdFaseLavorazione}");
-            Console.WriteLine($"Valori numerici: Doc={Model.Documenti}, Fogli={Model.Fogli}, Pagine={Model.Pagine}, PgSenzaBianco={Model.PagineSenzaBianco}, Scarti={Model.Scarti}");
         }
         catch (Exception ex)
         {

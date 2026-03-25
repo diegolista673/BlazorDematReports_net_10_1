@@ -106,9 +106,9 @@ namespace BlazorDematReports.Core.Services.DataService
             operatore.Operatore = operatore.Operatore.ToLower();
             var pwd = operatore.Password;
             var passwordHasher = new PasswordHasher<string>();
-            var hash = passwordHasher.HashPassword(null, pwd);
+            var hash = passwordHasher.HashPassword(string.Empty, pwd ?? string.Empty);
             operatore.Password = hash;
-            List<CentriVisibili> lst = oper.CentriVisibiliDto.Select(_mapper.DtoToCentroVisibile).ToList();
+            List<CentriVisibili> lst = oper.CentriVisibiliDto?.Select(_mapper.DtoToCentroVisibile).ToList() ?? [];
             operatore.CentriVisibilis = lst;
             await using var context = await contextFactory.CreateDbContextAsync();
             context.Operatoris.Add(operatore);
@@ -128,7 +128,7 @@ namespace BlazorDematReports.Core.Services.DataService
             operatore.Operatore = operatore.Operatore.ToLower();
             var pwd = operatore.Password;
             var passwordHasher = new PasswordHasher<string>();
-            var hash = passwordHasher.HashPassword(operatore.Operatore, pwd);
+            var hash = passwordHasher.HashPassword(operatore.Operatore, pwd ?? string.Empty);
             operatore.Password = hash;
             await using var context = await contextFactory.CreateDbContextAsync();
             context.Operatoris.Add(operatore);
@@ -171,7 +171,7 @@ namespace BlazorDematReports.Core.Services.DataService
                 operatoreOriginal.Idcentro = (int)oper.Idcentro!;
                 operatoreOriginal.FlagOperatoreAttivo = oper.FlagOperatoreAttivo!;
                 operatoreOriginal.IdRuolo = (int)oper.IdRuolo!;
-                List<CentriVisibili> lstDaAggiornare = oper.CentriVisibiliDto.Select(_mapper.DtoToCentroVisibile).ToList();
+                List<CentriVisibili> lstDaAggiornare = oper.CentriVisibiliDto?.Select(_mapper.DtoToCentroVisibile).ToList() ?? [];
                 context.CentriVisibilis.RemoveRange(operatoreOriginal.CentriVisibilis);
                 context.CentriVisibilis.AddRange(lstDaAggiornare);
                 await context.SaveChangesAsync();

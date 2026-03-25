@@ -10,7 +10,6 @@
 @inject ConfigurationWizardStateService WizardState
 @inject ConfigurationStepValidator StepValidator
 @inject NavigationManager Navigation
-@inject ISnackbar Snackbar
 @inject IConfiguration Configuration
 @inject ITaskGenerationService TaskGenerationService
 @inject IProductionJobScheduler JobScheduler
@@ -180,11 +179,11 @@
                         WizardState.LoadEditState(config, mappings);
                     }
                 
-                    Snackbar.Add($"Configurazione '{config.CodiceConfigurazione}' caricata in modalità modifica", Severity.Info);
+                    Snackbar?.Add($"Configurazione '{config.CodiceConfigurazione}' caricata in modalità modifica", Severity.Info);
                 }
                 else
                 {
-                    Snackbar.Add($"Configurazione {IdConfigurazione} non trovata", Severity.Error);
+                    Snackbar?.Add($"Configurazione {IdConfigurazione} non trovata", Severity.Error);
                     Navigation.NavigateTo("/fonti-dati");
                 }
             }
@@ -199,7 +198,7 @@
         catch (Exception ex)
         {
             Logger?.LogError(ex, "Errore inizializzazione wizard");
-            Snackbar.Add($"Errore: {ex.Message}", Severity.Error);
+            Snackbar?.Add($"Errore: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -226,7 +225,7 @@
         var validation = StepValidator.ValidateStep(_wizardState.CurrentStep, _wizardState);
         if (!validation.IsValid)
         {
-            Snackbar.Add(validation.Message, validation.Severity switch
+            Snackbar?.Add(validation.Message, validation.Severity switch
             {
                 ValidationSeverity.Error => Severity.Error,
                 ValidationSeverity.Warning => Severity.Warning,
@@ -267,7 +266,7 @@
                 var validation = StepValidator.ValidateStep(step, _wizardState);
                 if (!validation.IsValid)
                 {
-                    Snackbar.Add($"Completa lo step {step} prima di procedere: {validation.Message}", Severity.Warning);
+                    Snackbar?.Add($"Completa lo step {step} prima di procedere: {validation.Message}", Severity.Warning);
                     return;
                 }
             }
@@ -287,7 +286,7 @@
             var validation = StepValidator.ValidateAll(_wizardState);
             if (!validation.IsValid)
             {
-                Snackbar.Add(validation.Message, Severity.Error);
+                Snackbar?.Add(validation.Message, Severity.Error);
                 return;
             }
             
@@ -313,7 +312,7 @@
                     "? Configurazione {ConfigId} aggiornata: {CreatedTasks} task creati, {ExistingTasks} esistenti, {Cleanup} cleanup",
                     config.IdConfigurazione, taskResult.CreatedTasks, taskResult.ExistingTasks, cleanupCount);
                 
-                Snackbar.Add("Configurazione aggiornata con successo!", Severity.Success);
+                Snackbar?.Add("Configurazione aggiornata con successo!", Severity.Success);
             }
             else
             {
@@ -328,7 +327,7 @@
                     "? Configurazione {ConfigId} creata con {TaskCount} task",
                     config.IdConfigurazione, taskResult.CreatedTasks);
                 
-                Snackbar.Add($"Configurazione creata con successo! {taskResult.CreatedTasks} task schedulati.", Severity.Success);
+                Snackbar?.Add($"Configurazione creata con successo! {taskResult.CreatedTasks} task schedulati.", Severity.Success);
             }
             
             // Reset wizard e naviga alla lista
@@ -338,7 +337,7 @@
         catch (Exception ex)
         {
             Logger?.LogError(ex, "Errore salvataggio configurazione");
-            Snackbar.Add($"? Errore: {ex.Message}", Severity.Error);
+            Snackbar?.Add($"? Errore: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -355,8 +354,9 @@
         InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         WizardState.OnStateChanged -= OnWizardStateChanged;
+        base.Dispose();
     }
 }

@@ -37,6 +37,6 @@ public partial class DatiMailCsvHera16
 
     public int? IdentificativoAllegato { get; set; }
 
-    /// <summary>Data/ora in cui il record è stato letto da un handler di produzione.</summary>
-    public DateTime? elaborato_demat_reports_il { get; set; }
+
+
 }

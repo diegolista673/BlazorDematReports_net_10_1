@@ -9,16 +9,16 @@
             <div class="d-flex flex-column" style="width: 100%;">
                 <div class="d-flex align-center justify-space-between">
                     <MudText Typo="Typo.h6">@Phase!.FaseNome</MudText>
-                    @if (Phase.FlagDataReading)
+                    @if (Phase?.FlagDataReading == true)
                     {
                         <MudChip T="string" Size=Size.Small Text="Variant.Text" Color="Color.Secondary">Data Reading</MudChip>
                     }
                 </div>
                 <div class="d-flex align-center justify-space-between mt-2">
-                    @if (HasSignificantData(Phase.ReportData))
+                    @if (HasSignificantData(Phase?.ReportData))
                     {
                         <div class="phase-mini-chart-wrapper">
-                            <div id="phase-chart-@Phase.IdFaseLavorazione" class="phase-chart-container"></div>
+                            <div id="phase-chart-@Phase?.IdFaseLavorazione" class="phase-chart-container"></div>
                         </div>
                     }
                     else
@@ -29,7 +29,7 @@
                             </MudPaper>
                         </div>
                     }
-                    @if (Phase.ReportDataLast5Years?.Any() == true)
+                    @if (Phase?.ReportDataLast5Years?.Any() == true)
                     {
                         <div class="phase-last5years-chart-wrapper">
                             <div id="phase-5years-@Phase.IdFaseLavorazione" class="phase-chart-container"></div>
@@ -48,7 +48,7 @@
         </CardHeaderContent>
     </MudCardHeader>
     <MudCardContent>
-        @if (Phase.ReportData?.Any() == true)
+        @if (Phase?.ReportData?.Any() == true)
         {
             <MudGrid Spacing="1" Class="mb-3">
                 <MudItem xs="4">

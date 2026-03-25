@@ -18,13 +18,5 @@ public interface IHera16DataService
         IReadOnlyList<(DataTable Data, string FileName)> rawAttachments,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Aggiorna <c>ElaboratoIl</c> sui record indicati, segnalando quando sono stati
-    /// letti da un handler di produzione e inseriti in ProduzioneSistema.
-    /// </summary>
-    /// <param name="ids">Lista di <c>IdCounter</c> da marcare.</param>
-    /// <param name="ct">Token di cancellazione.</param>
-    Task MarkAsProcessedAsync(
-        IReadOnlyList<int> ids,
-        CancellationToken ct = default);
+
 }

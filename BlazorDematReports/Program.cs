@@ -405,8 +405,9 @@ public static class Program
     #region App Pipeline
     private static void InitializeApp(WebApplication app)
     {
-        var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-        QueryLoggingHelper.Initialize(loggerFactory, "LibraryLavorazioni.SqlQueries", "BlazorDematReports");
+        var loggerFactory       = app.Services.GetRequiredService<ILoggerFactory>();
+        var enableQueryLog      = app.Configuration.GetValue<bool>("Logging:EnableQueryExecutionLog", false);
+        QueryLoggingHelper.Initialize(loggerFactory, "LibraryLavorazioni.SqlQueries", "BlazorDematReports", enableQueryLog);
 
         //class statica per eseguire i job di produzione, necessita di un IServiceScopeFactory per creare scope nei job
         ProductionJobRunner.Initialize(app.Services.GetRequiredService<IServiceScopeFactory>());

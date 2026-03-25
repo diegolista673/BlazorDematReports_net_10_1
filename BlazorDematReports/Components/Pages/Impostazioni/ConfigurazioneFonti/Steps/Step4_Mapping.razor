@@ -71,6 +71,15 @@ else
                             </td>
                         }
                         <td>
+                            @if (State.TipoFonte == TipoFonteData.SQL)
+                            {
+                                <MudTooltip Text="Modifica mapping">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               OnClick="@(() => CaricaMappingInForm(index))" />
+                                </MudTooltip>
+                            }
                             <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                            Color="Color.Error"
                                            Size="Size.Small"
@@ -97,6 +106,15 @@ else
                             <MudText Typo="Typo.subtitle1"><strong>@fase?.FaseLavorazione</strong></MudText>
                         </CardHeaderContent>
                         <CardHeaderActions>
+                            @if (State.TipoFonte == TipoFonteData.SQL)
+                            {
+                                <MudTooltip Text="Modifica mapping">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               OnClick="@(() => CaricaMappingInForm(index))" />
+                                </MudTooltip>
+                            }
                             <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                            Color="Color.Error"
                                            Size="Size.Small"
@@ -206,36 +224,50 @@ else
         <MudItem xs="12">
             <MudPaper Elevation="2" Class="pa-2 pa-sm-3 mb-2">
                 <MudText Typo="Typo.body2" Class="mb-2"><strong>Linee guida per le query SQL:</strong></MudText>
-                
+
                 <MudStack Spacing="1">
                     <div>
-                        <MudText Typo="Typo.body2" Class="mb-1">1. <strong>Formato dei risultati:</strong></MudText>
-                        <MudText Typo="Typo.caption" Class="ml-2">Colonne obbligatorie: <strong>Operatore, DataLavorazione, Documenti, Fogli, Pagine</strong></MudText>
+                        <MudText Typo="Typo.body2" Class="mb-1">1. <strong>Colonne obbligatorie nel SELECT:</strong></MudText>
+                        <MudText Typo="Typo.caption" Class="ml-2"><strong>Operatore, DataLavorazione, Documenti, Fogli, Pagine</strong></MudText>
                     </div>
 
                     <div>
-                        <MudText Typo="Typo.body2" Class="mb-1">2. <strong>Parametrizzazione delle date:</strong></MudText>
-                        <MudText Typo="Typo.caption" Class="ml-2">Parametri obbligatori: <code>@@startDate</code> e <code>@@endDate</code></MudText>
+                        <MudText Typo="Typo.body2" Class="mb-1">2. <strong>Parametri data disponibili (tutti iniettati automaticamente):</strong></MudText>
+                        <MudStack Spacing="0" Class="ml-2">
+                            <MudText Typo="Typo.caption"><code>@@startDate</code> / <code>@@endDate</code> — <strong>DateTime2</strong>: per colonne <em>date / datetime / datetime2</em></MudText>
+                            <MudText Typo="Typo.caption"><code>@@startDateStr</code> / <code>@@endDateStr</code> — <strong>VarChar(10)</strong> formato <em>yyyy-MM-dd</em>: per colonne <em>varchar</em></MudText>
+                        </MudStack>
                     </div>
                 </MudStack>
 
                 <MudDivider Class="my-2" />
-                
+
                 <MudExpansionPanels Dense>
-                    <MudExpansionPanel Text="Visualizza Esempio Query" Dense>
-                        <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 0.75rem;">
-select 
-    OP_INDEX as operatore,
-    convert(date, DATA_INDEX) as DataLavorazione,
-    COUNT(*) as Documenti,
-    SUM(convert(int,isnull(NUM_PAG,0))/2) AS Fogli,
-    SUM(convert(int,isnull(NUM_PAG,0))) AS Pagine
-from Z0072370_RDMKT_28AUT_GE_UDA_DETTAGLIO
-where DATA_INDEX >= @@startDate 
-  and DATA_INDEX &lt;= @@endDate
-  and department = 'GENOVA'
-group by OP_INDEX, convert(date, DATA_INDEX)
-                        </MudText>
+                    <MudExpansionPanel Text="Esempio 1 — colonna datetime / date / datetime2 (piu comune)" Dense>
+                        <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 0.75rem;">SELECT
+    OP_INDEX                              AS Operatore,
+    CONVERT(date, DATA_INDEX)             AS DataLavorazione,
+    COUNT(*)                              AS Documenti,
+    SUM(CONVERT(int, ISNULL(NUM_PAG,0))/2) AS Fogli,
+    SUM(CONVERT(int, ISNULL(NUM_PAG,0))) AS Pagine
+FROM dbo.TABELLA_PRODUZIONE
+WHERE DATA_INDEX &gt;= @@startDate
+  AND DATA_INDEX &lt;= @@endDate
+  AND department = 'GENOVA'
+GROUP BY OP_INDEX, CONVERT(date, DATA_INDEX)</MudText>
+                    </MudExpansionPanel>
+                    <MudExpansionPanel Text="Esempio 2 — colonna varchar 'yyyy-MM-dd' (fonte legacy)" Dense>
+                        <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 0.75rem;">SELECT
+    OPERATORE                            AS Operatore,
+    DATA_LAVORAZIONE                     AS DataLavorazione,
+    COUNT(*)                             AS Documenti,
+    SUM(CONVERT(int, ISNULL(NUM_PAG, 0))) / 2 AS Fogli AS Fogli,
+    SUM(CONVERT(int, ISNULL(NUM_PAG, 0))) AS Pagine
+FROM dbo.TABELLA_LEGACY
+WHERE DATA_LAVORAZIONE &gt;= @@startDateStr
+  AND DATA_LAVORAZIONE &lt;= @@endDateStr
+  AND department = 'GENOVA'
+GROUP BY OPERATORE, DATA_LAVORAZIONE</MudText>
                     </MudExpansionPanel>
                 </MudExpansionPanels>
             </MudPaper>
@@ -243,14 +275,16 @@ group by OP_INDEX, convert(date, DATA_INDEX)
 
         <MudItem xs="12">
             <MudTextField @bind-Value="@_queryText"
-                          Label="Query SQL"
+                          Label="@(_editingIndex.HasValue ? $"Query SQL — modifica mapping #{_editingIndex.Value + 1}" : "Query SQL")"
                           Variant="Variant.Outlined"
                           Lines="10"
                           Style="font-family: monospace; font-size: 0.875rem;"
                           spellcheck="false"
                           Placeholder="SELECT ..." />
             <MudText Typo="Typo.caption" Class="mt-1" Style="word-break: break-word;">
-                Parametri: <code>@@startDate</code>, <code>@@endDate</code> | Colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine
+                Colonne datetime: <code>@@startDate</code> / <code>@@endDate</code> &nbsp;|&nbsp;
+                Colonne varchar:  <code>@@startDateStr</code> / <code>@@endDateStr</code> &nbsp;|&nbsp;
+                SELECT: Operatore, DataLavorazione, Documenti, Fogli, Pagine
             </MudText>
         </MudItem>
 
@@ -278,13 +312,24 @@ group by OP_INDEX, convert(date, DATA_INDEX)
     }
     
     <MudItem xs="12">
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   FullWidth
-                   Disabled="@(!CanAddMapping())"
-                   OnClick="@AggiungiMapping">
-            Aggiungi Mapping
-        </MudButton>
+        <MudStack Row Spacing="2">
+            <MudButton Variant="Variant.Filled"
+                       Color="@(_editingIndex.HasValue ? Color.Warning : Color.Primary)"
+                       FullWidth
+                       Disabled="@(!CanAddMapping())"
+                       OnClick="@AggiungiMapping">
+                <MudIcon Icon="@(_editingIndex.HasValue ? Icons.Material.Filled.Save : Icons.Material.Filled.Add)" Class="mr-1" />
+                @(_editingIndex.HasValue ? $"Salva modifica mapping #{_editingIndex.Value + 1}" : "Aggiungi Mapping")
+            </MudButton>
+            @if (_editingIndex.HasValue)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           OnClick="@AnnullaEdit">
+                    Annulla
+                </MudButton>
+            }
+        </MudStack>
     </MudItem>
 </MudGrid>
 
@@ -302,7 +347,10 @@ group by OP_INDEX, convert(date, DATA_INDEX)
     private string? _validationMessage;
     private MudBlazor.Severity _validationSeverity = MudBlazor.Severity.Info;
     private bool _queryValidated = false;
-    private bool _isMobile => false; // Placeholder per rilevamento mobile, può essere implementato con JSInterop se necessario
+    private bool _isMobile => false;
+
+    /// <summary>Indice del mapping in fase di modifica; null se si sta aggiungendo un nuovo mapping.</summary>
+    private int? _editingIndex = null;
     
     private List<(string Value, string Label)> _presetCrons = new()
     {
@@ -350,26 +398,38 @@ group by OP_INDEX, convert(date, DATA_INDEX)
 
         _validatingQuery = true;
         _validationMessage = null;
-        
+        _queryValidated = false;
+
         try
         {
-            var result = SqlValidator.ValidateQuery(_queryText);
-            
-            _validationMessage = result.Message;
-            _validationSeverity = result.Severity switch
+            // 1. Sicurezza: injection, parametri data, SELECT-only
+            var securityResult = SqlValidator.ValidateQuery(_queryText);
+            if (!securityResult.IsValid)
             {
-                ValidationSeverity.Success => MudBlazor.Severity.Success,
-                ValidationSeverity.Warning => MudBlazor.Severity.Warning,
-                _ => MudBlazor.Severity.Error
-            };
-            
-            _queryValidated = result.IsValid;
+                _validationMessage = securityResult.Message;
+                _validationSeverity = MudBlazor.Severity.Error;
+                return;
+            }
+
+            // 2. Schema: colonne obbligatorie (Operatore, DataLavorazione, Documenti, Fogli, Pagine)
+            var schemaResult = SqlValidator.ValidateColumnNames(_queryText);
+            if (!schemaResult.IsValid)
+            {
+                _validationMessage = schemaResult.Message;
+                _validationSeverity = MudBlazor.Severity.Error;
+                return;
+            }
+
+            // Entrambe le validazioni superate
+            _queryValidated = true;
+            _validationMessage = "Query valida: sicurezza e schema colonne confermati.";
+            _validationSeverity = MudBlazor.Severity.Success;
         }
         finally
         {
             _validatingQuery = false;
         }
-        
+
         await Task.CompletedTask;
     }
     
@@ -392,36 +452,67 @@ group by OP_INDEX, convert(date, DATA_INDEX)
     {
         if (!CanAddMapping())
             return;
-        
-        var newMapping = new ConfigurazioneFaseCentro
+
+        var mapping = new ConfigurazioneFaseCentro
         {
-            IdProceduraLavorazione = State.IdProcedura.Value,
-            IdCentro = State.IdCentro.Value,
-            IdFaseLavorazione = _selectedFaseId,
-            FlagAttiva = true,
-            TipoTask = State.TipoFonte?.ToTaskString(),
-            CronExpression = _selectedCron,
-            GiorniPrecedenti = _giorniPrecedenti,
-            TestoQueryTask = State.TipoFonte == TipoFonteData.SQL ? _queryText : null,
-            HandlerClassName = State.TipoFonte == TipoFonteData.HandlerIntegrato ? State.HandlerClassName : null
+            IdProceduraLavorazione = State.IdProcedura!.Value,
+            IdCentro               = State.IdCentro!.Value,
+            IdFaseLavorazione      = _selectedFaseId,
+            FlagAttiva             = true,
+            TipoTask               = State.TipoFonte?.ToTaskString(),
+            CronExpression         = _selectedCron,
+            GiorniPrecedenti       = _giorniPrecedenti,
+            TestoQueryTask         = State.TipoFonte == TipoFonteData.SQL ? _queryText : null,
+            HandlerClassName       = State.TipoFonte == TipoFonteData.HandlerIntegrato ? State.HandlerClassName : null
         };
-        
-        StateService.UpdateState(s => s.WithMapping(newMapping));
-        
-        // Reset form dopo l'aggiunta
-        _queryText = State.TipoFonte == TipoFonteData.SQL
-            ? @""
-            : null;
+
+        if (_editingIndex.HasValue)
+        {
+            // Sostituzione del mapping esistente alla posizione corrente
+            StateService.UpdateState(s => s.WithMappingUpdate(_editingIndex.Value, mapping));
+            _editingIndex = null;
+        }
+        else
+        {
+            StateService.UpdateState(s => s.WithMapping(mapping));
+        }
+
+        ResetForm();
+    }
+
+    /// <summary>Carica i dati di un mapping esistente nel form per la modifica.</summary>
+    private void CaricaMappingInForm(int index)
+    {
+        var mapping = State.Mappings[index];
+        _editingIndex       = index;
+        _selectedFaseId     = mapping.IdFaseLavorazione;
+        _selectedCron       = mapping.CronExpression ?? "0 5 * * *";
+        _giorniPrecedenti   = mapping.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti;
+        _queryText          = mapping.TestoQueryTask;
+        _selectedHandlerCode = mapping.HandlerClassName;
+        _validationMessage  = null;
+        // La query era già validata al momento del salvataggio — considera valida
+        _queryValidated     = !string.IsNullOrWhiteSpace(_queryText);
+    }
+
+    /// <summary>Annulla la modifica in corso e reimposta il form.</summary> 
+    private void AnnullaEdit()
+    {
+        _editingIndex = null;
+        ResetForm();
+    }
+
+    private void ResetForm()
+    {
+        _queryText         = State.TipoFonte == TipoFonteData.SQL ? string.Empty : null;
         _validationMessage = null;
-        _queryValidated = false;
-        _giorniPrecedenti = 10;
-        
-        // Seleziona la prossima fase disponibile (se esiste)
+        _queryValidated    = false;
+        _giorniPrecedenti  = 10;
+
+        // Seleziona la prossima fase disponibile
         var currentIndex = State.FasiDisponibili.FindIndex(f => f.IdFaseLavorazione == _selectedFaseId);
         if (currentIndex >= 0 && currentIndex < State.FasiDisponibili.Count - 1)
-        {
             _selectedFaseId = State.FasiDisponibili[currentIndex + 1].IdFaseLavorazione;
-        }
     }
     
     private void RimuoviMapping(int index)

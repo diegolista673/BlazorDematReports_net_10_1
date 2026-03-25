@@ -138,7 +138,7 @@ namespace BlazorDematReports.Components.Shared
             return ListOperatori.FirstOrDefault(x => x.Operatore == operatoreString);
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             if (EditContext is not null)
             {

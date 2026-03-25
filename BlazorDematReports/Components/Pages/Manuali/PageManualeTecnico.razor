@@ -1,11 +1,10 @@
-﻿@page "/manuale-tecnico"
+@page "/manuale-tecnico"
+
 @attribute [Authorize(Roles = "OWNER, ADMIN, SUPERVISOR,CAPOTURNO, USER")]
 @inject IWebHostEnvironment WebHostEnvironment
 @inject IJSRuntime JSRuntime
-@inject BlazorDematReports.Services.IPdfExportService PdfExportService
 @using System.IO
 @using System.Text.RegularExpressions
-@using BlazorDematReports.Services
 @using System.Text
 @using DocumentFormat.OpenXml.Packaging
 @using DocumentFormat.OpenXml.Wordprocessing
@@ -26,72 +25,88 @@
     else
     {
         <MudGrid Class="mb-4">
-            <MudItem xs="12" md="5">
-                <MudTextField @bind-Value="searchTerm" Label="Cerca nel manuale tecnico" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" OnAdornmentClick="PerformSearch" OnKeyDown="OnSearchKeyDown" Clearable="true" OnClearButtonClick="ClearSearch" Immediate="true" />
-            </MudItem>
-            <MudItem xs="6" md="2">
-                <MudButton Variant="Variant.Filled" Color="MudBlazor.Color.Primary" StartIcon="@Icons.Material.Filled.Search" OnClick="PerformSearch" FullWidth="true">Cerca</MudButton>
-            </MudItem>
-            <MudItem xs="6" md="2">
-                <MudButton Variant="Variant.Filled" Color="MudBlazor.Color.Secondary" StartIcon="@Icons.Material.Filled.Clear" OnClick="ClearSearch" FullWidth="true" Disabled="@string.IsNullOrWhiteSpace(searchTerm)">Pulisci</MudButton>
+            <MudItem xs="12" md="9">
+                <MudExpansionPanels>
+                    <MudExpansionPanel Text="Indice Sezioni">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var s in manualSections)
+                            {
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="MudBlazor.Color.Primary"
+                                           Size="Size.Small"
+                                           Class="@GetSectionClass(s.Id)"
+                                           OnClick="@(() => ScrollToSection(s.Id))">
+                                    @s.Number @s.Title
+                                </MudButton>
+                            }
+                        </div>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
             </MudItem>
             <MudItem xs="12" md="3">
-                <MudButton Variant="Variant.Filled" Color="MudBlazor.Color.Primary" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="ExportToPdf" FullWidth="true" Disabled="@isExportingPdf">
-                    @if (isExportingPdf)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                        <span class="ml-2">Esportando...</span>
-                    }
-                    else { <span>Esporta PDF</span> }
+                <MudButton Variant="Variant.Filled"
+                           Color="MudBlazor.Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Print"
+                           OnClick="PrintAsync"
+                           FullWidth="true">
+                    Stampa / Salva PDF
                 </MudButton>
             </MudItem>
         </MudGrid>
 
-        <MudExpansionPanels Class="mb-4">
-            <MudExpansionPanel Text="Indice Sezioni (clic per andare alla sezione)">
-                <div class="d-flex flex-wrap gap-2">
-                    @foreach (var s in manualSections)
-                    {
-                        <MudButton Variant="Variant.Outlined" Color="MudBlazor.Color.Primary" Size="Size.Small" Class="@(activeSectionId==s.Id?"indice-attivo":"")" OnClick="@(() => ScrollToSection(s.Id))">@s.Number @s.Title</MudButton>
-                    }
-                </div>
-            </MudExpansionPanel>
-        </MudExpansionPanels>
-
         <MudPaper Class="pa-4" Elevation="2" Style="max-height: 80vh; overflow-y: auto; font-size:14px; scroll-behavior:smooth; position:relative;" id="manuale-tecnico-content">
-            <div class="manuale-tecnico-html" @onclick="ManualClickCapture">
-                @((MarkupString)displayedHtml)
+@*             <div class="print-header">
+                <h1>DematReports &mdash; Manuale Tecnico</h1>
+            </div> *@
+            <div class="manuale-tecnico-html">
+                @((MarkupString)manualHtml)
             </div>
         </MudPaper>
-
-        @if (!string.IsNullOrEmpty(searchTerm) && searchResults > 0)
-        {
-            <MudAlert Severity="Severity.Info" Class="mt-2">Trovate @searchResults occorrenze di "@searchTerm"</MudAlert>
-        }
-        else if (!string.IsNullOrEmpty(searchTerm) && searchResults == 0)
-        {
-            <MudAlert Severity="Severity.Warning" Class="mt-2">Nessun risultato trovato per "@searchTerm"</MudAlert>
-        }
-
-        @if (!string.IsNullOrEmpty(diagramStatusMessage))
-        {
-            <MudAlert Severity="@(diagramStatusOk?Severity.Info:Severity.Warning)" Class="mt-3">@diagramStatusMessage</MudAlert>
-        }
     }
 </MudContainer>
 
 <style>
+    /* --- Stili schermo --- */
     .manuale-sezione-titolo { margin-top:34px; margin-bottom:8px; font-weight:600; font-size:18px; }
-    .manuale-sottotitolo { margin-top:18px; font-weight:600; font-size:15px; }
-    .manuale-paragrafo { margin:2px 0 10px 0; line-height:1.55; }
-    mark.highlight-search { background:#ffeb3b; padding:1px 2px; font-weight:600; }
-    .section-selected { outline:2px solid var(--mud-palette-primary); background:rgba(0,123,255,.06); border-radius:4px; transition:background .6s; }
-    .indice-attivo { border-color: var(--mud-palette-primary)!important; font-weight:600; }
-    .anchor-offset { position:relative; top:-70px; visibility:hidden; }
-    .manual-table { border-collapse: collapse; width:100%; margin:10px 0 18px 0; font-size:13px; }
-    .manual-table th, .manual-table td { border:1px solid #ccc; padding:6px 8px; vertical-align:top; }
-    .manual-table th { background:#f5f5f5; text-align:left; }
-    .diagram-block { font-family:Consolas,monospace; background:#fafafa; border:1px solid #e0e0e0; padding:8px; border-radius:4px; font-size:12px; white-space:pre; overflow:auto; margin:6px 0 14px 0; }
+    .manuale-sottotitolo    { margin-top:18px; font-weight:600; font-size:15px; }
+    .manuale-paragrafo      { margin:2px 0 10px 0; line-height:1.55; }
+    .section-selected       { outline:2px solid var(--mud-palette-primary); background:rgba(0,123,255,.06); border-radius:4px; transition:background .6s; }
+    .indice-attivo          { border-color: var(--mud-palette-primary)!important; font-weight:600; }
+    .anchor-offset          { position:relative; top:-70px; visibility:hidden; }
+    .manual-table           { border-collapse:collapse; width:100%; margin:10px 0 18px 0; font-size:13px; }
+    .manual-table th,
+    .manual-table td        { border:1px solid #ccc; padding:6px 8px; vertical-align:top; }
+    .manual-table th        { background:#f5f5f5; text-align:left; }
+    .diagram-block          { font-family:Consolas,monospace; background:#fafafa; border:1px solid #e0e0e0; padding:8px; border-radius:4px; font-size:12px; white-space:pre; overflow:auto; margin:6px 0 14px 0; }
+    .print-header           { display:none; }
+
+    /* --- Stili stampa / PDF (window.print) --- */
+    @@media print {
+        .mud-appbar, .mud-drawer, .mud-drawer-overlay,
+        .mud-expansion-panels, .mb-4,
+        .mud-button-root, .mud-snackbar-container { display: none !important; }
+
+        .print-header { display:block !important; text-align:center; margin-bottom:24px; border-bottom:2px solid #333; padding-bottom:10px; }
+        .print-header h1 { font-size:18pt; font-weight:700; margin:0 0 4px 0; }
+        .print-header p  { font-size:9pt;  color:#555;  margin:0; }
+
+        #manuale-tecnico-content {
+            max-height: none    !important;
+            overflow:   visible !important;
+            box-shadow: none    !important;
+            border:     none    !important;
+            padding:    0       !important;
+        }
+
+        .diagram-block,
+        .manual-table            { page-break-inside: avoid; }
+        .manuale-sezione-titolo  { page-break-after: avoid; font-size:14pt; }
+        .manuale-sottotitolo     { page-break-after: avoid; font-size:11pt; }
+        .manuale-paragrafo       { font-size:10pt; line-height:1.4; }
+        .diagram-block           { white-space:pre-wrap; overflow-x:visible; font-size:8pt; }
+
+        @@page { margin: 1.5cm 2cm; }
+    }
 </style>
 
 @code {
@@ -111,19 +126,11 @@
         public bool RawHtml { get; set; }
     }
 
-    private string errorMessage = string.Empty;
-    private bool isLoading = true;
-    private bool isExportingPdf = false;
-    private string searchTerm = string.Empty;
-    private int searchResults = 0;
-    private string activeSectionId = string.Empty;
-
-    private List<ManualSection> manualSections = new();
-    private string manualHtmlOriginal = string.Empty;
-    private string displayedHtml = string.Empty;
-
-    private string diagramStatusMessage = string.Empty;
-    private bool diagramStatusOk = false;
+    private string              errorMessage    = string.Empty;
+    private bool                isLoading       = true;
+    private string              activeSectionId = string.Empty;
+    private List<ManualSection> manualSections  = new();
+    private string              manualHtml      = string.Empty;
 
     private readonly string[] docFiles = new[] { "Documentazione/Scopo del programma.docx", "Documentazione/LettoreDati.docx" };
 
@@ -133,17 +140,20 @@
     {
         try
         {
-            isLoading = true;
+            isLoading      = true;
             manualSections = GenerateSectionsDetailed();
             await IntegrateExternalDocumentsAsync();
-            AnalyzeDiagramPlaceholder();
-            manualHtmlOriginal = BuildHtmlFromSections(manualSections);
-            displayedHtml = manualHtmlOriginal;
+            manualHtml     = BuildHtmlFromSections(manualSections);
         }
         catch (Exception ex)
-        { errorMessage = $"Errore durante il caricamento del manuale tecnico: {ex.Message}"; }
+        {
+            errorMessage = $"Errore durante il caricamento del manuale tecnico: {ex.Message}";
+        }
         finally
-        { isLoading = false; StateHasChanged(); }
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task IntegrateExternalDocumentsAsync()
@@ -189,12 +199,6 @@
     private string NormalizeDocText(string input)
     { var norm = Regex.Replace(input, "[\r\t]", ""); norm = Regex.Replace(norm, " +", " "); return norm.Trim(); }
 
-    private void AnalyzeDiagramPlaceholder()
-    {
-        diagramStatusMessage = "Diagramma architetturale (diagram.sv/svg) non trovato: aggiungere file in Documentazione per validazione.";
-        diagramStatusOk = false;
-    }
-
     private List<ManualSection> GenerateSectionsDetailed()
     {
         var list = new List<ManualSection>();
@@ -205,213 +209,391 @@
         // 1 INTRODUZIONE
         Add("INTRODUZIONE", s =>
         {
-            s.Paragraphs.Add("Descrizione del prodotto: DEmatReports è una piattaforma Blazor Server per la gestione, normalizzazione e analisi della produzione documentale.");
-            s.Paragraphs.Add("Scopo del manuale: fornire istruzioni tecniche e operative complete per installazione, uso, manutenzione e estensione.");
-            s.Paragraphs.Add("Ambito: copre componenti UI, servizi, pipeline dati, job Hangfire, modello dati, sicurezza, performance e troubleshooting.");
-            s.Subsections.Add(new ManualSubSection("Destinatari", new List<string>{"Sviluppatori (estensione e debug).","DevOps / SysAdmin (deploy e configurazioni).","Supervisori / Capoturno (monitoraggio produzione).","Auditor Qualità (tracciabilità e conformità)."}));
-            s.Subsections.Add(new ManualSubSection("Documenti Correlati", new List<string>{"Analisi Funzionale (docx).","NOTE.txt backlog e roadmap.","Manuale Operatore (UI base)."}));
+            s.Paragraphs.Add("DematReports (BlazorDematReports) è una piattaforma Blazor Server .NET 10 per la gestione, normalizzazione e analisi della produzione documentale multicentro.");
+            s.Paragraphs.Add("Il sistema integra: inserimento manuale operatori, acquisizione automatica da sorgenti SQL Server / Oracle / CSV email (ADER4, HERA16), job pianificati Hangfire, wizard di configurazione fonti dati, report PDF/Excel e normalizzazione operatori.");
+            s.Paragraphs.Add("Questo manuale è il riferimento tecnico per sviluppatori, DevOps e amministratori: architettura, configurazione, estensione handler, pipeline dati e troubleshooting.");
+            s.Subsections.Add(new ManualSubSection("Destinatari", new List<string>{
+                "Sviluppatori: estensione handler, debug pipeline, aggiunta servizi e configurazioni.",
+                "DevOps / SysAdmin: deploy IIS, variabili ambiente, monitoraggio Hangfire.",
+                "Supervisori / Capoturno: monitoraggio produzione, normalizzazione operatori.",
+                "Auditor: tracciabilità inserimenti, log NLog, audit ResultTask."}));
+            s.Subsections.Add(new ManualSubSection("Documenti Correlati", new List<string>{
+                "Manuale Operatore — guida UI per operatori (pagina /manuale-operatore).",
+                "appsettings.json / nlog.config — configurazioni runtime."}));
+            s.Subsections.Add(new ManualSubSection("Stack Tecnologico", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Layer</th><th>Tecnologia</th><th>Note</th></tr></thead><tbody>" +
+                "<tr><td>UI</td><td>Blazor Server + MudBlazor v8</td><td>.NET 10, C# 14</td></tr>" +
+                "<tr><td>Autenticazione</td><td>Cookie Auth + Active Directory</td><td>MockAD in Development</td></tr>" +
+                "<tr><td>ORM</td><td>Entity Framework Core (IDbContextFactory)</td><td>SQL Server 2019+</td></tr>" +
+                "<tr><td>Mapping</td><td>Mapperly (compile-time, zero reflection)</td><td>Singleton</td></tr>" +
+                "<tr><td>Scheduler</td><td>Hangfire 1.8+ su SQL Server</td><td>Schema HangFire, 3 retry</td></tr>" +
+                "<tr><td>Logging</td><td>NLog + NLog.Web.AspNetCore</td><td>Strutturato, senza emoji</td></tr>" +
+                "<tr><td>Email</td><td>EWS (Exchange) + FluentEmail SMTP</td><td>Mock CSV in Development</td></tr>" +
+                "<tr><td>Export PDF</td><td>PdfExportService (iText custom)</td><td>Scoped</td></tr>" +
+                "<tr><td>Export Excel</td><td>ClosedXML / OpenXML</td><td>--</td></tr>" +
+                "<tr><td>Test E2E</td><td>Playwright + xUnit</td><td>v1.49, Chromium</td></tr>" +
+                "</tbody></table>"}, true));
         });
 
-        // 2 INFORMAZIONI SULLA SICUREZZA
-        Add("INFORMAZIONI SULLA SICUREZZA", s =>
+        // 2 ARCHITETTURA E LAYER
+        Add("ARCHITETTURA E LAYER", s =>
         {
-            s.Paragraphs.Add("Sezione con avvertenze e precauzioni per protezione dati e continuità operativa.");
-            s.Subsections.Add(new ManualSubSection("Avvertenze", new List<string>{
-                "Non condividere connection string in chiaro su repository.",
-                "Eseguire backup DB prima di aggiornamenti o migrazioni.",
-                "Limitare i permessi dell'account applicativo SQL al minimo necessario."}));
-            s.Subsections.Add(new ManualSubSection("Protezione Credenziali", new List<string>{
-                "Usare variabili ambiente per override connection string.","Evitare salvataggio password in file temporanei.","Loggare solo dati non sensibili."}));
-            s.Subsections.Add(new ManualSubSection("Hardening", new List<string>{
-                "Abilitare HTTPS e HSTS.","Verificare SameSite/HttpOnly sui cookie.","Aggiornare regolarmente dipendenze di terze parti."}));
-            s.Subsections.Add(new ManualSubSection("Business Continuity", new List<string>{
-                "Piano di ripristino: backup giornaliero + test restore mensile.","Monitorare job critici con Hangfire Dashboard.","Alert su fallimenti ripetuti > 3."}));
+            s.Paragraphs.Add("Il progetto è composto da 4 assembly con responsabilità distinte: BlazorDematReports (UI), BlazorDematReports.Core (business logic), Entities (modello dati EF Core), BlazorDematReports.Tests.E2E (test Playwright).");
+            s.Subsections.Add(new ManualSubSection("Struttura Assembly", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Assembly</th><th>Responsabilità</th><th>Pattern chiave</th></tr></thead><tbody>" +
+                "<tr><td>BlazorDematReports</td><td>UI Blazor, Program.cs, Login, BaseComponentPage</td><td>Blazor Server, DI root</td></tr>" +
+                "<tr><td>BlazorDematReports.Core</td><td>Services, Handlers, DataReading, Wizard, Validation</td><td>DI Scoped/Singleton, Registry pattern</td></tr>" +
+                "<tr><td>Entities</td><td>EF Core entities, DbContext, Enum TipoFonteData</td><td>EF Core, Scaffolding con patch</td></tr>" +
+                "<tr><td>Tests.E2E</td><td>Test Playwright xUnit, Page Object Model</td><td>POM, IClassFixture</td></tr>" +
+                "</tbody></table>"}, true));
+            s.Subsections.Add(new ManualSubSection("Flusso Dati Principale", new List<string>{
+                "<div class='diagram-block'>[Browser]\n   | WebSocket SignalR\n   v\n[Blazor Server Components]\n   | solo Services (mai DbContext diretto)\n   v\n[Service Layer] (IServiceXxx)\n   | IDbContextFactory\n   v\n[EF Core DbContext]\n   | SQL Server\n   v\n[DematReportsContext]</div>"}, true));
+            s.Subsections.Add(new ManualSubSection("Pipeline Job Automatici", new List<string>{
+                "<div class='diagram-block'>[Hangfire Scheduler] (CRON expression)\n   | ogni JobRunner ha il proprio DI scope\n   v\n[ProductionJobRunner.RunAsync]\n   |\n   +--[TipoFonte == SQL]\n   |    v\n   |   [QueryService.ExecuteQueryAsync]\n   |    | DataTable\n   |    v\n   |   [ElaboratoreDatiLavorazione]\n   |    | DatiElaborati\n   |    v\n   |   [ServiceProduzioneSistema.UpsertAsync]\n   |\n   +--[TipoFonte == HandlerIntegrato]\n        v\n       [UnifiedHandlerRegistry.ExecuteAsync(code)]\n        | IProductionDataHandler.ExecuteAsync\n        v\n       [ProduzioneSistema / DatiMailCsv]</div>"}, true));
+            s.Subsections.Add(new ManualSubSection("Regola CRITICA — Accesso Dati da Componenti", new List<string>{
+                "I componenti Blazor NON devono mai iniettare IDbContextFactory o DbContext direttamente.",
+                "Tutto l'accesso dati passa esclusivamente attraverso il Service Layer (IServiceXxx).",
+                "Il BaseComponentPage fornisce i metodi comuni (HandleValidSubmitAsync, LoadDataAsync, ecc.).",
+                "Le pagine wizard usano i servizi dedicati della DI - regola uniforme per tutte le pagine."}));
         });
 
-        // 3 PANORAMICA DEL PRODOTTO
-        Add("PANORAMICA DEL PRODOTTO", s =>
+        // 3 CONFIGURAZIONE FONTI DATI — WIZARD
+        Add("CONFIGURAZIONE FONTI DATI", s =>
         {
-            s.Paragraphs.Add("Caratteristiche chiave e componenti principali dell'ecosistema DEmatReports.");
-            s.Subsections.Add(new ManualSubSection("Caratteristiche Principali", new List<string>{
-                "Inserimento e aggregazione produzione documenti.","Normalizzazione operatori e mapping fasi/totali.","Reportistica PDF/Excel.","Dashboard grafici clienti/documenti.","Scheduling job (lettura e aggiornamento)."}));
-            s.Subsections.Add(new ManualSubSection("Componenti Software", new List<string>{
-                "BlazorDematReports (UI e orchestrazione).","Entities (modello dati EF Core).","ClassLibraryLavorazioni (pipeline e logiche lavorazioni).","DataReading (acquisizione / job batch).","Servizi UI (export, stato, wrapper)."}));
-            s.Subsections.Add(new ManualSubSection("Diagramma Logico", new List<string>{
-                "<div class='diagram-block'>[Browser]\n   | SignalR (Blazor Server)\n   v\n[UI Razor Components] --> [Application Services] --> [EF Core Context]\n                                    |\n                                    +--> [Hangfire Jobs]\n                                    +--> [Export (PDF/Excel)]</div>"}, true));
+            s.Paragraphs.Add("Il sistema utilizza un wizard a 4 step (ConfigurationWizardState, record immutabile) per la configurazione di nuove sorgenti dati. Ogni configurazione genera automaticamente TaskDaEseguire schedulati su Hangfire.");
+            s.Subsections.Add(new ManualSubSection("Tipi di Fonte (TipoFonteData enum)", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Valore</th><th>Descrizione</th><th>Parametri richiesti</th></tr></thead><tbody>" +
+                "<tr><td>SQL (0)</td><td>Query parametrizzata su DB configurato</td><td>ConnectionStringName, TestoQueryTask per fase</td></tr>" +
+                "<tr><td>HandlerIntegrato (1)</td><td>Handler C# custom (inclusi mail HERA16/ADER4)</td><td>HandlerClassName (codice nel registry)</td></tr>" +
+                "</tbody></table>"}, true));
+            s.Subsections.Add(new ManualSubSection("Step Wizard", new List<string>{
+                "Step 1 — Tipo Fonte: seleziona SQL o HandlerIntegrato.",
+                "Step 2 — Configurazione Specifica: ConnectionString (SQL, con test connessione) o codice interno (Handler).",
+                "Step 3 — Procedura: seleziona ProceduraLavorazione → auto-carica fasi disponibili e IdCentro.",
+                "Step 4 — Mapping Fasi/Centri: configura una o più coppie (Fase, CRON, GiorniPrecedenti, QuerySQL opzionale)."}));
+            s.Subsections.Add(new ManualSubSection("Flusso Salvataggio Configurazione", new List<string>{
+                "<div class='diagram-block'>[Wizard Step 4: Salva]\n   v\n[ServiceConfigurazioneFontiDati.SalvaAsync]\n   |\n   +-- Crea/aggiorna ConfigurazioneFontiDati\n   +-- Crea/aggiorna ConfigurazioneFaseCentro (1 per mapping)\n   v\n[TaskGenerationService.GenerateTasksForConfigurationAsync]\n   |\n   +-- Crea TaskDaEseguire per ogni mapping\n   v\n[ProductionJobScheduler.ScheduleRecurringJobAsync]\n   |\n   +-- RecurringJob.AddOrUpdate(CRON)\n   +-- Hangfire registra il job</div>"}, true));
+            s.Subsections.Add(new ManualSubSection("Validazione Query SQL", new List<string>{
+                "SqlValidationService.ValidateQuery: sicurezza (SQL injection, keyword vietate), solo SELECT/WITH, parametri @startDate/@endDate obbligatori.",
+                "SqlValidationService.ValidateColumnNames: colonne obbligatorie Operatore, DataLavorazione, Documenti, Fogli, Pagine. No SELECT *.",
+                "Parametri data iniettati automaticamente: @startDate/@endDate (DateTime2) e @startDateStr/@endDateStr (VarChar yyyy-MM-dd).",
+                "La query viene validata PRIMA del salvataggio — il pulsante 'Aggiungi Mapping' rimane disabilitato finché non supera entrambe le validazioni."}));
         });
 
-        // 4 INSTALLAZIONE E CONFIGURAZIONE
+        // 4 HANDLER SYSTEM
+        Add("HANDLER SYSTEM", s =>
+        {
+            s.Paragraphs.Add("Il sistema handler è basato sul pattern Registry. Ogni handler implementa IProductionDataHandler, viene registrato in DI come Singleton e auto-scoperto da UnifiedHandlerRegistry al bootstrap.");
+            s.Subsections.Add(new ManualSubSection("Handler Registrati", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Codice</th><th>Classe</th><th>Tipo</th><th>Descrizione</th></tr></thead><tbody>" +
+                "<tr><td>Z0072370_28AUT</td><td>Z0072370_28AutHandler</td><td>SQL/Oracle</td><td>Elaborazione produzione specifica</td></tr>" +
+                "<tr><td>Z0082041_SOFTLINE</td><td>Z0082041_SoftlineHandler</td><td>SQL</td><td>Produzione Softline</td></tr>" +
+                "<tr><td>ANT_ADER4_SORTER_1_2</td><td>Ant_Ader4_Sorter_1_2Handler</td><td>Custom</td><td>Handler sorter ADER4</td></tr>" +
+                "<tr><td>PRATICHE_SUCCESSIONE</td><td>PraticheSuccessioneHandler</td><td>Oracle</td><td>Pratiche successione da Oracle</td></tr>" +
+                "<tr><td>RDMKT_RSP</td><td>Rdmkt_RSPHandler</td><td>SQL</td><td>Produzione RDMKT</td></tr>" +
+                "<tr><td>MAIL_INGESTION</td><td>GenericMailIngestionHandler</td><td>Email</td><td>Orchestratore ingestion mail (ADER4+HERA16)</td></tr>" +
+                "</tbody></table>"}, true));
+            s.Subsections.Add(new ManualSubSection("Aggiungere un Nuovo Handler (step by step)", new List<string>{
+                "1. Creare classe in BlazorDematReports.Core/Handlers/LavorazioniHandlers/ che implementa IProductionDataHandler.",
+                "2. Implementare le proprietà Code (stringa univoca) e ExecuteAsync(context, ct).",
+                "3. Registrare in Program.cs: builder.Services.AddSingleton<IProductionDataHandler, MioNuovoHandler>();",
+                "4. Il codice appare automaticamente nel wizard (Step 4) tramite UnifiedHandlerRegistry.GetAllCodes().",
+                "5. Creare una configurazione dal wizard e assegnare il codice handler al mapping desiderato.",
+                "6. Testare con esecuzione manuale dalla pagina Impostazioni > Fonti Dati > Esegui ora."}));
+            s.Subsections.Add(new ManualSubSection("Handler Email — ADER4 e HERA16", new List<string>{
+                "GenericMailIngestionHandler orchestra Ader4IngestionProcessor e Hera16IngestionProcessor.",
+                "In Development: UseMockService=true in appsettings → legge CSV da cartella locale invece di EWS.",
+                "ADER4: legge CSV allegati email Exchange, li parsa e li persiste in DatiMailCsvAder4.",
+                "HERA16: legge CSV allegati email Exchange, bulk insert in DatiMailCsvHera16 tramite IHera16DataService."}));
+        });
+
+        // 5 PIPELINE ELABORAZIONE OPERATORI
+        Add("PIPELINE ELABORAZIONE OPERATORI", s =>
+        {
+            s.Paragraphs.Add("La pipeline di elaborazione converte dati raw (DataTable da SQL / DatiElaborati da handler) in record ProduzioneSistema normalizzati e persistiti. Normalizzazione operatori, gestione Not_Found_Oper e aggregazione KPI avvengono in ElaboratoreDatiLavorazione.");
+            s.Subsections.Add(new ManualSubSection("Flusso Normalizzazione Operatori", new List<string>{
+                "<div class='diagram-block'>[Raw: OP_INDEX = 'mario.rossi_alias']\n   v\n[NormalizzatoreOperatori.NormalizzaAsync]\n   |\n   +-- Cerca in OperatoriNormalizzati (alias → Operatori)\n   |\n   +-- Trovato: usa Operatori.Nominativo\n   +-- Non trovato: usa 'Not_Found_Oper'\n   v\n[GestoreOperatoriDatiLavorazione]\n   |\n   +-- Verifica appartenenza operatore al centro\n   +-- Verifica operatore attivo\n   v\n[DatiElaborati pronti per persistenza]</div>"}, true));
+            s.Subsections.Add(new ManualSubSection("Not_Found_Oper", new List<string>{
+                "Quando un codice operatore non é censito in OperatoriNormalizzati, viene marcato come Not_Found_Oper.",
+                "I record Not_Found_Oper vengono comunque persistiti in ProduzioneSistema per visibilità.",
+                "Per risolvere: aggiungere il mapping alias verso operatore reale nella pagina Normalizzazione Operatori.",
+                "Dopo il censimento, rieseguire il job per il periodo di interesse per aggiornare i dati."}));
+            s.Subsections.Add(new ManualSubSection("Parametri Query Automatici", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Parametro</th><th>Tipo SQL</th><th>Formato</th><th>Uso</th></tr></thead><tbody>" +
+                "<tr><td>@startDate</td><td>DateTime2</td><td>DateTime .NET</td><td>Colonne date/datetime/datetime2</td></tr>" +
+                "<tr><td>@endDate</td><td>DateTime2</td><td>DateTime .NET</td><td>Colonne date/datetime/datetime2</td></tr>" +
+                "<tr><td>@startDateStr</td><td>VarChar(10)</td><td>yyyy-MM-dd</td><td>Colonne varchar data (legacy)</td></tr>" +
+                "<tr><td>@endDateStr</td><td>VarChar(10)</td><td>yyyy-MM-dd</td><td>Colonne varchar data (legacy)</td></tr>" +
+                "</tbody></table>"}, true));
+            s.Subsections.Add(new ManualSubSection("GiorniPrecedenti", new List<string>{
+                "Ogni TaskDaEseguire ha un campo GiorniPrecedenti (default: configurabile in TaskConfigurationDefaults).",
+                "Il range date del job è: startDate = oggi - GiorniPrecedenti, endDate = oggi.",
+                "Per esecuzioni manuali con range custom, usare ProductionJobRunner.RunAsync(id, startDate, endDate)."}));
+        });
+
+        // 6 AUTENTICAZIONE E SICUREZZA
+        Add("AUTENTICAZIONE E SICUREZZA", s =>
+        {
+            s.Paragraphs.Add("L'autenticazione usa Cookie Auth ASP.NET Core con Active Directory in produzione e MockActiveDirectoryService in Development (nessuna dipendenza AD in sviluppo).");
+            s.Subsections.Add(new ManualSubSection("Ruoli e Autorizzazione", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Ruolo</th><th>Accesso</th></tr></thead><tbody>" +
+                "<tr><td>OWNER</td><td>Accesso completo a tutte le pagine</td></tr>" +
+                "<tr><td>ADMIN</td><td>Impostazioni, configurazioni, utenti</td></tr>" +
+                "<tr><td>SUPERVISOR</td><td>Report, gestione operatori, monitoraggio</td></tr>" +
+                "<tr><td>CAPOTURNO</td><td>Carica dati, gestione operatori, report</td></tr>" +
+                "<tr><td>USER</td><td>Solo carica dati produzione</td></tr>" +
+                "</tbody></table>"}, true));
+            s.Subsections.Add(new ManualSubSection("Configurazione Cookie", new List<string>{
+                "HttpOnly: true — prevenzione XSS.",
+                "SecurePolicy: Always — solo HTTPS.",
+                "SameSite: Strict — prevenzione CSRF.",
+                "ExpireTimeSpan: 30 minuti con SlidingExpiration.",
+                "LoginPath / AccessDeniedPath: /Account/Login."}));
+            s.Subsections.Add(new ManualSubSection("Active Directory — Ambienti", new List<string>{
+                "Development: MockActiveDirectoryService — login con utente da appsettings.Development.json (DefaultTestUser/Password).",
+                "Produzione: ActiveDirectoryService — autenticazione reale tramite LDAP/AD.",
+                "Configurazione in appsettings: sezione 'ActiveDirectory' con Domain, SearchBase, ServiceAccount."}));
+            s.Subsections.Add(new ManualSubSection("SQL Injection Protection", new List<string>{
+                "SqlValidationService blocca: pattern DROP/DELETE/TRUNCATE/ALTER/CREATE/UPDATE/INSERT, EXEC, xp_cmdshell, sp_executesql, UNION SELECT, commenti SQL (-- e /* */).",
+                "Tutte le query salvate vengono validate PRIMA della persistenza.",
+                "QueryService usa esclusivamente parametri tipizzati (no concatenazione stringhe)."}));
+        });
+
+        // 7 LOGGING
+        Add("LOGGING", s =>
+        {
+            s.Paragraphs.Add("Il sistema usa NLog con NLog.Web.AspNetCore. La configurazione è in nlog.config (Development) e appsettings.json (Production). Il logging è strutturato — mai emoji o icone nei messaggi.");
+            s.Subsections.Add(new ManualSubSection("Livelli di Log per Contesto", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Livello</th><th>Quando usare</th><th>Esempi</th></tr></thead><tbody>" +
+                "<tr><td>LogInformation</td><td>Operazioni completate, stati UI</td><td>Task completato, salvataggio riuscito</td></tr>" +
+                "<tr><td>LogWarning</td><td>Fallimenti non critici, validazioni</td><td>Not_Found_Oper, job saltato perche disabilitato</td></tr>" +
+                "<tr><td>LogError</td><td>Eccezioni, fallimenti job, errori DB</td><td>SqlException, task fallito</td></tr>" +
+                "<tr><td>Mai loggare</td><td>Dati sensibili</td><td>Password, connection string, token</td></tr>" +
+                "</tbody></table>"}, true));
+            s.Subsections.Add(new ManualSubSection("QueryLoggingHelper", new List<string>{
+                "QueryLoggingHelper.LogQueryExecution(logger) — registra avvio query con nome metodo chiamante.",
+                "Abilitato da configurazione: Logging:EnableQueryExecutionLog = true/false.",
+                "Utile in Development per tracciare query N+1 o query non ottimizzate.",
+                "In produzione mantenere disabilitato per ridurre volume log."}));
+            s.Subsections.Add(new ManualSubSection("Audit Trail Job", new List<string>{
+                "Ogni esecuzione di ProductionJobRunner aggiorna TaskDaEseguire.Stato, UltimaEsecuzione, Errore.",
+                "Gli esiti sono tracciati in ResultTask (tabella dedicata audit log job).",
+                "Hangfire Dashboard (/hangfire) mostra storico, retry e job falliti in real-time."}));
+        });
+
+        // 8 DEPENDENCY INJECTION — MAPPA SERVIZI
+        Add("DEPENDENCY INJECTION", s =>
+        {
+            s.Paragraphs.Add("Tutti i servizi sono registrati in Program.cs con lifetime esplicito. La regola generale: Singleton per stateless/immutabili, Scoped per tutto ciò che dipende da DbContext o dalla sessione utente Blazor.");
+            s.Subsections.Add(new ManualSubSection("Lifetime dei Servizi Chiave", new List<string>{
+                "<table class='manual-table'><thead><tr><th>Lifetime</th><th>Servizi</th></tr></thead><tbody>" +
+                "<tr><td>Singleton</td><td>ILavorazioniConfigManager, IProductionJobScheduler, IRecurringJobManagerAdapter, IQueryService, IHera16DataService, UnifiedHandlerRegistry, tutti IProductionDataHandler, tutti i Mapper Mapperly</td></tr>" +
+                "<tr><td>Scoped</td><td>Tutti IServiceXxx (dati), ElaboratoreDatiLavorazione, NormalizzatoreOperatori, ConfigUser, UiStateService, SqlValidationService, ConfigurationWizardStateService, ProcedureEditStateService</td></tr>" +
+                "<tr><td>Transient</td><td>Nessuno (non usato)</td></tr>" +
+                "</tbody></table>"}, true));
+            s.Subsections.Add(new ManualSubSection("BaseComponentPage", new List<string>{
+                "Classe base Blazor per tutti i componenti pagina (BaseComponentPage.cs + partial classes).",
+                "Fornisce: LoadDataAsync, HandleValidSubmitAsync, ErrorMessage, IsFormValid.",
+                "Partial classes: Variants.cs (MudBlazor helpers), Selects.cs (dropdown comuni), Collections.cs, ErrorHandling.cs.",
+                "Le classi figlie NON devono accedere a DbContext — usano i servizi iniettati."}));
+        });
+
+        // 9 INSTALLAZIONE E CONFIGURAZIONE
         Add("INSTALLAZIONE E CONFIGURAZIONE", s =>
         {
-            s.Paragraphs.Add("Istruzioni passo-passo per predisporre l'ambiente e configurare l'applicazione.");
+            s.Paragraphs.Add("Istruzioni per predisporre l'ambiente di sviluppo e produzione.");
             s.Subsections.Add(new ManualSubSection("Prerequisiti", new List<string>{
-                ".NET 9 SDK + Runtime.","SQL Server 2019+.","Accesso cartella log / export.","Account DB con permessi DDL (prima installazione)."}));
-            s.Subsections.Add(new ManualSubSection("Procedura Installazione", new List<string>{
-                "1. Clonare repository.","2. Configurare appsettings.* (connection string / logging).","3. Eseguire 'dotnet ef database update' per migrazioni.","4. Avviare applicazione (dotnet run / IIS).","5. Creare ruoli e utente amministratore iniziale."}));
-            s.Subsections.Add(new ManualSubSection("Configurazione Variabili Ambiente", new List<string>{
-                "ASPNETCORE_ConnectionStrings__DematReportsContext = <conn>.","DEMAT_LOG_LEVEL = Info|Warn|Error.","HANGFIRE_DASHBOARD_USER / PASS (se basic auth custom)."}));
-            s.Subsections.Add(new ManualSubSection("Esempio Diagramma Deployment", new List<string>{
-                "<div class='diagram-block'>[Utenti]\n   | HTTPS\n   v\n[Reverse Proxy/IIS] --> [App Blazor Server]\n          |                 |\n          |                 +--> [SQL Server]\n          |                 +--> [File Export PDF/Excel]\n          |                 +--> [Hangfire Storage (DB)]</div>"}, true));
-            s.Subsections.Add(new ManualSubSection("Verifica Post-Install", new List<string>{
-                "Accesso /manuale-tecnico e /hangfire.","Inserimento produzione di test.","Generazione export PDF prova.","Job ricorrenti visibili in dashboard."}));
+                ".NET 10 SDK + Runtime.",
+                "SQL Server 2019+ (database applicativo + database Hangfire).",
+                "Visual Studio 2022/2026 o dotnet CLI.",
+                "Accesso SMTP o Exchange (EWS) per ingestion mail (opzionale in Development)."}));
+            s.Subsections.Add(new ManualSubSection("Configurazione appsettings", new List<string>{
+                "ConnectionStrings:DematReportsContext — SQL Server applicativo.",
+                "ConnectionStrings:HangfireConnection — SQL Server per Hangfire (può coincidere con il principale).",
+                "LoginSettings:DefaultTestUser / DefaultTestPassword — utente mock per Development.",
+                "LoginSettings:AllowAutoLogin — true in Development per login automatico.",
+                "ActiveDirectory:Domain/SearchBase/ServiceAccount — solo in produzione.",
+                "MailServices:ADER4:UseMockService / HERA16:UseMockService — true = CSV locale, false = EWS reale."}));
+            s.Subsections.Add(new ManualSubSection("Variabili Ambiente (Produzione)", new List<string>{
+                "ASPNETCORE_ENVIRONMENT = Production",
+                "ConnectionStrings__DematReportsContext = <conn_string>",
+                "ConnectionStrings__HangfireConnection = <conn_string>",
+                "Le variabili ambiente sovrascrivono appsettings.json (caricamento in AddEnvironmentVariables)."}));
+            s.Subsections.Add(new ManualSubSection("Avvio e Diagnostica Startup", new List<string>{
+                "All'avvio, RunStartupDiagnosticsAsync verifica connettività DB e stato Hangfire.",
+                "SyncRecurringJobsAsync sincronizza i job Hangfire con i TaskDaEseguire attivi nel DB.",
+                "ScheduleSystemJobs registra job di sistema (es. pulizia, aggiornamenti).",
+                "ScheduleMailIngestion registra job di ingestion mail ADER4 e HERA16.",
+                "In caso di errore fatale all'avvio, NLog registra l'eccezione prima dello shutdown."}));
+            s.Subsections.Add(new ManualSubSection("Flusso Deploy Produzione", new List<string>{
+                "<div class='diagram-block'>[dotnet publish]\n   v\n[Copia artefatti su server IIS]\n   v\n[Variabili ambiente impostate su server]\n   v\n[iisreset / recycle app pool]\n   v\n[Startup diagnostics verifica DB + Hangfire]\n   v\n[SyncRecurringJobs: allinea job con DB]\n   v\n[App operativa]</div>"}, true));
         });
 
-        // 5 OPERAZIONI
-        Add("OPERAZIONI", s =>
-        {
-            s.Paragraphs.Add("Uso quotidiano delle principali funzioni dell'applicazione.");
-            s.Subsections.Add(new ManualSubSection("Inserimento Produzione", new List<string>{
-                "Accedere alla pagina produzione operatore.","Compilare campi obbligatori (data, procedura, fase, totali).","Validare e salvare (controllo duplicati)."}));
-            s.Subsections.Add(new ManualSubSection("Normalizzazione", new List<string>{
-                "Gestire alias operatori nella pagina normalizzazione.","Consolidare varianti in identità unica."}));
-            s.Subsections.Add(new ManualSubSection("Report e Grafici", new List<string>{
-                "Selezionare intervallo date e filtri.","Usare export per PDF o Excel.","Grafico clienti/documenti configurabile da impostazioni."}));
-            s.Subsections.Add(new ManualSubSection("Job Background", new List<string>{
-                "Dashboard Hangfire per stato job.","Riavviare job falliti manualmente se necessario.","Verificare parametri pianificazioni (CRON)."}));
-        });
-
-        // 6 MANUTENZIONE
-        Add("MANUTENZIONE", s =>
-        {
-            s.Paragraphs.Add("Procedure ordinarie e prevenzione degrado prestazioni.");
-            s.Subsections.Add(new ManualSubSection("Routine Settimanale", new List<string>{
-                "Controllo job falliti.","Pulizia log > soglia dimensione.","Verifica spazio disco export."}));
-            s.Subsections.Add(new ManualSubSection("Routine Mensile", new List<string>{
-                "Test restore backup.","Aggiornamento pacchetti NuGet (se patch di sicurezza).","Reindicizzazione DB se necessario."}));
-            s.Subsections.Add(new ManualSubSection("Decommissioning / Smaltimento", new List<string>{
-                "Backup finale DB.","Anonimizzazione dati sensibili se richiesto.","Rimozione segreti da variabili ambiente."}));
-        });
-
-        // 7 RISOLUZIONE DEI PROBLEMI
+        // 10 RISOLUZIONE DEI PROBLEMI
         Add("RISOLUZIONE DEI PROBLEMI", s =>
         {
-            s.Paragraphs.Add("Tabella problemi comuni con cause e soluzioni.");
-            var tableHtml = @"<table class='manual-table'>\n<thead><tr><th>Problema</th><th>Causa Probabile</th><th>Soluzione</th></tr></thead><tbody>
-<tr><td>Job non esegue</td><td>Server Hangfire fermo o flag disattivo</td><td>Verificare servizio e TabellaTask</td></tr>
-<tr><td>Duplicati produzione</td><td>Inserimento ripetuto stessa combinazione</td><td>Controllare vincolo logico e UI</td></tr>
-<tr><td>Export lento</td><td>Intervallo date troppo esteso</td><td>Limitare range o ottimizzare indici</td></tr>
-<tr><td>Connessione DB fallita</td><td>Connection string errata / permessi</td><td>Validare credenziali e reachability</td></tr>
-<tr><td>Grafico vuoto</td><td>Nessun dato nel periodo selezionato</td><td>Verificare filtro date e procedure</td></tr>
-<tr><td>Normalizzazione incompleta</td><td>Alias non mappati</td><td>Aggiornare tabella normalizzazioni</td></tr>
-</tbody></table>";
+            s.Paragraphs.Add("Problemi comuni con cause e soluzioni. Controllare sempre prima i log NLog e Hangfire Dashboard.");
+            var tableHtml =
+                "<table class='manual-table'><thead><tr><th>Problema</th><th>Causa Probabile</th><th>Soluzione</th></tr></thead><tbody>" +
+                "<tr><td>Job non esegue</td><td>Task disabilitato o Hangfire fermo</td><td>Verificare Enabled=true in TaskDaEseguire; controllare /hangfire</td></tr>" +
+                "<tr><td>Not_Found_Oper nei dati</td><td>Alias operatore non censito</td><td>Aggiungere mapping in Normalizzazione Operatori, poi rieseguire job</td></tr>" +
+                "<tr><td>Duplicati produzione</td><td>Job rieseguito sullo stesso range</td><td>Normale: il sistema fa upsert, non duplica. Verificare vincolo UNIQUE</td></tr>" +
+                "<tr><td>Connessione DB fallita</td><td>Connection string errata o firewall</td><td>Verificare ConnectionStrings in appsettings / variabili ambiente</td></tr>" +
+                "<tr><td>Query SQL rifiutata</td><td>Validazione sicurezza / colonne mancanti</td><td>Aggiungere @startDate/@endDate e colonne obbligatorie; no SELECT *</td></tr>" +
+                "<tr><td>Handler non trovato</td><td>Codice non registrato in DI</td><td>Aggiungere AddSingleton in Program.cs; verificare Code univoco</td></tr>" +
+                "<tr><td>Login fallisce in dev</td><td>AllowAutoLogin=false o credenziali errate</td><td>Verificare DefaultTestUser/Password in appsettings.Development.json</td></tr>" +
+                "<tr><td>Grafico clienti vuoto</td><td>Nessun dato nel periodo / config mancante</td><td>Verificare ConfigReportDocumenti e ProcedureCliente attivi</td></tr>" +
+                "<tr><td>Email non elaborata</td><td>EWS non raggiungibile o mock disattivo</td><td>In dev: UseMockService=true; in prod: verificare credenziali EWS</td></tr>" +
+                "<tr><td>Wizard non salva</td><td>Validazione step non superata</td><td>Verificare IsStepValid per ogni step: tipo, connessione, procedura, mappings</td></tr>" +
+                "</tbody></table>";
             s.Subsections.Add(new ManualSubSection("Tabella Problemi", new List<string>{ tableHtml }, true));
         });
 
-        // 8 SPECIFICHE TECNICHE
+        // 11 SPECIFICHE TECNICHE
         Add("SPECIFICHE TECNICHE", s =>
         {
-            s.Paragraphs.Add("Dettagli tecnici sintetici del sistema.");
-            var specs = @"<table class='manual-table'>\n<thead><tr><th>Area</th><th>Specifica</th><th>Valore</th></tr></thead><tbody>
-<tr><td>Framework</td><td>.NET</td><td>9.0 (C# 13)</td></tr>
-<tr><td>UI</td><td>Framework</td><td>Blazor Server + MudBlazor</td></tr>
-<tr><td>Dati</td><td>ORM</td><td>Entity Framework Core</td></tr>
-<tr><td>DB</td><td>Database</td><td>SQL Server 2019+</td></tr>
-<tr><td>Background</td><td>Scheduler</td><td>Hangfire</td></tr>
-<tr><td>Logging</td><td>Libreria</td><td>NLog</td></tr>
-<tr><td>Export</td><td>PDF / Excel</td><td>iTextSharp / ClosedXML</td></tr>
-<tr><td>Sicurezza</td><td>Auth</td><td>Cookie + Ruoli</td></tr>
-<tr><td>Performance Target</td><td>Query medie</td><td>< 500ms</td></tr>
-<tr><td>Performance Target</td><td>Export 10k</td><td>< 10s</td></tr>
-<tr><td>Scalabilità</td><td>Job</td><td>Multipli worker Hangfire</td></tr>
-<tr><td>Distribuzione</td><td>Host</td><td>IIS / Reverse Proxy</td></tr>
-</tbody></table>";
+            s.Paragraphs.Add("Parametri tecnici del sistema aggiornati alla versione corrente (.NET 10, C# 14).");
+            var specs =
+                "<table class='manual-table'><thead><tr><th>Area</th><th>Specifica</th><th>Valore</th></tr></thead><tbody>" +
+                "<tr><td>Runtime</td><td>.NET</td><td>10.0 (C# 14)</td></tr>" +
+                "<tr><td>UI</td><td>Framework</td><td>Blazor Server + MudBlazor v8</td></tr>" +
+                "<tr><td>ORM</td><td>Entity Framework Core</td><td>IDbContextFactory pattern</td></tr>" +
+                "<tr><td>DB</td><td>SQL Server</td><td>2019+ (app + Hangfire)</td></tr>" +
+                "<tr><td>Scheduler</td><td>Hangfire</td><td>1.8+, schema HangFire, 3 retry</td></tr>" +
+                "<tr><td>Logging</td><td>NLog</td><td>NLog.Web.AspNetCore 5+</td></tr>" +
+                "<tr><td>Mapping</td><td>Mapperly</td><td>Compile-time, zero reflection</td></tr>" +
+                "<tr><td>Auth</td><td>Cookie + AD</td><td>HttpOnly, Secure, SameSite=Strict, 30min</td></tr>" +
+                "<tr><td>Worker Hangfire</td><td>WorkerCount</td><td>min(CPU*2, 10)</td></tr>" +
+                "<tr><td>Timeout Query</td><td>QueryService</td><td>30 secondi</td></tr>" +
+                "<tr><td>Max msg SignalR</td><td>MaximumReceiveMessageSize</td><td>10 MB</td></tr>" +
+                "<tr><td>Snackbar</td><td>Duration</td><td>3000ms, Bottom Center</td></tr>" +
+                "<tr><td>Test E2E</td><td>Playwright</td><td>v1.49, xUnit, Chromium</td></tr>" +
+                "</tbody></table>";
             s.Subsections.Add(new ManualSubSection("Tabella Specifiche", new List<string>{ specs }, true));
         });
 
-        // 9 SCHEMI DATABASE
+        // 12 SCHEMI DATABASE
         Add("SCHEMI DATABASE", s =>
         {
-            s.Paragraphs.Add("Panoramica strutture principali del database SQL Server (nomenclatura indicativa). Schemi semplificati, usare migrazioni EF per definizione completa.");
-            var overview = @"<table class='manual-table'>\n<thead><tr><th>Tabella</th><th>Chiave Primaria</th><th>Descrizione</th></tr></thead><tbody>
-<tr><td>Operatori</td><td>OperatoreId</td><td>Anagrafica operatori</td></tr>
-<tr><td>OperatoriNormalizzati</td><td>OperatoreNormalizzatoId</td><td>Mapping alias -> operatore</td></tr>
-<tr><td>ProduzioneOperatori</td><td>ProduzioneOperatoreId</td><td>Dettaglio produzione per operatore</td></tr>
-<tr><td>ProduzioneSistema</td><td>ProduzioneSistemaId</td><td>Aggregati giornalieri / globali</td></tr>
-<tr><td>ProcedureLavorazioni</td><td>ProceduraId</td><td>Catalogo procedure</td></tr>
-<tr><td>FasiLavorazione</td><td>FaseId</td><td>Fasi operative per procedura</td></tr>
-<tr><td>TipologieTotali</td><td>TipoTotaleId</td><td>Definizione KPI</td></tr>
-<tr><td>LavorazioniFasiTipoTotale</td><td>(FaseId, TipoTotaleId)</td><td>Mapping n..n fase -> totale</td></tr>
-<tr><td>Clienti</td><td>ClienteId</td><td>Anagrafica clienti</td></tr>
-<tr><td>ProcedureCliente</td><td>ProceduraClienteId</td><td>Attivazione procedura per cliente</td></tr>
-<tr><td>Turni</td><td>TurnoId</td><td>Fasce orarie operative</td></tr>
-<tr><td>TaskDaEseguire</td><td>TaskId</td><td>Configurazione job pianificati</td></tr>
-</tbody></table>";
+            s.Paragraphs.Add("Tabelle principali del database applicativo. Gli schemi Hangfire (HangFire.*) sono gestiti automaticamente dalla libreria. Usare migrazioni EF per definizione completa e aggiornata.");
+            var overview =
+                "<table class='manual-table'><thead><tr><th>Tabella</th><th>Chiave Primaria</th><th>Descrizione</th></tr></thead><tbody>" +
+                "<tr><td>Operatori</td><td>IDOperatore</td><td>Anagrafica operatori del sistema</td></tr>" +
+                "<tr><td>OperatoriNormalizzati</td><td>IdNorm</td><td>Mapping alias -&gt; operatore reale</td></tr>" +
+                "<tr><td>ProduzioneOperatori</td><td>IdProduzione</td><td>Inserimenti manuali operatori</td></tr>" +
+                "<tr><td>ProduzioneSistema</td><td>IdProduzioneSistema</td><td>Dati acquisiti/normalizzati da job</td></tr>" +
+                "<tr><td>ConfigurazioneFontiDati</td><td>IdConfigurazione</td><td>Configurazione wizard fonti dati</td></tr>" +
+                "<tr><td>ConfigurazioneFaseCentro</td><td>IdFaseCentro</td><td>Mapping fase/centro/CRON per ogni configurazione</td></tr>" +
+                "<tr><td>TaskDaEseguire</td><td>IdTaskDaEseguire</td><td>Job schedulati su Hangfire (1 per mapping)</td></tr>" +
+                "<tr><td>TaskDataReadingAggiornamento</td><td>IdAggiornamento</td><td>Audit log esiti job automatici</td></tr>" +
+                "<tr><td>LavorazioniFasiDataReading</td><td>IDLavorazioneFaseDateReading</td><td>Configurazione lettura dati per fase</td></tr>" +
+                "<tr><td>ProcedureLavorazioni</td><td>IDProceduraLavorazione</td><td>Catalogo procedure (es. Scansione GE)</td></tr>" +
+                "<tr><td>FasiLavorazione</td><td>IdFaseLavorazione</td><td>Fasi operative per procedura</td></tr>" +
+                "<tr><td>CentriLavorazione</td><td>IDCentro</td><td>Centri operativi (es. Genova, Verona)</td></tr>" +
+                "<tr><td>CentriVisibili</td><td>IdCentriVisibili</td><td>Centri visibili per operatore</td></tr>" +
+                "<tr><td>TipologieTotali</td><td>IdTipoTotale</td><td>KPI configurabili (Documenti, Fogli, Pagine...)</td></tr>" +
+                "<tr><td>LavorazioniFasiTipoTotale</td><td>IdLavorazioneFaseTipoTotale</td><td>Associazione fase+procedura -&gt; KPI</td></tr>" +
+                "<tr><td>TipologieTotaliProduzione</td><td>IDProduzioneTotale</td><td>Valori KPI per riga ProduzioneOperatori</td></tr>" +
+                "<tr><td>DatiMailCsvHera16</td><td>id_counter</td><td>Dati raw CSV HERA16 ingestiti da email</td></tr>" +
+                "<tr><td>Clienti</td><td>IdCliente</td><td>Anagrafica clienti</td></tr>" +
+                "<tr><td>ProcedureCliente</td><td>IDproceduraCliente</td><td>Procedure attive per cliente</td></tr>" +
+                "<tr><td>RepartiProduzione</td><td>IdReparti</td><td>Reparti associati alle procedure</td></tr>" +
+                "<tr><td>FormatoDati</td><td>IDFormatoDati</td><td>Formati dati produzione</td></tr>" +
+                "<tr><td>Ruoli</td><td>IdRuolo</td><td>Ruoli autorizzazione</td></tr>" +
+                "<tr><td>TipoTurni</td><td>IdTipoTurno</td><td>Tipologie turno lavorativo</td></tr>" +
+                "<tr><td>Turni</td><td>IdTurno</td><td>Turni operativi</td></tr>" +
+                "</tbody></table>";
             s.Subsections.Add(new ManualSubSection("Panoramica Tabelle", new List<string>{ overview }, true));
-            s.Subsections.Add(new ManualSubSection("Schema ProduzioneOperatori", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE ProduzioneOperatori (\n  ProduzioneOperatoreId INT IDENTITY PRIMARY KEY,\n  Data DATE NOT NULL,\n  OperatoreId INT NOT NULL,\n  ProceduraId INT NOT NULL,\n  FaseId INT NOT NULL,\n  Documenti INT NOT NULL DEFAULT 0,\n  Fogli INT NOT NULL DEFAULT 0,\n  Pagine INT NOT NULL DEFAULT 0,\n  PagineSenzaBianco INT NOT NULL DEFAULT 0,\n  Scarti INT NOT NULL DEFAULT 0,\n  TurnoId INT NULL,\n  CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),\n  UNIQUE (Data, OperatoreId, ProceduraId, FaseId),\n  FOREIGN KEY (OperatoreId) REFERENCES Operatori(OperatoreId),\n  FOREIGN KEY (ProceduraId) REFERENCES ProcedureLavorazioni(ProceduraId),\n  FOREIGN KEY (FaseId) REFERENCES FasiLavorazione(FaseId)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema LavorazioniFasiTipoTotale", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE LavorazioniFasiTipoTotale (\n  FaseId INT NOT NULL,\n  TipoTotaleId INT NOT NULL,\n  Peso DECIMAL(9,2) NULL,\n  PRIMARY KEY (FaseId, TipoTotaleId),\n  FOREIGN KEY (FaseId) REFERENCES FasiLavorazione(IdFaseLavorazione),\n  FOREIGN KEY (TipoTotaleId) REFERENCES TipologieTotali(IdTipoTotale)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TipologieTotali", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TipologieTotali (\n  IdTipoTotale INT IDENTITY PRIMARY KEY,\n  TipoTotale NVARCHAR(120) NOT NULL UNIQUE\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TipologieTotaliProduzione", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TipologieTotaliProduzione (\n  IdProduzioneTotale INT IDENTITY PRIMARY KEY,\n  IdProduzioneOperatore INT NOT NULL,\n  IdTipologiaTotale INT NOT NULL,\n  Totale INT NOT NULL,\n  TipoTotale NVARCHAR(120) NOT NULL,\n  FOREIGN KEY (IdProduzioneOperatore) REFERENCES ProduzioneOperatori(IdProduzione),\n  FOREIGN KEY (IdTipologiaTotale) REFERENCES TipologieTotali(IdTipoTotale)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema QueryProcedureLavorazioni", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE QueryProcedureLavorazioni (\n  IdQuery INT IDENTITY PRIMARY KEY,\n  IdProceduraLavorazione INT NOT NULL,\n  NomeQuery NVARCHAR(150) NOT NULL,\n  TestoSql NVARCHAR(MAX) NOT NULL,\n  Attiva BIT NOT NULL DEFAULT 1,\n  FOREIGN KEY (IdProceduraLavorazione) REFERENCES ProcedureLavorazioni(IdProceduraLavorazione)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TabellaTask", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TabellaTask (\n  IdTask INT IDENTITY PRIMARY KEY,\n  CodiceTask NVARCHAR(120) NOT NULL UNIQUE,\n  Descrizione NVARCHAR(255) NULL,\n  Attivo BIT NOT NULL DEFAULT 1,\n  TipoTask NVARCHAR(60) NOT NULL,\n  ParametriJson NVARCHAR(MAX) NULL,\n  DataInserimento DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TaskDaEseguire", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TaskDaEseguire (\n  IdTaskDaEseguire INT IDENTITY PRIMARY KEY,\n  IdLavorazioniFasiDataReading INT NOT NULL,\n  IdTask INT NOT NULL,\n  IdTaskHangFire NVARCHAR(80) NULL,\n  IdQuery INT NULL,\n  Connessione NVARCHAR(180) NULL,\n  GiorniPrecedenti INT NULL,\n  Stato NVARCHAR(40) NULL,\n  DataStato DATETIME2 NULL,\n  QueryIntegrata NVARCHAR(MAX) NULL,\n  FOREIGN KEY (IdLavorazioniFasiDataReading) REFERENCES LavorazioniFasiDataReading(IdLavorazioniFasiDataReading),\n  FOREIGN KEY (IdTask) REFERENCES TabellaTask(IdTask),\n  FOREIGN KEY (IdQuery) REFERENCES QueryProcedureLavorazioni(IdQuery)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TaskServiceLavorazioni", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TaskServiceLavorazioni (\n  IdTaskServiceLavorazioni INT IDENTITY PRIMARY KEY,\n  IdProceduraLavorazione INT NOT NULL,\n  CodiceServizio NVARCHAR(120) NOT NULL,\n  Stato NVARCHAR(40) NULL,\n  DataUltimoAvvio DATETIME2 NULL,\n  Note NVARCHAR(255) NULL,\n  FOREIGN KEY (IdProceduraLavorazione) REFERENCES ProcedureLavorazioni(IdProceduraLavorazione)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema SettingsProcedureLav", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE SettingsProcedureLav (\n  IdSettingsProcedureLav INT IDENTITY PRIMARY KEY,\n  IdProceduraLavorazione INT NOT NULL,\n  Chiave NVARCHAR(120) NOT NULL,\n  Valore NVARCHAR(4000) NULL,\n  Descrizione NVARCHAR(255) NULL,\n  FOREIGN KEY (IdProceduraLavorazione) REFERENCES ProcedureLavorazioni(IdProceduraLavorazione)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema SettingsTabelle", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE SettingsTabelle (\n  IdSettingsTabelle INT IDENTITY PRIMARY KEY,\n  CodiceTabella NVARCHAR(120) NOT NULL,\n  Chiave NVARCHAR(120) NOT NULL,\n  Valore NVARCHAR(4000) NULL,\n  Descrizione NVARCHAR(255) NULL,\n  UNIQUE (CodiceTabella, Chiave)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema ConfigReportDocumenti", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE ConfigReportDocumenti (\n  IdConfigReportDocumenti INT IDENTITY PRIMARY KEY,\n  IdCliente INT NOT NULL,\n  Colore NVARCHAR(20) NULL,\n  Icona NVARCHAR(80) NULL,\n  Ordinamento INT NULL,\n  Attivo BIT NOT NULL DEFAULT 1,\n  FOREIGN KEY (IdCliente) REFERENCES Clienti(IdCliente)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema Ruoli", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE Ruoli (\n  IdRuolo INT IDENTITY PRIMARY KEY,\n  NomeRuolo NVARCHAR(60) NOT NULL UNIQUE,\n  Descrizione NVARCHAR(255) NULL,\n  Livello INT NULL\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema CentriVisibili", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE CentriVisibili (\n  IdCentroVisibile INT IDENTITY PRIMARY KEY,\n  IdOperatore INT NOT NULL,\n  IdCentro INT NOT NULL,\n  FOREIGN KEY (IdOperatore) REFERENCES Operatori(IdOperatore),\n  FOREIGN KEY (IdCentro) REFERENCES CentriLavorazione(IdCentro),\n  UNIQUE (IdOperatore, IdCentro)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema LinkLavorazioni", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE LinkLavorazioni (\n  IdLinkLavorazioni INT IDENTITY PRIMARY KEY,\n  IdProceduraLavorazione INT NOT NULL,\n  Url NVARCHAR(400) NOT NULL,\n  Descrizione NVARCHAR(255) NULL,\n  Attivo BIT NOT NULL DEFAULT 1,\n  FOREIGN KEY (IdProceduraLavorazione) REFERENCES ProcedureLavorazioni(IdProceduraLavorazione)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TotaliProduzione", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TotaliProduzione (\n  IdTotale INT IDENTITY PRIMARY KEY,\n  DataLavorazione DATE NOT NULL,\n  IdCentro INT NOT NULL,\n  IdProceduraLavorazione INT NOT NULL,\n  IdFaseLavorazione INT NOT NULL,\n  TipoTotale NVARCHAR(120) NOT NULL,\n  Totale INT NOT NULL,\n  FOREIGN KEY (IdCentro) REFERENCES CentriLavorazione(IdCentro),\n  FOREIGN KEY (IdProceduraLavorazione) REFERENCES ProcedureLavorazioni(IdProceduraLavorazione),\n  FOREIGN KEY (IdFaseLavorazione) REFERENCES FasiLavorazione(IdFaseLavorazione)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema Presenti", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE Presenti (\n  IdPresenza INT IDENTITY PRIMARY KEY,\n  IdOperatore INT NOT NULL,\n  Data DATE NOT NULL,\n  Turno INT NOT NULL,\n  Note NVARCHAR(255) NULL,\n  UNIQUE (IdOperatore, Data, Turno),\n  FOREIGN KEY (IdOperatore) REFERENCES Operatori(IdOperatore)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TipiLetturaDati", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TipiLetturaDati (\n  IdTipoLettura INT IDENTITY PRIMARY KEY,\n  Codice NVARCHAR(60) NOT NULL UNIQUE,\n  Descrizione NVARCHAR(255) NULL,\n  Attivo BIT NOT NULL DEFAULT 1\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema TipoTurni", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE TipoTurni (\n  IdTipoTurno INT IDENTITY PRIMARY KEY,\n  NomeTurno NVARCHAR(80) NOT NULL UNIQUE,\n  Descrizione NVARCHAR(255) NULL\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema AppStato", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE AppStato (\n  IdAppStato INT IDENTITY PRIMARY KEY,\n  Chiave NVARCHAR(120) NOT NULL UNIQUE,\n  Valore NVARCHAR(4000) NULL,\n  AggiornatoIl DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema ResultTask", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE ResultTask (\n  IdResultTask INT IDENTITY PRIMARY KEY,\n  IdTaskDaEseguire INT NOT NULL,\n  DataEsecuzione DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),\n  Esito BIT NULL,\n  Messaggio NVARCHAR(2000) NULL,\n  FOREIGN KEY (IdTaskDaEseguire) REFERENCES TaskDaEseguire(IdTaskDaEseguire)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema ResponseMessageText", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE ResponseMessageText (\n  IdResponse INT IDENTITY PRIMARY KEY,\n  Codice NVARCHAR(120) NOT NULL UNIQUE,\n  Messaggio NVARCHAR(1000) NOT NULL,\n  Categoria NVARCHAR(80) NULL\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema Hash", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE Hash (\n  IdHash INT IDENTITY PRIMARY KEY,\n  Chiave NVARCHAR(120) NOT NULL,\n  Valore NVARCHAR(4000) NULL,\n  Namespace NVARCHAR(120) NULL,\n  UNIQUE (Chiave, Namespace)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema List", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE List (\n  Id BIGINT IDENTITY PRIMARY KEY,\n  [Key] NVARCHAR(100) NOT NULL,\n  Value NVARCHAR(MAX) NULL,\n  ExpireAt DATETIME2 NULL\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema Set", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE [Set] (\n  IdSet INT IDENTITY PRIMARY KEY,\n  [Key] NVARCHAR(100) NOT NULL,\n  Value NVARCHAR(400) NOT NULL,\n  Score FLOAT NULL,\n  ExpireAt DATETIME2 NULL,\n  UNIQUE ([Key], Value)\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema Schema", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE Schema (\n  IdSchema INT IDENTITY PRIMARY KEY,\n  Version INT NOT NULL,\n  AppliedOn DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema Server", new List<string>{
-                "<div class='diagram-block'>CREATE TABLE Server (\n  IdServer INT IDENTITY PRIMARY KEY,\n  Hostname NVARCHAR(120) NOT NULL,\n  Indirizzo NVARCHAR(255) NULL,\n  Attivo BIT NOT NULL DEFAULT 1,\n  DataRegistrazione DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()\n);</div>" }, true));
-            s.Subsections.Add(new ManualSubSection("Schema SettingsTabelle (Uso)", new List<string>{
-                "Impiego di SettingsTabelle per memorizzare configurazioni generiche condivise.",
-                "Chiave composta (CodiceTabella, Chiave) per evitare duplicati.",
-                "Utilizzabile per feature flag o parametri UI runtime."}));
-            s.Subsections.Add(new ManualSubSection("Spiegazione Tabelle Chiave", new List<string>{
-                "ProduzioneOperatori: registra le attività inserite manualmente dagli operatori.",
-                "ProduzioneSistema: dati acquisiti/normalizzati da pipeline automatiche.",
-                "TipologieTotaliProduzione: granularità dei KPI legati a ogni riga di produzione.",
-                "LavorazioniFasiTipoTotale: configurazione relazione fase -> KPI.",
-                "TaskDaEseguire / TabellaTask: orchestrano la schedulazione delle letture e trasformazioni.",
-                "ResultTask: auditing degli esiti dei job custom.",
-                "QueryProcedureLavorazioni: repository di query parametriche per procedure.",
-                "SettingsProcedureLav: parametri specifici per singola procedura.",
-                "ConfigReportDocumenti: personalizzazione grafica/ordinamento report clienti."}));
+
+            // ── CREATE TABLE scripts ────────────────────────────────────────
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — CentriLavorazione", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[CentriLavorazione] (\n    [IDCentro]  INT          IDENTITY(1,1) NOT NULL,\n    [Centro]    VARCHAR(50)  NOT NULL,\n    [Sigla]     VARCHAR(2)   NULL,\n    CONSTRAINT [PK_CENTRI_LAV]     PRIMARY KEY ([IDCentro]),\n    CONSTRAINT [IX_CentriLavorazione] UNIQUE ([Centro])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — Ruoli", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[Ruoli] (\n    [IdRuolo]  INT           IDENTITY(1,1) NOT NULL,\n    [Ruolo]    NVARCHAR(50)  NOT NULL,\n    CONSTRAINT [PK_Ruoli] PRIMARY KEY ([IdRuolo])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — Operatori", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[Operatori] (\n    [IDOperatore]  INT           IDENTITY(1,1) NOT NULL,\n    [Operatore]    VARCHAR(50)   NOT NULL,\n    [Azienda]      VARCHAR(50)   NULL,\n    [Password]     VARCHAR(300)  NULL,\n    [IDCentro]     INT           NOT NULL,\n    [IdRuolo]      INT           NOT NULL,\n    CONSTRAINT [PK_Table_1]                  PRIMARY KEY ([IDOperatore]),\n    CONSTRAINT [IX_Operatori]                UNIQUE      ([Operatore]),\n    CONSTRAINT [FK_Operatori_CentriLavorazione] FOREIGN KEY ([IDCentro])  REFERENCES [CentriLavorazione]([IDCentro]),\n    CONSTRAINT [FK_Operatori_Ruoli]            FOREIGN KEY ([IdRuolo])   REFERENCES [Ruoli]([IdRuolo])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — CentriVisibili", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[CentriVisibili] (\n    [IdCentriVisibili]  INT  IDENTITY(1,1) NOT NULL,\n    [IdOperatore]       INT  NOT NULL,\n    [IdCentro]          INT  NOT NULL,\n    CONSTRAINT [PK_CentriVisibili]              PRIMARY KEY ([IdCentriVisibili]),\n    CONSTRAINT [FK_CentriVisibili_Operatori]    FOREIGN KEY ([IdOperatore]) REFERENCES [Operatori]([IDOperatore]),\n    CONSTRAINT [FK_CentriVisibili_CentriLavorazione] FOREIGN KEY ([IdCentro]) REFERENCES [CentriLavorazione]([IDCentro])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — OperatoriNormalizzati", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[OperatoriNormalizzati] (\n    [IdNorm]                   INT           IDENTITY(1,1) NOT NULL,\n    [OperatoreDaNormalizzare]  VARCHAR(100)  NOT NULL,\n    [OperatoreNormalizzato]    VARCHAR(100)  NOT NULL,\n    CONSTRAINT [PK_OperatoriNormalizzati]     PRIMARY KEY ([IdNorm]),\n    CONSTRAINT [IX_OperatoriNormalizzati]     UNIQUE      ([OperatoreDaNormalizzare])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — RepartiProduzione", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[RepartiProduzione] (\n    [IdReparti]  INT          IDENTITY(1,1) NOT NULL,\n    [Reparti]    VARCHAR(50)  NULL,\n    CONSTRAINT [PK_RepartiProduzione] PRIMARY KEY ([IdReparti])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — FormatoDati", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[FormatoDati] (\n    [IDFormatoDati]          INT          IDENTITY(1,1) NOT NULL,\n    [FormatoDatiProduzione]  VARCHAR(50)  NULL,\n    CONSTRAINT [PK_FormatoDati] PRIMARY KEY ([IDFormatoDati])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — Clienti", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[Clienti] (\n    [IdCliente]            INT           IDENTITY(1,1) NOT NULL,\n    [NomeCliente]          VARCHAR(50)   NOT NULL,\n    [IdCentroLavorazione]  INT           NOT NULL,\n    [DataCreazioneCliente] DATETIME      NULL,\n    CONSTRAINT [PK_Clienti]                  PRIMARY KEY ([IdCliente]),\n    CONSTRAINT [IX_Clienti]                  UNIQUE ([NomeCliente], [IdCentroLavorazione]),\n    CONSTRAINT [FK_Clienti_CentriLavorazione] FOREIGN KEY ([IdCentroLavorazione]) REFERENCES [CentriLavorazione]([IDCentro])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — ProcedureCliente", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[ProcedureCliente] (\n    [IDproceduraCliente]  INT           IDENTITY(1,1) NOT NULL,\n    [ProceduraCliente]    VARCHAR(50)   NOT NULL,\n    [DescrizioneProcedura] VARCHAR(100) NULL,\n    [Commessa]            VARCHAR(50)   NULL,\n    [IDCliente]           INT           NOT NULL,\n    [IDCentro]            INT           NULL,\n    [IDOperatore]         INT           NULL,\n    [DataInserimento]     DATETIME      NULL,\n    CONSTRAINT [PK_ProcedureCliente]             PRIMARY KEY ([IDproceduraCliente]),\n    CONSTRAINT [IX_ProcedureCliente]             UNIQUE ([ProceduraCliente]),\n    CONSTRAINT [FK_ProcedureCliente_Clienti]     FOREIGN KEY ([IDCliente])    REFERENCES [Clienti]([IdCliente]),\n    CONSTRAINT [FK_ProcedureCliente_Operatori]   FOREIGN KEY ([IDOperatore])  REFERENCES [Operatori]([IDOperatore])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — ProcedureLavorazioni", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[ProcedureLavorazioni] (\n    [IDProceduraLavorazione]  INT            IDENTITY(1,1) NOT NULL,\n    [NomeProcedura]           VARCHAR(100)   NOT NULL,\n    [NomeProceduraProgramma]  VARCHAR(100)   NULL,\n    [NomeServizio]            VARCHAR(100)   NULL,\n    [Note]                    VARCHAR(1000)  NULL,\n    [LogoBase64]              VARCHAR(MAX)   NULL,\n    [IDCentro]                INT            NULL,\n    [IDFormatoDatiProduzione] INT            NOT NULL,\n    [IDproceduraCliente]      INT            NULL,\n    [IDOperatore]             INT            NULL,\n    [IDReparti]               INT            NULL,\n    [DataInserimento]         DATETIME       NULL,\n    CONSTRAINT [PK_ProcedureLavorazioni]               PRIMARY KEY ([IDProceduraLavorazione]),\n    CONSTRAINT [IX_ProcedureLavorazioni]               UNIQUE ([NomeProcedura]),\n    CONSTRAINT [FK_ProcedureLavorazioni_FormatoDati]   FOREIGN KEY ([IDFormatoDatiProduzione]) REFERENCES [FormatoDati]([IDFormatoDati]),\n    CONSTRAINT [FK_ProcedureLavorazioni_ProcedureCliente] FOREIGN KEY ([IDproceduraCliente])  REFERENCES [ProcedureCliente]([IDproceduraCliente]),\n    CONSTRAINT [FK_ProcedureLavorazioni_Operatori]     FOREIGN KEY ([IDOperatore])            REFERENCES [Operatori]([IDOperatore]),\n    CONSTRAINT [FK_ProcedureLavorazioni_RepartiProduzione] FOREIGN KEY ([IDReparti])          REFERENCES [RepartiProduzione]([IdReparti])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — FasiLavorazione", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[FasiLavorazione] (\n    [IdFaseLavorazione]  INT          IDENTITY(1,1) NOT NULL,\n    [FaseLavorazione]    VARCHAR(50)  NULL,\n    CONSTRAINT [PK_FasiLavorazione] PRIMARY KEY ([IdFaseLavorazione])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — TipoTurni + Turni", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[TipoTurni] (\n    [IdTipoTurno]  INT          IDENTITY(1,1) NOT NULL,\n    [TipoTurno]    VARCHAR(50)  NULL,\n    CONSTRAINT [PK_TipoTurni] PRIMARY KEY ([IdTipoTurno])\n);\n\nCREATE TABLE [dbo].[Turni] (\n    [IdTurno]  INT           IDENTITY(1,1) NOT NULL,\n    [Turno]    VARCHAR(MAX)  NULL,\n    CONSTRAINT [PK_Table_1_1] PRIMARY KEY ([IdTurno])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — TipologieTotali", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[TipologieTotali] (\n    [IdTipoTotale]  INT          IDENTITY(1,1) NOT NULL,\n    [TipoTotale]    VARCHAR(50)  NOT NULL,\n    CONSTRAINT [PK_TipologieTotali]    PRIMARY KEY ([IdTipoTotale]),\n    CONSTRAINT [IX_TipologieTotali]    UNIQUE      ([TipoTotale])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — LavorazioniFasiTipoTotale", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[LavorazioniFasiTipoTotale] (\n    [IdLavorazioneFaseTipoTotale]  INT  IDENTITY(1,1) NOT NULL,\n    [IdFase]                       INT  NOT NULL,\n    [IdProceduraLavorazione]       INT  NOT NULL,\n    [IdTipologiaTotale]            INT  NOT NULL,\n    CONSTRAINT [PK_LavorazioniFasiTipoTotale] PRIMARY KEY ([IdLavorazioneFaseTipoTotale]),\n    CONSTRAINT [IX_LavorazioniFasiTipoTotale] UNIQUE ([IdFase],[IdProceduraLavorazione],[IdTipologiaTotale]),\n    CONSTRAINT [FK_LavorazioniFasiTipoTotale_FasiLavorazione]    FOREIGN KEY ([IdFase])                 REFERENCES [FasiLavorazione]([IdFaseLavorazione]),\n    CONSTRAINT [FK_LavorazioniFasiTipoTotale_ProcedureLavorazioni] FOREIGN KEY ([IdProceduraLavorazione]) REFERENCES [ProcedureLavorazioni]([IDProceduraLavorazione]),\n    CONSTRAINT [FK_LavorazioniFasiTipoTotale_TipologieTotali1]   FOREIGN KEY ([IdTipologiaTotale])       REFERENCES [TipologieTotali]([IdTipoTotale])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — ProduzioneOperatori", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[ProduzioneOperatori] (\n    [IdProduzione]           INT            IDENTITY(1,1) NOT NULL,\n    [IdOperatore]            INT            NOT NULL,\n    [IdProceduraLavorazione] INT            NOT NULL,\n    [IdFaseLavorazione]      INT            NOT NULL,\n    [IdCentro]               INT            NULL,\n    [IdTurno]                INT            NULL,\n    [IdReparti]              INT            NULL,\n    [DataLavorazione]        DATETIME       NULL,\n    [Documenti]              INT            NULL,\n    [Fogli]                  INT            NULL,\n    [Pagine]                 INT            NULL,\n    [PagineSenzaBianco]      INT            NULL,\n    [Scarti]                 INT            NULL,\n    [AltraUtenza]            NVARCHAR(100)  NULL,\n    [Note]                   NVARCHAR(100)  NULL,\n    [FlagInserimentoManuale] BIT            NULL,\n    [FlagInserimentoAuto]    BIT            NULL,\n    [DataAggiornamento]      DATETIME       NULL,\n    CONSTRAINT [PK_ProduzioneOperatori] PRIMARY KEY ([IdProduzione]),\n    INDEX [IX_ProduzioneOperatori] ([IdOperatore],[IdProceduraLavorazione],[IdFaseLavorazione],[IdTurno],[IdCentro]),\n    CONSTRAINT [FK_ProduzioneOperatori_Table_1]           FOREIGN KEY ([IdOperatore])            REFERENCES [Operatori]([IDOperatore]),\n    CONSTRAINT [FK_ProduzioneOperatori_ProcedureLavorazioni] FOREIGN KEY ([IdProceduraLavorazione]) REFERENCES [ProcedureLavorazioni]([IDProceduraLavorazione]),\n    CONSTRAINT [FK_ProduzioneOperatori_FasiLavorazione]   FOREIGN KEY ([IdFaseLavorazione])       REFERENCES [FasiLavorazione]([IdFaseLavorazione]),\n    CONSTRAINT [FK_ProduzioneOperatori_Turni]             FOREIGN KEY ([IdTurno])                REFERENCES [Turni]([IdTurno]),\n    CONSTRAINT [FK_ProduzioneOperatori_RepartiProduzione] FOREIGN KEY ([IdReparti])              REFERENCES [RepartiProduzione]([IdReparti])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — TipologieTotaliProduzione", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[TipologieTotaliProduzione] (\n    [IDProduzioneTotale]     INT           IDENTITY(1,1) NOT NULL,\n    [IDProduzioneOperatore]  INT           NOT NULL,\n    [IDTipologiaTotale]      INT           NOT NULL,\n    [TipoTotale]             VARCHAR(MAX)  NULL,\n    [Totale]                 INT           NULL,\n    CONSTRAINT [PK_TipologieTotaliProduzione] PRIMARY KEY ([IDProduzioneTotale]),\n    CONSTRAINT [FK_TipologieTotaliProduzione_ProduzioneOperatori] FOREIGN KEY ([IDProduzioneOperatore]) REFERENCES [ProduzioneOperatori]([IdProduzione]),\n    CONSTRAINT [FK_TipologieTotaliProduzione_TipologieTotali]     FOREIGN KEY ([IDTipologiaTotale])      REFERENCES [TipologieTotali]([IdTipoTotale])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — ProduzioneSistema", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[ProduzioneSistema] (\n    [IdProduzioneSistema]    INT           IDENTITY(1,1) NOT NULL,\n    [IdOperatore]            INT           NOT NULL,\n    [IdProceduraLavorazione] INT           NOT NULL,\n    [IdFaseLavorazione]      INT           NOT NULL,\n    [IdCentro]               INT           NOT NULL,\n    [DataLavorazione]        DATETIME      NULL,\n    [DataAggiornamento]      DATETIME      NULL,\n    [Operatore]              VARCHAR(MAX)  NULL,\n    [OperatoreNonRiconosciuto] VARCHAR(MAX) NULL,\n    [Documenti]              INT           NULL,\n    [Fogli]                  INT           NULL,\n    [Pagine]                 INT           NULL,\n    [PagineSenzaBianco]      INT           NULL,\n    [Scarti]                 INT           NULL,\n    [FlagInserimentoManuale] BIT           NULL,\n    [FlagInserimentoAuto]    BIT           NULL,\n    [FlagDataReading]        BIT           NULL,\n    CONSTRAINT [PK_ProduzioneSistema] PRIMARY KEY ([IdProduzioneSistema]),\n    INDEX [IX_ProduzioneSistema] ([IdOperatore],[IdProceduraLavorazione],[IdFaseLavorazione],[DataLavorazione],[IdCentro]),\n    CONSTRAINT [FK_ProduzioneSistema_Table_1]              FOREIGN KEY ([IdOperatore])            REFERENCES [Operatori]([IDOperatore]),\n    CONSTRAINT [FK_ProduzioneSistema_ProcedureLavorazioni] FOREIGN KEY ([IdProceduraLavorazione]) REFERENCES [ProcedureLavorazioni]([IDProceduraLavorazione]),\n    CONSTRAINT [FK_ProduzioneSistema_FasiLavorazione]      FOREIGN KEY ([IdFaseLavorazione])       REFERENCES [FasiLavorazione]([IdFaseLavorazione]),\n    CONSTRAINT [FK_ProduzioneSistema_CentriLavorazione]    FOREIGN KEY ([IdCentro])               REFERENCES [CentriLavorazione]([IDCentro])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — LavorazioniFasiDataReading", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[LavorazioniFasiDataReading] (\n    [IDLavorazioneFaseDateReading]  INT  IDENTITY(1,1) NOT NULL,\n    [IdProceduraLavorazione]        INT  NOT NULL,\n    [IdFaseLavorazione]             INT  NOT NULL,\n    [FlagDataReading]               BIT  NULL,\n    CONSTRAINT [PK_SettingsProcedureLav] PRIMARY KEY ([IDLavorazioneFaseDateReading]),\n    CONSTRAINT [FK_SettingsProcedureLav_ProcedureLavorazioni] FOREIGN KEY ([IdProceduraLavorazione]) REFERENCES [ProcedureLavorazioni]([IDProceduraLavorazione]),\n    CONSTRAINT [FK_SettingsProcedureLav_FasiLavorazione]      FOREIGN KEY ([IdFaseLavorazione])       REFERENCES [FasiLavorazione]([IdFaseLavorazione])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — ConfigurazioneFontiDati", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[ConfigurazioneFontiDati] (\n    [IdConfigurazione]         INT            IDENTITY(1,1) NOT NULL,\n    [CodiceConfigurazione]     VARCHAR(100)   NOT NULL,\n    [TipoFonte]                VARCHAR(50)    NULL,\n    [DescrizioneConfigurazione] NVARCHAR(500) NULL,\n    [ConnectionStringName]     VARCHAR(100)   NULL,\n    [HandlerClassName]         VARCHAR(200)   NULL,\n    [TestoQuery]               NVARCHAR(MAX)  NULL,\n    [CreatoDa]                 VARCHAR(100)   NULL,\n    [CreatoIl]                 DATETIME       NOT NULL DEFAULT GETDATE(),\n    [ModificatoDa]             VARCHAR(100)   NULL,\n    [ModificatoIl]             DATETIME       NULL,\n    CONSTRAINT [PK__Configur__826F74F04A5D3C25] PRIMARY KEY ([IdConfigurazione]),\n    CONSTRAINT [UQ_ConfigFonte_Codice]           UNIQUE ([CodiceConfigurazione]),\n    INDEX [IX_ConfigFonte_Codice]    ([CodiceConfigurazione]),\n    INDEX [IX_ConfigFonte_TipoFonte] ([TipoFonte])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — ConfigurazioneFaseCentro", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[ConfigurazioneFaseCentro] (\n    [IdFaseCentro]           INT            IDENTITY(1,1) NOT NULL,\n    [IdConfigurazione]       INT            NOT NULL,\n    [IdProceduraLavorazione] INT            NOT NULL,\n    [IdFaseLavorazione]      INT            NOT NULL,\n    [IdCentro]               INT            NOT NULL,\n    [CronExpression]         NVARCHAR(100)  NULL,\n    [GiorniPrecedenti]       INT            NULL,\n    [TestoQueryTask]         NVARCHAR(MAX)  NULL,\n    [HandlerClassName]       NVARCHAR(255)  NULL,\n    [MailServiceCode]        NVARCHAR(100)  NULL,\n    [TipoTask]               NVARCHAR(50)   NULL,\n    [TaskDescription]        NVARCHAR(255)  NULL,\n    [FlagAttiva]             BIT            NOT NULL DEFAULT 1,\n    CONSTRAINT [PK__Configur__367E17090E01CBD1] PRIMARY KEY ([IdFaseCentro]),\n    CONSTRAINT [UQ_FaseCentro_Fase_Cron]   UNIQUE ([IdConfigurazione],[IdFaseLavorazione],[CronExpression]),\n    CONSTRAINT [UQ_FaseCentro_Unique]      UNIQUE ([IdConfigurazione],[IdProceduraLavorazione],[IdFaseLavorazione],[IdCentro]),\n    INDEX [IX_FaseCentro_Config] ([IdConfigurazione]),\n    CONSTRAINT [FK_FaseCentro_Configurazione] FOREIGN KEY ([IdConfigurazione])       REFERENCES [ConfigurazioneFontiDati]([IdConfigurazione]),\n    CONSTRAINT [FK_FaseCentro_Procedura]     FOREIGN KEY ([IdProceduraLavorazione]) REFERENCES [ProcedureLavorazioni]([IDProceduraLavorazione]),\n    CONSTRAINT [FK_FaseCentro_Fase]          FOREIGN KEY ([IdFaseLavorazione])       REFERENCES [FasiLavorazione]([IdFaseLavorazione]),\n    CONSTRAINT [FK_FaseCentro_Centro]        FOREIGN KEY ([IdCentro])               REFERENCES [CentriLavorazione]([IDCentro])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — TaskDaEseguire", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[TaskDaEseguire] (\n    [IdTaskDaEseguire]           INT            IDENTITY(1,1) NOT NULL,\n    [IdLavorazioneFaseDateReading] INT          NOT NULL,\n    [IdConfigurazioneDatabase]   INT            NULL,\n    [IdTaskHangFire]             NVARCHAR(100)  NULL,\n    [CronExpression]             VARCHAR(50)    NULL,\n    [GiorniPrecedenti]           INT            NULL,\n    [Stato]                      VARCHAR(50)    NULL,\n    [DataStato]                  DATETIME       NULL,\n    [Enabled]                    BIT            NOT NULL DEFAULT 1,\n    [LastRunUtc]                 DATETIME       NULL,\n    [LastError]                  VARCHAR(1000)  NULL,\n    CONSTRAINT [PK_Table_1_3] PRIMARY KEY ([IdTaskDaEseguire]),\n    INDEX [IX_Task_ConfigDB] ([IdConfigurazioneDatabase]) WHERE [IdConfigurazioneDatabase] IS NOT NULL,\n    CONSTRAINT [FK_TaskDaEseguire_LavorazioniFasiDataReading] FOREIGN KEY ([IdLavorazioneFaseDateReading]) REFERENCES [LavorazioniFasiDataReading]([IDLavorazioneFaseDateReading]),\n    CONSTRAINT [FK_TaskDaEseguire_ConfigurazioneFontiDati]    FOREIGN KEY ([IdConfigurazioneDatabase])     REFERENCES [ConfigurazioneFontiDati]([IdConfigurazione])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — TaskDataReadingAggiornamento", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[TaskDataReadingAggiornamento] (\n    [IdAggiornamento]       INT           IDENTITY(1,1) NOT NULL,\n    [IdTask]                INT           NULL,\n    [Lavorazione]           VARCHAR(MAX)  NULL,\n    [FaseLavorazione]       VARCHAR(MAX)  NULL,\n    [DataInizioLavorazione] DATETIME      NULL,\n    [DataFineLavorazione]   DATETIME      NULL,\n    [DataAggiornamento]     DATETIME      NULL,\n    [Esito]                 BIT           NULL,\n    [DescrizioneEsito]      VARCHAR(MAX)  NULL,\n    [RecordElaborati]       INT           NULL,\n    CONSTRAINT [PK_DataReadingAggiornamento] PRIMARY KEY ([IdAggiornamento])\n);</div>"}, true));
+
+            s.Subsections.Add(new ManualSubSection("CREATE TABLE — DatiMailCsvHera16", new List<string>{
+                "<div class='diagram-block'>CREATE TABLE [dbo].[DatiMailCsvHera16] (\n    [id_counter]              INT           IDENTITY(1,1) NOT NULL,\n    [nome_file]               VARCHAR(100)  NULL,\n    [identificativo_allegato] INT           NULL,\n    [codice_mercato]          VARCHAR(50)   NULL,\n    [codice_offerta]          VARCHAR(50)   NULL,\n    [codice_scatola]          VARCHAR(50)   NULL,\n    [tipo_documento]          VARCHAR(50)   NULL,\n    [progr_scansione]         VARCHAR(50)   NULL,\n    [operatore_scan]          VARCHAR(50)   NULL,\n    [operatore_classificazione] VARCHAR(50) NULL,\n    [operatore_index]         VARCHAR(50)   NULL,\n    [data_scansione]          DATETIME      NULL,\n    [data_classificazione]    DATETIME      NULL,\n    [data_index]              DATETIME      NULL,\n    [data_pubblicazione]      DATETIME      NULL,\n    [data_caricamento_file]   DATETIME      NULL,\n    CONSTRAINT [PK_DatiMailCsvHera16] PRIMARY KEY ([id_counter])\n);</div>"}, true));
         });
 
-        // 10 APPENDICI (indice aggiornato includendo nuova sezione)
+        // 13 APPENDICI
         Add("APPENDICI", s =>
         {
             s.Subsections.Add(new ManualSubSection("Glossario", new List<string>{
-                "Lavorazione: insieme di regole di produzione.","Fase: step operativo associato a KPI.","Totale: valore numerico aggregato.","Job: attività pianificata in background.","Normalizzazione: unificazione alias operatore.","DTO: oggetto trasferimento dati disaccoppiato dall'entità."}));
-            s.Subsections.Add(new ManualSubSection("Indice Capitoli", new List<string>{
-                "1. Introduzione","2. Informazioni sulla Sicurezza","3. Panoramica del Prodotto","4. Installazione e Configurazione","5. Operazioni","6. Manutenzione","7. Risoluzione dei Problemi","8. Specifiche Tecniche","9. Schemi Database","10. Appendici","11. Allegati Documentazione"}));
+                "TipoFonteData: enum SQL (0) | HandlerIntegrato (1) — tipo di sorgente dati per un task.",
+                "ConfigurazioneFaseCentro: mapping Fase+Centro+CRON+Query che genera un TaskDaEseguire.",
+                "ProductionJobRunner: entry point statico Hangfire, gestisce pipeline Acquire→Elaborate→Persist.",
+                "UnifiedHandlerRegistry: registro GoF di tutti gli IProductionDataHandler auto-scoperti da DI.",
+                "Not_Found_Oper: operatore raw non censito in OperatoriNormalizzati.",
+                "GiorniPrecedenti: numero di giorni prima di oggi usato per calcolare il range date del job.",
+                "Mapperly: libreria mapping compile-time (no runtime reflection), tutti i mapper sono Singleton.",
+                "IDbContextFactory: pattern EF Core usato nei servizi per creare DbContext scope-safe.",
+                "POM (Page Object Model): pattern di test Playwright — selettori incapsulati in classi dedicati."}));
+            s.Subsections.Add(new ManualSubSection("Indice Sezioni", new List<string>{
+                "1. Introduzione","2. Architettura e Layer","3. Configurazione Fonti Dati","4. Handler System",
+                "5. Pipeline Elaborazione Operatori","6. Autenticazione e Sicurezza","7. Logging",
+                "8. Dependency Injection","9. Installazione e Configurazione","10. Risoluzione dei Problemi",
+                "11. Specifiche Tecniche","12. Schemi Database","13. Appendici","14. Allegati"}));
         });
 
         return list;
@@ -445,65 +627,47 @@
         return sb.ToString();
     }
 
-    private string Slug(string input) => Regex.Replace(input.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
-    private void PerformSearch()
-    {
-        if (string.IsNullOrWhiteSpace(searchTerm)) { ClearSearch(); return; }
-        var pattern = Regex.Escape(searchTerm);
-        var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);
-        searchResults = regex.Matches(System.Web.HttpUtility.HtmlDecode(manualHtmlOriginal)).Count;
-        displayedHtml = searchResults == 0 ? manualHtmlOriginal : regex.Replace(manualHtmlOriginal, m => $"<mark class='highlight-search'>{System.Web.HttpUtility.HtmlEncode(m.Value)}</mark>");
-        StateHasChanged();
-    }
-
-    private void ClearSearch()
-    { searchTerm = string.Empty; searchResults = 0; displayedHtml = manualHtmlOriginal; StateHasChanged(); }
+    private static string Slug(string input) => Regex.Replace(input.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
 
     private async Task ScrollToSection(string id)
-    { activeSectionId = id; await JSRuntime.InvokeVoidAsync("scrollToManualSection", "manuale-tecnico-content", id); }
-
-    private async Task OnSearchKeyDown(KeyboardEventArgs e)
-    { if (e.Key == "Enter") PerformSearch(); }
-
-    private void ManualClickCapture(MouseEventArgs e) { }
-
-    private async Task ExportToPdf()
     {
-        try
-        {
-            isExportingPdf = true; StateHasChanged();
-            var plain = Regex.Replace(manualHtmlOriginal, "<[^>]+>", string.Empty);
-            var fileName = $"Manuale_Tecnico_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-            var pdfBytes = await PdfExportService.GeneratePdfFromTextAsync(plain, "MANUALE TECNICO");
-            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(pdfBytes), "application/pdf");
-            await JSRuntime.InvokeVoidAsync("showNotification", "Manuale tecnico esportato in PDF con successo!", "success");
-        }
-        catch (Exception ex)
-        { await JSRuntime.InvokeVoidAsync("showNotification", $"Errore durante l'esportazione PDF: {ex.Message}", "error"); }
-        finally { isExportingPdf = false; StateHasChanged(); }
+        activeSectionId = id;
+        await JSRuntime.InvokeVoidAsync("scrollToManualSection", "manuale-tecnico-content", id);
     }
+
+    /// <summary>Restituisce la classe CSS del bottone indice per la sezione attiva.</summary>
+    private string GetSectionClass(string id)
+        => activeSectionId == id ? "indice-attivo" : string.Empty;
+
+    /// <summary>Apre il dialogo di stampa del browser: l'utente sceglie 'Salva come PDF'.
+    /// Il titolo del PDF viene impostato su 'DematReports_Manuale_Tecnico' tramite document.title.
+    /// Il CSS @@media print nasconde la UI e mostra solo il contenuto del manuale.</summary>
+    private async Task PrintAsync()
+        => await JSRuntime.InvokeVoidAsync("printWithTitle", "DematReports_Manuale_Tecnico");
 }
 
 <script>
     window.scrollToManualSection = (containerId, sectionId) => {
         const container = document.getElementById(containerId);
-        const element = document.getElementById(sectionId);
+        const element   = document.getElementById(sectionId);
         if (container && element) {
-            const top = element.offsetTop - 10;
-            container.scrollTo({ top: top, behavior: 'smooth' });
+            container.scrollTo({ top: element.offsetTop - 10, behavior: 'smooth' });
             element.classList.add('section-selected');
-            setTimeout(()=> element.classList.remove('section-selected'), 2500);
+            setTimeout(() => element.classList.remove('section-selected'), 2500);
         }
     };
-    window.downloadFile = (fileName, base64Data, contentType) => {
-        const linkSource = `data:${contentType};base64,${base64Data}`;
-        const a = document.createElement('a');
-        a.href = linkSource;
-        a.download = fileName;
-        a.click();
+
+    window.printWithTitle = (title) => {
+        const prev = document.title;
+        document.title = title;
+        window.print();
+        // Ripristina il titolo dopo che la finestra di stampa si chiude
+        setTimeout(() => { document.title = prev; }, 500);
     };
-    window.showNotification = (m,t) => { if(t==='success') console.log(''+m); else console.error(' '+m); };
 </script>
+
+
+
 
 
 

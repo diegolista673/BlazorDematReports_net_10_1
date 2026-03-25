@@ -20,6 +20,12 @@ namespace Entities.Helpers
         private static readonly object _lockObject = new();
 
         /// <summary>
+        /// Se false (default), LogQueryExecution è no-op — nessuna scrittura su disco.
+        /// Impostato da Initialize leggendo Logging:EnableQueryExecutionLog da appsettings.
+        /// </summary>
+        private static bool _isEnabled;
+
+        /// <summary>
         /// Metadati del metodo per performance e caching.
         /// </summary>
         private class MethodMetadata
@@ -39,13 +45,21 @@ namespace Entities.Helpers
         /// <param name="loggerFactory">Factory per la creazione dei logger Microsoft (opzionale).</param>
         /// <param name="nlogLoggerName">Nome del logger NLog da utilizzare (opzionale).</param>
         /// <param name="projectContext">Contesto del progetto (es: "BlazorDematReports", "DataReading", "LibraryLavorazioni").</param>
+        /// <param name="enableQueryExecutionLog">
+        /// Abilita il log verboso delle query. Leggere da <c>Logging:EnableQueryExecutionLog</c> in appsettings.
+        /// Default <c>false</c>: nessuna scrittura su disco, adatto a collaudo e produzione.
+        /// Impostare <c>true</c> solo in Development tramite appsettings.Development.json.
+        /// </param>
         public static void Initialize(
             ILoggerFactory? loggerFactory = null,
             string? nlogLoggerName = null,
-            string projectContext = "")
+            string projectContext = "",
+            bool enableQueryExecutionLog = false)
         {
             lock (_lockObject)
             {
+                _isEnabled = enableQueryExecutionLog;
+
                 // Inizializza Microsoft Logger se fornito
                 if (loggerFactory != null)
                 {
@@ -91,6 +105,11 @@ namespace Entities.Helpers
             [CallerMemberName] string callerMemberName = "",
             [CallerFilePath] string callerFilePath = "")
         {
+            // Se il log è disabilitato (produzione/collaudo) esce immediatamente senza alcun I/O.
+            // Abilitare tramite Logging:EnableQueryExecutionLog=true in appsettings.Development.json.
+            if (!_isEnabled && logger == null && nlogLogger == null)
+                return;
+
             try
             {
                 var methodInfo = GetOrCacheMethodMetadata(callerMemberName, callerFilePath);
@@ -370,9 +389,13 @@ namespace Entities.Helpers
 
         /// <summary>
         /// Estrae la descrizione del metodo dai commenti XML del file sorgente.
+        /// Attiva solo in Development (quando _isEnabled=true): in produzione i file .cs non esistono.
         /// </summary>
         private static string? ExtractMethodDescription(string methodName, string filePath)
         {
+            // Legge il file sorgente solo se il log è abilitato e il file esiste (Development).
+            if (!_isEnabled)
+                return null;
             try
             {
                 if (!File.Exists(filePath))

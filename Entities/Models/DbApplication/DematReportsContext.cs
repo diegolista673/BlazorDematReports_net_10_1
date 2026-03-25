@@ -350,9 +350,7 @@ public partial class DematReportsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("tipo_documento");
-            entity.Property(e => e.elaborato_demat_reports_il)
-                .HasColumnType("datetime")
-                .HasColumnName("elaborato_demat_reports_il");
+
         });
 
         modelBuilder.Entity<Job>(entity =>

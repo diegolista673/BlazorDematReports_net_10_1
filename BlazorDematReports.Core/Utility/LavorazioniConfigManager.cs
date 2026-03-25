@@ -65,9 +65,9 @@ namespace BlazorDematReports.Core.Utility
 
 
 
-        public string? GetConnectionString(string connectionName)
+        public string GetConnectionString(string connectionName)
         {
-            return _configuration.GetConnectionString(connectionName);
+            return _configuration.GetConnectionString(connectionName) ?? string.Empty;
         }
 
         public string? DematReportsContext

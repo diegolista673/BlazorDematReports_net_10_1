@@ -378,7 +378,7 @@
     bool ShowLinkGestioneOperatori { get; set; } = false;
     bool ShowLinkOperatoriNonConformi { get; set; } = false;
     bool CheckAltraUtenza { get; set; } = false;
-    ProcedureLavorazioniDto ProcedureLavorazioniDto { get; set; } = new ProcedureLavorazioniDto();
+    ProcedureLavorazioniDto? ProcedureLavorazioniDto { get; set; }
 
     private readonly CancellationTokenSource _cts = new();
 
@@ -900,8 +900,10 @@
     /// Eliminazione a cascata settata nel DB all'interno della proprietà FK_TipologieTotaliProduzione_ProduzioneOperatori
     /// della relazione di chiave esterna (specifica Insert/Update -> regola di eliminazione -> sovrapponi)
     /// </summary>
-    /// <param name="idProduzione"></param>
-    /// <param name="lavorazione"></param>
+    /// <param name="idProduzione">ID del record di produzione da eliminare.</param>
+    /// <param name="lavorazione">Nome della lavorazione (usato nel messaggio di conferma).</param>
+    /// <param name="IdOperatore">ID operatore associato al record.</param>
+    /// <param name="dataLavorazione">Data lavorazione associata al record.</param>
     /// <returns></returns>
     protected async Task DeleteRecordAsync(int idProduzione, string lavorazione, int IdOperatore, DateTime dataLavorazione)
     {

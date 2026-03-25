@@ -300,9 +300,9 @@
     
     /// <summary>
     /// Lista delle fasi di lavorazione disponibili.
+    /// Usa la proprieta ListFasiLavorazione ereditata da BaseComponentPage.
     /// </summary>
-    List<FasiLavorazione>? ListFasiLavorazione;
-    
+
     /// <summary>
     /// DTO per la gestione delle fasi di lavorazione con data reading.
     /// </summary>
@@ -314,9 +314,8 @@
     List<TaskDaEseguireDto>? ListPrevious;
 
     /// <summary>
-    /// Indica se il dialog di caricamento è visibile.
+    /// Indica se è visibile il dialog di caricamento.
     /// </summary>
-    bool IsVisibleDialog = false;
 
     /// <summary>
     /// Indica se è possibile aggiungere un task alla fase selezionata.
@@ -475,10 +474,10 @@
 
             ValueBeforeEdit = DeepClone(lavorazioniDto);
 
-            // ? COPIA LE RELAZIONI NELL'ITEM DEL DATAGRID
-            item.LavorazioniFasiDataReadingsDto = lavorazioniDto.LavorazioniFasiDataReadingsDto;
+            // COPIA LE RELAZIONI NELL'ITEM DEL DATAGRID
+            item.LavorazioniFasiDataReadingsDto = lavorazioniDto?.LavorazioniFasiDataReadingsDto ?? [];
 
-            if (lavorazioniDto.LavorazioniFasiDataReadingsDto != null)
+            if (lavorazioniDto?.LavorazioniFasiDataReadingsDto != null)
             {
                 ListPrevious = lavorazioniDto.LavorazioniFasiDataReadingsDto.ToList()
                     .SelectMany(x => x.TaskDaEseguireDto).ToList();
@@ -503,8 +502,6 @@
             {
                 UiState?.SetMenuDisabled(true);
                 UiState?.ShowOverlay("Update in corso...");
-
-                IsVisibleDialog = true;
 
                 //ricarica l'entità completa
                 var fullItem = await serviceProcedureLavorazioni
@@ -569,8 +566,6 @@
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
                 UiState?.ShowSnackbar("Update eseguito", Severity.Success);
-                
-                IsVisibleDialog = false;
             }
             else
             {
@@ -580,7 +575,6 @@
         }
         catch (Exception ex)
         {
-            IsVisibleDialog = false;
             await HandleExceptionFormAsync(ex);
         }
     }

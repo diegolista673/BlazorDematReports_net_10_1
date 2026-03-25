@@ -7,7 +7,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <DocumentationFile>bin\debug\BlazorDematReports.xml</DocumentationFile>
-    <NoWarn>NU1701</NoWarn>
+	<NoWarn>NU1701;CS1591;CS1573</NoWarn>
     <UserSecretsId>2ad40ed9-cd4a-4f74-99d0-122f1c576463</UserSecretsId>
   </PropertyGroup>
 

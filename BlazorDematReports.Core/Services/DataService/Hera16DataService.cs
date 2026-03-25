@@ -72,27 +72,7 @@ public sealed class Hera16DataService : IHera16DataService
         }
     }
 
-    /// <inheritdoc />
-    public async Task MarkAsProcessedAsync(
-        IReadOnlyList<int> ids,
-        CancellationToken ct = default)
-    {
-        if (ids.Count == 0)
-            return;
 
-        await using var context = await _contextFactory.CreateDbContextAsync(ct);
-
-        var now = DateTime.Now;
-        await context.DatiMailCsvHera16
-            .Where(h => ids.Contains(h.IdCounter))
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(h => h.elaborato_demat_reports_il, now),
-                ct);
-
-        _logger.LogInformation(
-            "HERA16: aggiornato elaborato_demat_reports_il su {Count} record",
-            ids.Count);
-    }
 
     /// <summary>
     /// Converte il DataTable grezzo (tutto stringhe dal CSV) in una lista di entità <see cref="DatiMailCsvHera16"/>.
