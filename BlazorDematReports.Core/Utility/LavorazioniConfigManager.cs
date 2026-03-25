@@ -55,15 +55,6 @@ namespace BlazorDematReports.Core.Utility
         }
 
 
-        public string? PathFileBollettini
-        {
-            get
-            {
-                return _configuration["PathFileConfig:PathFileBollettini"];
-            }
-        }
-
-
 
         public string GetConnectionString(string connectionName)
         {
@@ -97,23 +88,7 @@ namespace BlazorDematReports.Core.Utility
             }
         }
 
-        [Connection]
-        public string? CnxnEquitaliaVR
-        {
-            get
-            {
-                return _configuration["ConnectionStrings:CnxnEquitaliaVR"];
-            }
-        }
 
-
-        public string? CnxnDimar
-        {
-            get
-            {
-                return _configuration["ConnectionStrings:CnxnDimar"];
-            }
-        }
 
         [Connection]
         public string? CnxnUnicredit
@@ -125,15 +100,7 @@ namespace BlazorDematReports.Core.Utility
         }
 
 
-        public string? CnxnPosteMobile
-        {
-            get
-            {
-                return _configuration["ConnectionStrings:CnxnPosteMobile"];
-            }
-        }
-
-
+ 
         [Connection]
         public string? CnxnPdP
         {
@@ -143,173 +110,8 @@ namespace BlazorDematReports.Core.Utility
             }
         }
 
-        [Connection]
-        public string? CnxnHera
-        {
-            get
-            {
-                return _configuration["ConnectionStrings:CnxnHera"];
-            }
-        }
 
-        public string? UrlWebtopInps
-        {
-            get
-            {
-                return _configuration["UrlConfig:UrlWebtopInps"];
-            }
-        }
-        public string? UserWebtopInps
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserWebtopInps"];
-            }
-        }
-        public string? PasswordWebtopInps
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordWebtopInps"];
-            }
-        }
-
-
-        public string? UserWebtopInpsGenova
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserWebtopInpsGenova"];
-            }
-        }
-        public string? PasswordWebtopInpsGenova
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordWebtopInpsGenova"];
-            }
-        }
-
-
-
-        public string? UrlWebtopInail
-        {
-            get
-            {
-                return _configuration["UrlConfig:UrlWebtopInail"];
-            }
-        }
-        public string? UserWebtopInail
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserWebtopInail"];
-            }
-        }
-        public string? PasswordWebtopInail
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordWebtopInail"];
-            }
-        }
-
-
-        public string? UrlWebtopEquitalia23I
-        {
-            get
-            {
-                return _configuration["UrlConfig:UrlWebtopEquitalia23I"];
-            }
-        }
-        public string? UserWebtopEquitalia23I
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserWebtopEquitalia23I"];
-            }
-        }
-        public string? PasswordWebtopEquitalia23I
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordWebtopEquitalia23I"];
-            }
-        }
-
-
-        public string? UrlWebtopAciRaccomandate
-        {
-            get
-            {
-                return _configuration["UrlConfig:UrlWebtopAciRaccomandate"];
-            }
-        }
-        public string? UserWebtopAciRaccomandate
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserWebtopAciRaccomandate"];
-            }
-        }
-
-        public string? PasswordWebtopAciRaccomandate
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordWebtopAciRaccomandate"];
-            }
-        }
-
-        public string? UserPraticheSucc
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserPraticheSucc"];
-            }
-        }
-
-        public string? PasswordPraticheSucc
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordPraticheSucc"];
-            }
-        }
-
-
-        public string? UserWebtopInpsPomezia
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserWebtopInpsPomezia"];
-            }
-        }
-
-        public string? PasswordWebtopInpsPomezia
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordWebtopInpsPomezia"];
-            }
-        }
-
-
-        public string? UserWebtopInpsMelzo
-        {
-            get
-            {
-                return _configuration["UrlConfig:UserWebtopInpsMelzo"];
-            }
-        }
-
-        public string? PasswordWebtopInpsMelzo
-        {
-            get
-            {
-                return _configuration["UrlConfig:PasswordWebtopInpsMelzo"];
-            }
-        }
+      
 
         [Connection]
         public string? CnxnAder4SorterVips
