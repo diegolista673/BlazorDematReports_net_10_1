@@ -630,10 +630,10 @@
     }
 
 
-    public ValueTask DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
-        return ValueTask.CompletedTask;
+        await base.DisposeAsync();
     }
 
 

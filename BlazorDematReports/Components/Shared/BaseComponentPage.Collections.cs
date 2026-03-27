@@ -93,5 +93,43 @@ namespace BlazorDematReports.Components.Shared
         public List<TabellaTask>? ListTask { get; set; }
 
         #endregion
+
+        /// <summary>
+        /// Azzera tutte le liste caricate in memoria dal componente.
+        /// Chiamato da <see cref="DisposeAsync"/> al termine del ciclo di vita del componente,
+        /// consentendo al GC di liberare la memoria non appena il circuito SignalR viene chiuso.
+        /// </summary>
+        protected void ClearCollections()
+        {
+            // DTO lists
+            ListProduzioneSistemaDto = null;
+            ListProcedureLavorazioniDto = null;
+            ListOperatoriDto = null;
+            ListClientiDto = null;
+            ListFasiLavorazioneDto = null;
+            ListProcedureClienteDto = null;
+            ListTipologieTotaliDto = null;
+            ListOperatoriNormalizzatiDto = null;
+            ListLavorazioniFasiTipoTotaleDto = null;
+            ListProduzioneOperatoriDto = null;
+            ListTaskDataReadingAggiornamentoDto = null;
+            ListRuoliDto = null;
+
+            // Entity lists
+            ListRuoli = null;
+            ListOperatori = null;
+            ListProcedureLavorazioni = null;
+            ListFasiLavorazione = null;
+            ListCentri = null;
+            ListTipologieTotali = null;
+            ListClienti = null;
+            ListProcedureCliente = null;
+            ListReparti = null;
+            ListFormatoDati = null;
+            ListTurni = null;
+            ListTipoTurni = null;
+            ListTaskDataReadingAggiornamento = null;
+            ListTask = null;
+        }
     }
 }

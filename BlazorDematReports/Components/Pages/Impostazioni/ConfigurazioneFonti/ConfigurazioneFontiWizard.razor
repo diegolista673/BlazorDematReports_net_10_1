@@ -354,9 +354,9 @@
         InvokeAsync(StateHasChanged);
     }
 
-    public override void Dispose()
+    public override async ValueTask DisposeAsync()
     {
         WizardState.OnStateChanged -= OnWizardStateChanged;
-        base.Dispose();
+        await base.DisposeAsync();
     }
 }

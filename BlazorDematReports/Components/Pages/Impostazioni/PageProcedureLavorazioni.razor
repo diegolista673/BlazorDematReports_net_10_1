@@ -1,4 +1,4 @@
-@page "/procedure-lavorazioni"
+Ôªø@page "/procedure-lavorazioni"
 @using BlazorDematReports.Core.Services.Interfaces.IDataService
 
 @attribute [Authorize(Roles = "ADMIN,RESPONSABILE,SUPERVISOR")]
@@ -264,17 +264,17 @@
     MudTextField<string>? RefNomeProcedura;
 
     /// <summary>
-    /// Indica se l'aggiunta di una fase Ë disabilitata.
+    /// Indica se l'aggiunta di una fase √® disabilitata.
     /// </summary>
     bool IsDisableAddFase { get; set; } = true;
     
     /// <summary>
-    /// Indica se il checkbox per il grafico Ë selezionato.
+    /// Indica se il checkbox per il grafico √® selezionato.
     /// </summary>
     bool CheckedGrafico { get; set; }
     
     /// <summary>
-    /// Indica se una fase Ë stata selezionata.
+    /// Indica se una fase √® stata selezionata.
     /// </summary>
     bool IsSelectedFase { get; set; }
     
@@ -314,11 +314,11 @@
     List<TaskDaEseguireDto>? ListPrevious;
 
     /// <summary>
-    /// Indica se Ë visibile il dialog di caricamento.
+    /// Indica se √® visibile il dialog di caricamento.
     /// </summary>
 
     /// <summary>
-    /// Indica se Ë possibile aggiungere un task alla fase selezionata.
+    /// Indica se √® possibile aggiungere un task alla fase selezionata.
     /// </summary>
     bool CanAddTask => !string.IsNullOrEmpty(FaseLavorazione) && 
                        ListLavorazioniFasiDaAggiungere.Any(f => f.FaseLavorazione == FaseLavorazione);
@@ -503,7 +503,7 @@
                 UiState?.SetMenuDisabled(true);
                 UiState?.ShowOverlay("Update in corso...");
 
-                //ricarica l'entit‡ completa
+                //ricarica l'entit√† completa
                 var fullItem = await serviceProcedureLavorazioni
                     .GetSingleProceduraLavorazioneDtoByIDAsync((int)item.IdproceduraLavorazione!);
 
@@ -569,7 +569,7 @@
             }
             else
             {
-                await NotificationDialog!.ShowNotification("La Procedura Lavorazione non puÚ essere vuota", "OK", Color.Error, "Error");
+                await NotificationDialog!.ShowNotification("La Procedura Lavorazione non pu√≤ essere vuota", "OK", Color.Error, "Error");
                 item.ProceduraCliente = ValueBeforeEdit!.ProceduraCliente;
             }
         }
@@ -813,10 +813,10 @@
     }
     #endregion
 
-    public ValueTask DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
-        return ValueTask.CompletedTask;
+        await base.DisposeAsync();
     }
 }
 

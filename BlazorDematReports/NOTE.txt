@@ -10,7 +10,8 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-      Prima di test controllare db e tabelle e vedeere quali campi mancano e quali configurazioni confronto su visual studio? tramite schema ?
+
+
 Test in produzione su db collaudo
 testare service mail in modo controllato e testare alcune lavorazioni genova, Verona,...28 aut postepay e altre
 

@@ -23,7 +23,7 @@ namespace BlazorDematReports.Components.Shared
     /// Base component page that provides common functionality for pages in the application.
     /// </summary>
     /// <typeparam name="TLogger"></typeparam>
-    public partial class BaseComponentPage<TLogger> : ComponentBase, IDisposable
+    public partial class BaseComponentPage<TLogger> : ComponentBase, IAsyncDisposable
     {
 
         [Inject] protected UiStateService? UiState { get; set; }
@@ -138,18 +138,33 @@ namespace BlazorDematReports.Components.Shared
             return ListOperatori.FirstOrDefault(x => x.Operatore == operatoreString);
         }
 
-        public virtual void Dispose()
+        /// <summary>
+        /// Libera i sottoscrittori degli EditContext.
+        /// Chiamato da DisposeAsync prima del rilascio delle liste.
+        /// </summary>
+        protected void DisposeEditContexts()
         {
             if (EditContext is not null)
-            {
                 EditContext.OnFieldChanged -= EditContext_HandleFieldChanged!;
-            }
 
             if (uEditContext is not null)
-            {
                 uEditContext.OnFieldChanged -= UEditContext_HandleFieldChanged!;
-            }
+        }
+
+        /// <summary>
+        /// Rilascia le risorse del componente: annulla i sottoscrittori degli EditContext
+        /// e azzera tutte le liste caricate in memoria, consentendo al GC di liberarle
+        /// non appena il circuito SignalR viene chiuso.
+        /// Le pagine derivate devono chiamare await base.DisposeAsync()
+        /// dopo aver cancellato il proprio CancellationTokenSource.
+        /// </summary>
+        public virtual ValueTask DisposeAsync()
+        {
+            DisposeEditContexts();
+            ClearCollections();
+            return ValueTask.CompletedTask;
         }
     }
 }
+
 

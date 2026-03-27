@@ -382,9 +382,9 @@
         };
     }
     
-    public override void Dispose()
+    public override async ValueTask DisposeAsync()
     {
         StateService.UnsavedChangesChanged -= OnUnsavedChangesChanged;
-        base.Dispose();  
+        await base.DisposeAsync();
     }
 }

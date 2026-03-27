@@ -52,13 +52,13 @@ public static class Program
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Carica User Secrets in Development
-            if (builder.Environment.IsDevelopment())
+            // Carica User Secrets in Development e ProductionSim (debug locale)
+            if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("ProductionSim"))
             {
                 builder.Configuration.AddUserSecrets(typeof(Program).Assembly);
             }
 
-            // In Production, carica variabili ambiente (sovrascrivono appsettings)
+            // In Production e ProductionSim carica variabili ambiente (sovrascrivono appsettings)
             // Esempio: ConnectionStrings__DematReportsContext oppure DEMAT_ConnectionStrings__DematReportsContext
             if (!builder.Environment.IsDevelopment())
             {
@@ -166,7 +166,7 @@ public static class Program
         }
         else
         {
-            // In altri ambienti usa implementazione reale con AD
+            // In Production e ProductionSim usa implementazione reale con AD
             builder.Services.AddScoped<IActiveDirectoryService, ActiveDirectoryService>();
         }
     }
@@ -211,7 +211,9 @@ public static class Program
 
         builder.Services.AddHangfireServer(options =>
         {
-            options.WorkerCount = Math.Min(Environment.ProcessorCount * 2, 10);
+            // Code "critical": job mattutini produzione — 8 worker paralleli
+            options.Queues = ["critical", "default", "mail", "maintenance"];
+            options.WorkerCount = 8;
             options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
             options.HeartbeatInterval = TimeSpan.FromSeconds(30);
             options.ServerTimeout = TimeSpan.FromMinutes(5);

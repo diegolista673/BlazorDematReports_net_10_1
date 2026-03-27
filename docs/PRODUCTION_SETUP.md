@@ -66,11 +66,14 @@ Il file viene salvato in:
 cd BlazorDematReports
 
 # --- Connection Strings ---
-dotnet user-secrets set "ConnectionStrings:DematReportsContext"    "Server=SERVER;Database=DematReports;Trusted_Connection=True;TrustServerCertificate=True;"
-dotnet user-secrets set "ConnectionStrings:HangfireConnection"     "Server=SERVER;Database=DematReports_Hangfire;Trusted_Connection=True;TrustServerCertificate=True;"
-dotnet user-secrets set "ConnectionStrings:CnxnDematReports"       "Server=SERVER;Database=DematReports;Trusted_Connection=True;TrustServerCertificate=True;"
-dotnet user-secrets set "ConnectionStrings:CnxnCaptiva206"         "Server=CAPTIVA_SERVER;Database=Captiva206;User Id=sa;Password=SECRET;"
-dotnet user-secrets set "ConnectionStrings:CnxnUnicredit"          "Server=...;Database=...;User Id=...;Password=...;"
+dotnet user-secrets set "ConnectionStrings:DematReportsContext"    "Server=SERVER;Database=DematReports;User Id=UserProduzioneGed;Password=UserProduzioneGed2022!;TrustServerCertificate=True;"
+dotnet user-secrets set "ConnectionStrings:HangfireConnection"     "Server=SERVER;Database=DematReports;User Id=UserProduzioneGed;Password=UserProduzioneGed2022!;TrustServerCertificate=True;"
+dotnet user-secrets set "ConnectionStrings:CnxnDematReports"       "Server=SERVER;Database=DematReports;User Id=UserProduzioneGed;Password=UserProduzioneGed2022!;TrustServerCertificate=True;"
+
+dotnet user-secrets set "ConnectionStrings:CnxnUnicredit"          "Server=10.114.8.12;Database=ProduzioneGesimUnicredit;User Id=ProduzioneGesimUnicredit; Password=Produzione2020;TrustServerCertificate=True;"
+dotnet user-secrets set "ConnectionStrings:CnxnCaptiva206"         "Server=172.30.122.206;Database=RHM_POSTEL;User Id=read_user_db;Password=read_user_db;"
+
+
 dotnet user-secrets set "ConnectionStrings:CnxnPdp"                "Server=...;Database=...;User Id=...;Password=...;"
 dotnet user-secrets set "ConnectionStrings:CnxnPraticheSuccessione" "Server=...;Database=...;User Id=...;Password=...;"
 dotnet user-secrets set "ConnectionStrings:CnxnAder4SorterVips"    "Server=...;Database=...;User Id=...;Password=...;"
@@ -81,15 +84,6 @@ dotnet user-secrets set "ConnectionStrings:CnxnAder4Sorter2"       "Server=...;D
 dotnet user-secrets set "MailServices:HERA16:Password"   "PASSWORD_HERA16"
 dotnet user-secrets set "MailServices:ADER4:Password"    "PASSWORD_ADER4"
 
-# --- Webtop / Sistemi Esterni ---
-dotnet user-secrets set "UrlConfig:PasswordWebtopInps"            "PASSWORD"
-dotnet user-secrets set "UrlConfig:PasswordWebtopInpsGenova"      "PASSWORD"
-dotnet user-secrets set "UrlConfig:PasswordWebtopInpsPomezia"     "PASSWORD"
-dotnet user-secrets set "UrlConfig:PasswordWebtopInpsMelzo"       "PASSWORD"
-dotnet user-secrets set "UrlConfig:PasswordWebtopInail"           "PASSWORD"
-dotnet user-secrets set "UrlConfig:PasswordWebtopEquitalia23I"    "PASSWORD"
-dotnet user-secrets set "UrlConfig:PasswordWebtopAciRaccomandate" "PASSWORD"
-dotnet user-secrets set "UrlConfig:PasswordPraticheSucc"          "PASSWORD"
 
 # --- Email SMTP (FluentEmail) ---
 dotnet user-secrets set "Email:Password" "PASSWORD_SMTP"
