@@ -338,7 +338,7 @@ $conn.Close()
 
 ## 7. Simulare l'ambiente Production in Visual Studio (debug)
 
-Per testare comportamenti production (logging, badge, Hangfire, AD mock) rimanendo nel debugger VS,
+Per testare comportamenti production (logging con active directory, badge, Hangfire, AD mock) rimanendo nel debugger VS,
 si usa un ambiente personalizzato chiamato **`ProductionSim`**.
 
 ### Come funziona
