@@ -78,12 +78,12 @@ public sealed class LocalCsvHera16EmailService : Hera16EmailService, IEmailBatch
 
             var fileName       = Path.GetFileName(csvFile);
             var matchesPattern = MatchesAnyPattern(fileName);
+            var content        = await File.ReadAllBytesAsync(csvFile, ct);
 
             var attachmentInfo = new AttachmentInfo
             {
                 FileName       = fileName,
-                LocalFilePath  = csvFile,
-                FileSizeBytes  = new FileInfo(csvFile).Length,
+                Content        = content,
                 MatchesPattern = matchesPattern,
                 ContentType    = "text/csv"
             };

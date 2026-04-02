@@ -71,16 +71,16 @@ public sealed class LocalCsvAder4EmailService : Ader4EmailService, IEmailBatchPr
         {
             ct.ThrowIfCancellationRequested();
 
-            var fileName    = Path.GetFileName(csvFile);
+            var fileName       = Path.GetFileName(csvFile);
             var matchesPattern = MatchesAnyPattern(fileName);
+            var content        = await File.ReadAllBytesAsync(csvFile, ct);
 
             var attachmentInfo = new AttachmentInfo
             {
-                FileName      = fileName,
-                LocalFilePath = csvFile,
-                FileSizeBytes = new FileInfo(csvFile).Length,
+                FileName       = fileName,
+                Content        = content,
                 MatchesPattern = matchesPattern,
-                ContentType   = "text/csv"
+                ContentType    = "text/csv"
             };
 
             if (!matchesPattern)

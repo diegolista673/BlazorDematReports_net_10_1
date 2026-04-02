@@ -23,18 +23,13 @@ testare lavorazioni con data in formato yyyy-MM-dd
 Controllare le varie operazioni fatte con utenti e permessi diversi e ruoli soprattutto per elenco lavoratori, 
 schede totali e impostazioni
 
-
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
 testare tutti gli handler attivi su db collaudo
 
 Per quando programma è pronto per la produzione
-    database in produzione salvato, importare eventuali procedure nuove , importare produzione sistema  con identity on e produzione operatori
-    modificare documenti isoledigitali ge 2024 2025
-    aggiungere colonna [UtilizzataDaSistema] in tabella fasi lavorazione per distinguere fasi create dal sistema e non modificabili
-    (tutte a false di default tranne procedura completa e no_fase_lavorazione)
-
-
+database in produzione salvato, importare eventuali procedure nuove , importare produzione sistema  con identity on e produzione operatori
+modificare documenti isoledigitali ge 2024 2025
 
 
  

@@ -47,7 +47,9 @@ namespace BlazorDematReports.Core.Services.Email
     }
 
     /// <summary>
-    /// Informazioni su allegato email scaricato.
+    /// Informazioni su allegato email letto in memoria.
+    /// Il contenuto del file non viene mai scritto su disco:
+    /// viene letto direttamente dallo stream EWS in un byte array.
     /// </summary>
     public sealed class AttachmentInfo
     {
@@ -57,14 +59,14 @@ namespace BlazorDematReports.Core.Services.Email
         public required string FileName { get; init; }
 
         /// <summary>
-        /// Path completo file salvato localmente.
+        /// Contenuto del file in memoria (mai scritto su disco).
         /// </summary>
-        public required string LocalFilePath { get; init; }
+        public required byte[] Content { get; init; }
 
         /// <summary>
         /// Dimensione file in bytes.
         /// </summary>
-        public long FileSizeBytes { get; init; }
+        public long FileSizeBytes => Content.LongLength;
 
         /// <summary>
         /// Indica se il file corrisponde a un pattern configurato.

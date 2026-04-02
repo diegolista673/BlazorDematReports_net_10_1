@@ -58,6 +58,16 @@ public static class Program
                 builder.Configuration.AddUserSecrets(typeof(Program).Assembly);
             }
 
+
+            // Static Web Assets (MudBlazor CSS/JS, _framework/blazor.web.js, contenuti NuGet):
+            // in Development sono abilitati automaticamente; in ProductionSim (debug locale
+            // fuori dalla cartella publish) vanno abilitati esplicitamente.
+            if (builder.Environment.IsEnvironment("ProductionSim"))
+            {
+                builder.WebHost.UseStaticWebAssets();
+            }
+
+
             // In Production e ProductionSim carica variabili ambiente (sovrascrivono appsettings)
             // Esempio: ConnectionStrings__DematReportsContext oppure DEMAT_ConnectionStrings__DematReportsContext
             if (!builder.Environment.IsDevelopment())
@@ -201,7 +211,7 @@ public static class Program
             {
                 CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
                 SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
-                QueuePollInterval = TimeSpan.FromSeconds(15),
+                QueuePollInterval = TimeSpan.FromMinutes(1),
                 UseRecommendedIsolationLevel = true,
                 DisableGlobalLocks = true,
                 EnableHeavyMigrations = true,
@@ -214,7 +224,7 @@ public static class Program
             // Code "critical": job mattutini produzione — 8 worker paralleli
             options.Queues = ["critical", "default", "mail", "maintenance"];
             options.WorkerCount = 8;
-            options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
+            options.SchedulePollingInterval = TimeSpan.FromMinutes(1);
             options.HeartbeatInterval = TimeSpan.FromSeconds(30);
             options.ServerTimeout = TimeSpan.FromMinutes(5);
             options.StopTimeout = TimeSpan.FromSeconds(30);

@@ -41,11 +41,11 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             var mailConfig = configuration.GetSection("MailServices:ADER4");
 
             return new EwsEmailServiceConfig
-            {
+            {   
                 Username = mailConfig["Username"] ?? throw new InvalidOperationException("ADER4 Username mancante"),
                 Password = mailConfig["Password"] ?? throw new InvalidOperationException("ADER4 Password mancante"),
                 Domain = mailConfig["Domain"] ?? "postel.it",
-                ExchangeUrl = new Uri(mailConfig["ExchangeUrl"] ?? "https://postaweb.postel.it/ews/exchange.asmx"),
+                ExchangeUrl = new Uri(mailConfig["ExchangeUrl"] ?? "https://webmail.postel.it/ews/exchange.asmx"),
                 SubjectFilters = new[]
                 {
                     mailConfig["SubjectVerona"] ?? "DEMAT_EQTMN4@RMHRPRD0 - Report di produzione (Verona)",
@@ -59,11 +59,7 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
                     "EQTMN4_Scatole_Restituite*"
                 },
                 ArchiveFolderName = mailConfig["ArchiveFolder"] ?? "EQUITALIA_4",
-                LocalAttachmentPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "report", "ADER4"),
-                LocalArchivePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "archive", "ADER4"),
-                MaxEmailsPerRun = 100,
-                CreateZipArchive = true,
-                CleanupAfterProcessing = true
+                MaxEmailsPerRun = 100
             };
         }
 
@@ -77,11 +73,17 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
         {
             Logger.LogInformation("Elaborazione allegato ADER4: {FileName}", attachment.FileName);
 
-            var csvData = ReadCsvFile(attachment.LocalFilePath);
+            if (attachment.Content.Length == 0)
+            {
+                Logger.LogWarning("File CSV {FileName} vuoto (0 byte), ignorato", attachment.FileName);
+                return;
+            }
+
+            var csvData = ReadCsvFromBytes(attachment.Content);
 
             if (csvData.Rows.Count == 0)
             {
-                Logger.LogWarning("File CSV {FileName} vuoto", attachment.FileName);
+                Logger.LogWarning("File CSV {FileName} senza righe, ignorato", attachment.FileName);
                 return;
             }
 

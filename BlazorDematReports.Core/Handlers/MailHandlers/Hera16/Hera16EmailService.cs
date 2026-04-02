@@ -45,15 +45,11 @@ public class Hera16EmailService : BaseEwsEmailService, IEmailBatchProcessor
             Username            = mailConfig["Username"] ?? throw new InvalidOperationException("HERA16 Username mancante"),
             Password            = mailConfig["Password"] ?? throw new InvalidOperationException("HERA16 Password mancante"),
             Domain              = mailConfig["Domain"] ?? "postel.it",
-            ExchangeUrl         = new Uri(mailConfig["ExchangeUrl"] ?? "https://postaweb.postel.it/ews/exchange.asmx"),
+            ExchangeUrl         = new Uri(mailConfig["ExchangeUrl"] ?? "https://webmail.postel.it/ews/exchange.asmx"),
             SubjectFilters      = [mailConfig["SubjectFilter"] ?? "HERA16 - Report di produzione"],
             AttachmentPatterns  = ["HERA16_Report*", "HERA16_Produzione*"],
             ArchiveFolderName   = mailConfig["ArchiveFolder"] ?? "HERA16",
-            LocalAttachmentPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "report", "HERA16"),
-            LocalArchivePath    = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "archive", "HERA16"),
-            MaxEmailsPerRun     = 100,
-            CreateZipArchive    = true,
-            CleanupAfterProcessing = true
+            MaxEmailsPerRun     = 100
         };
     }
 
@@ -68,11 +64,17 @@ public class Hera16EmailService : BaseEwsEmailService, IEmailBatchProcessor
     {
         Logger.LogInformation("Lettura allegato HERA16: {FileName}", attachment.FileName);
 
-        var csvData = ReadCsvFile(attachment.LocalFilePath);
+        if (attachment.Content.Length == 0)
+        {
+            Logger.LogWarning("File CSV HERA16 {FileName} vuoto (0 byte), ignorato", attachment.FileName);
+            return;
+        }
+
+        var csvData = ReadCsvFromBytes(attachment.Content);
 
         if (csvData.Rows.Count == 0)
         {
-            Logger.LogWarning("File CSV HERA16 {FileName} vuoto, ignorato", attachment.FileName);
+            Logger.LogWarning("File CSV HERA16 {FileName} senza righe, ignorato", attachment.FileName);
             return;
         }
 
