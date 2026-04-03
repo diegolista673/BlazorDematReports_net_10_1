@@ -602,11 +602,12 @@
         ValidateForm();
     }
 
-    protected async Task OnValueChangedLavorazione(string lavorazione)
+
+    protected Task OnValueChangedLavorazione(string lavorazione)
     {
         Model!.Lavorazione = lavorazione;
 
-        if (string.IsNullOrEmpty(lavorazione)) 
+        if (string.IsNullOrEmpty(lavorazione))
         {
             ResetLavorazione();
 
@@ -617,26 +618,28 @@
         else
         {
             Model.Lavorazione = Model.Lavorazione.ToUpper();
-            Model.IdProceduraLavorazione = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.IdproceduraLavorazione;
-            Model.IdReparti = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.Idreparti;
 
-            ProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
-            if (ProcedureLavorazioniDto != null)
+            // Lookup in-memory: ListProcedureLavorazioniDto e' gia' caricata all'init con le fasi incluse.
+            // Evita la query DB ridondante GetSingleProceduraLavorazioneDtoAsync.
+            ProcedureLavorazioniDto = ListProcedureLavorazioniDto?.FirstOrDefault(x => x.NomeProcedura == lavorazione);
+
+            if (ProcedureLavorazioniDto is not null)
             {
+                Model.IdProceduraLavorazione = ProcedureLavorazioniDto.IdproceduraLavorazione;
+                Model.IdReparti              = ProcedureLavorazioniDto.Idreparti;
                 SetSelectFasi(ProcedureLavorazioniDto);
             }
 
             Model.Reparto = ListReparti!.FirstOrDefault(x => x.IdReparti == Model.IdReparti)?.Reparti;
 
-            IsDisabledFase = false;            
+            IsDisabledFase = false;
             IsDisabledReparto = false;
             DisableBoolFlagOreMinuti(false);
-
         }
 
         ValidateForm();
+        return Task.CompletedTask;
     }
-
     protected async Task OnValueChangedFaseAsync(string fase)
     {
         await RunWithOverlay(async () =>

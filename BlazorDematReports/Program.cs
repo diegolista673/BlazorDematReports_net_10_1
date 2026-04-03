@@ -60,18 +60,17 @@ public static class Program
                 builder.Configuration.AddUserSecrets(typeof(Program).Assembly);
             }
 
-
-            // Static Web Assets (MudBlazor CSS/JS, _framework/blazor.web.js, contenuti NuGet):
-            // in Development sono abilitati automaticamente; in ProductionSim e Production-NoActiveDirectory
-            // (debug locale fuori dalla cartella publish) vanno abilitati esplicitamente.
-            if (builder.Environment.IsEnvironment("ProductionSim")
-                || builder.Environment.IsEnvironment("Production-NoActiveDirectory"))
+// Static Web Assets (MudBlazor CSS/JS, _framework/blazor.web.js, contenuti NuGet):
+// in Development sono abilitati automaticamente; in ProductionSim e Production-NoActiveDirectory
+// (debug locale fuori dalla cartella publish) vanno abilitati esplicitamente.
+if (builder.Environment.IsEnvironment("ProductionSim")
+    || builder.Environment.IsEnvironment("Production-NoActiveDirectory"))
             {
                 builder.WebHost.UseStaticWebAssets();
             }
 
 
-            // In Production e ProductionSim carica variabili ambiente (sovrascrivono appsettings)
+// In Production e ProductionSim carica variabili ambiente
             // Esempio: ConnectionStrings__DematReportsContext oppure DEMAT_ConnectionStrings__DematReportsContext
             if (!builder.Environment.IsDevelopment())
             {

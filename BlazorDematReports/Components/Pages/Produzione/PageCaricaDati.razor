@@ -22,7 +22,7 @@
                     <EditForm EditContext="@EditContext" OnValidSubmit="HandleValidSubmitAsync">
                         <PageCaricaDatiValidationProvider />
 
-                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
+                        <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus.FirstChild">
 
                             <MudDatePicker Label="Data" DateChanged="@OnChangeDataAsync" Date="@Model!.DataLavorazione" Required="true" Disabled=@isDisableDatePicker Editable="true" />
 
@@ -44,6 +44,7 @@
 
                             @*Lavorazione*@
                             <MudAutocomplete T="string"
+                                             @ref="_refLavorazione"
                                              Label="Lavorazione"
                                              SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectLavorazione,arg))"
                                              MaxItems=null
@@ -173,6 +174,7 @@
 
 
     private readonly CancellationTokenSource _cts = new();
+    private MudAutocomplete<string>? _refLavorazione;
 
     bool IsDisabledLavorazione { get; set; } = true;
     bool IsDisabledFase { get; set; } = true;
@@ -246,6 +248,9 @@
                 UiState?.SetMenuDisabled(false);
                 UiState?.HideOverlay();
                 UiState?.ShowSnackbar("Dati Produzione inseriti", Severity.Success);
+
+                if (_refLavorazione is not null)
+                    await _refLavorazione.FocusAsync();
 
                 StateHasChanged();
             }
@@ -405,24 +410,26 @@
         }
     }
 
-    protected async Task OnValueChangedLavorazione(string lavorazione)
+    protected Task OnValueChangedLavorazione(string lavorazione)
     {
         Model!.Lavorazione = lavorazione;
 
         if (string.IsNullOrEmpty(lavorazione))
         {
-            
             ResetLavorazione();
             IsDisabledFase = true;
         }
         else
         {
             Model.Lavorazione = Model.Lavorazione.ToUpper();
-            Model.IdProceduraLavorazione = ListProcedureLavorazioniDto!.FirstOrDefault(x => x.NomeProcedura == lavorazione)?.IdproceduraLavorazione;
 
-            ProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetSingleProceduraLavorazioneDtoAsync(lavorazione);
-            if (ProcedureLavorazioniDto != null)
+            // Lookup in-memory: ListProcedureLavorazioniDto e' gia' caricata all'init con le fasi incluse.
+            // Evita la query DB ridondante GetSingleProceduraLavorazioneDtoAsync.
+            ProcedureLavorazioniDto = ListProcedureLavorazioniDto?.FirstOrDefault(x => x.NomeProcedura == lavorazione);
+
+            if (ProcedureLavorazioniDto is not null)
             {
+                Model.IdProceduraLavorazione = ProcedureLavorazioniDto.IdproceduraLavorazione;
                 SetSelectFasi(ProcedureLavorazioniDto);
             }
 
@@ -430,6 +437,7 @@
         }
 
         ValidateForm();
+        return Task.CompletedTask;
     }
 
     protected void ResetLavorazione()
