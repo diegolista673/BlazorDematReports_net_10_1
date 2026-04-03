@@ -52,17 +52,20 @@ public static class Program
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Carica User Secrets in Development e ProductionSim (debug locale)
-            if (builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("ProductionSim"))
+            // Carica User Secrets in Development, ProductionSim e Production-NoActiveDirectory (debug locale)
+            if (builder.Environment.IsDevelopment()
+                || builder.Environment.IsEnvironment("ProductionSim")
+                || builder.Environment.IsEnvironment("Production-NoActiveDirectory"))
             {
                 builder.Configuration.AddUserSecrets(typeof(Program).Assembly);
             }
 
 
             // Static Web Assets (MudBlazor CSS/JS, _framework/blazor.web.js, contenuti NuGet):
-            // in Development sono abilitati automaticamente; in ProductionSim (debug locale
-            // fuori dalla cartella publish) vanno abilitati esplicitamente.
-            if (builder.Environment.IsEnvironment("ProductionSim"))
+            // in Development sono abilitati automaticamente; in ProductionSim e Production-NoActiveDirectory
+            // (debug locale fuori dalla cartella publish) vanno abilitati esplicitamente.
+            if (builder.Environment.IsEnvironment("ProductionSim")
+                || builder.Environment.IsEnvironment("Production-NoActiveDirectory"))
             {
                 builder.WebHost.UseStaticWebAssets();
             }

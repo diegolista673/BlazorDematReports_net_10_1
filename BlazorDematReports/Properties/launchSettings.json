@@ -47,6 +47,15 @@
         "environmentVariables": {
           "ASPNETCORE_ENVIRONMENT": "ProductionSim"
         }
+      },
+      "Production-NoActiveDirectory": {
+        "commandName": "Project",
+        "dotnetRunMessages": true,
+        "launchBrowser": true,
+        "applicationUrl": "https://localhost:7065;http://localhost:5177",
+        "environmentVariables": {
+          "ASPNETCORE_ENVIRONMENT": "Production-NoActiveDirectory"
+        }
       }
     }
   }
