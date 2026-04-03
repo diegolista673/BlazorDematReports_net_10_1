@@ -46,8 +46,10 @@ public class Hera16EmailService : BaseEwsEmailService, IEmailBatchProcessor
             Password            = mailConfig["Password"] ?? throw new InvalidOperationException("HERA16 Password mancante"),
             Domain              = mailConfig["Domain"] ?? "postel.it",
             ExchangeUrl         = new Uri(mailConfig["ExchangeUrl"] ?? "https://webmail.postel.it/ews/exchange.asmx"),
-            SubjectFilters      = [mailConfig["SubjectFilter"] ?? "HERA16 - Report di produzione"],
-            AttachmentPatterns  = ["HERA16_Report*", "HERA16_Produzione*"],
+            SubjectFilters      = [mailConfig["SubjectFilter"] ?? "DEMAT_HERA16 - Report produzione giornaliera"],
+            // Pattern: yyyyMMdd - file di produzione giornaliera.csv
+            // Ogni '?' corrisponde a un singolo carattere (8 cifre della data)
+            AttachmentPatterns  = [mailConfig["AttachmentPattern"] ?? "???????? - file di produzione giornaliera.csv"],
             ArchiveFolderName   = mailConfig["ArchiveFolder"] ?? "HERA16",
             MaxEmailsPerRun     = 100
         };

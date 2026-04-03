@@ -10,9 +10,12 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
+aggiungere centro in base al file di produzione nelle tabelle ader4 e hera16
+controllare con quelle precedenti
+controllare perchè in hera ( e poi in Ader4 ) email non di dati di produzione non vengono spostate
 
 
-Test in produzione su db collaudo
+Test in produzione su db collaudo su IIS
 testare service mail in modo controllato e testare alcune lavorazioni genova, Verona,...28 aut postepay e altre
 
 

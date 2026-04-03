@@ -9,20 +9,39 @@ namespace BlazorDematReports.Core.Services.Email
 {
     public abstract class BaseEwsEmailService
     {
+       /// <summary>
+       /// Classe base astratta per l'elaborazione email tramite Exchange Web Services (EWS).
+       /// Gestisce la connessione a Exchange, la ricerca, il download degli allegati e l'archiviazione.
+       /// Le classi derivate implementano <see cref="ProcessAttachmentAsync"/> per la logica specifica di parsing.
+       /// </summary>
         private readonly ILogger _logger;
         private readonly EwsEmailServiceConfig _config;
         private ExchangeService? _exchangeService;
 
+       /// <summary>
+       /// Inizializza una nuova istanza di <see cref="BaseEwsEmailService"/>.
+       /// </summary>
+       /// <param name="config">Configurazione EWS (credenziali, URL, pattern allegati, cartella archivio).</param>
+       /// <param name="logger">Logger per la registrazione degli eventi.</param>
+       /// <exception cref="ArgumentNullException">Se <paramref name="config"/> o <paramref name="logger"/> sono null.</exception>
         protected BaseEwsEmailService(EwsEmailServiceConfig config, ILogger logger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>Configurazione EWS corrente (credenziali, URL, filtri, pattern allegati).</summary>
         protected EwsEmailServiceConfig Config => _config;
+
+        /// <summary>Logger iniettato, disponibile alle classi derivate.</summary>
         protected ILogger Logger => _logger;
+
         #region Exchange Service Initialization
 
+        /// <summary>
+        /// Inizializza e configura il client <see cref="ExchangeService"/> con le credenziali e l'URL configurati.
+        /// Chiamato automaticamente da <see cref="GetExchangeService"/> se il servizio non è ancora stato creato.
+        /// </summary>
         protected virtual void InitializeExchangeService()
         {
             _logger.LogInformation("Inizializzazione Exchange: URL={ExchangeUrl}, User={Username}, Domain={Domain}", _config.ExchangeUrl, _config.Username, _config.Domain);
@@ -39,6 +58,10 @@ namespace BlazorDematReports.Core.Services.Email
             _logger.LogInformation("Servizio Exchange inizializzato");
         }
 
+        /// <summary>
+        /// Restituisce l'istanza di <see cref="ExchangeService"/>, inizializzandola se necessario (lazy init).
+        /// </summary>
+        /// <returns>Istanza configurata e pronta all'uso di <see cref="ExchangeService"/>.</returns>
         protected ExchangeService GetExchangeService()
         {
             if (_exchangeService is null) InitializeExchangeService();
@@ -50,6 +73,13 @@ namespace BlazorDematReports.Core.Services.Email
 
         #region Email Search and Processing
 
+        /// <summary>
+        /// Esegue l'elaborazione batch delle email nella Inbox che corrispondono ai filtri configurati.
+        /// Per ciascuna email: carica i metadata degli allegati, scarica solo quelli che corrispondono ai pattern,
+        /// invoca <see cref="ProcessAttachmentAsync"/> e sposta il messaggio nella cartella archivio.
+        /// </summary>
+        /// <param name="ct">Token di annullamento.</param>
+        /// <returns>Riepilogo del batch con contatori email totali, riuscite e fallite.</returns>
         public virtual async System.Threading.Tasks.Task<BatchEmailProcessingResult> ProcessEmailsAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Inizio elaborazione email batch");
@@ -101,6 +131,15 @@ namespace BlazorDematReports.Core.Services.Email
             return batchResult;
         }
 
+        /// <summary>
+        /// Elabora una singola email: estrae metadata dal body, filtra gli allegati per pattern (sul nome, senza scaricare),
+        /// scarica solo quelli corrispondenti e invoca <see cref="ProcessAttachmentAsync"/>.
+        /// Se nessun allegato corrisponde ai pattern, l'email viene marcata come letta e restituita senza
+        /// scaricare alcun contenuto; l'archiviazione avviene comunque in <see cref="ProcessEmailsAsync"/>.
+        /// </summary>
+        /// <param name="emailMessage">Messaggio Exchange da elaborare.</param>
+        /// <param name="ct">Token di annullamento.</param>
+        /// <returns>Risultato con allegati scaricati, metadata estratti e flag di successo.</returns>
         protected virtual async System.Threading.Tasks.Task<EmailProcessingResult> ProcessSingleEmailAsync(EmailMessage emailMessage, CancellationToken ct)
         {
             await emailMessage.Load(new PropertySet(EmailMessageSchema.Attachments, EmailMessageSchema.Subject, EmailMessageSchema.DateTimeReceived, EmailMessageSchema.Body));
@@ -108,23 +147,43 @@ namespace BlazorDematReports.Core.Services.Email
             var attachments = new List<AttachmentInfo>();
             var extractedMetadata = new Dictionary<string, string>();
             ExtractMetadataFromBody(bodyText, extractedMetadata);
-            emailMessage.IsRead = true;
-            await emailMessage.Update(ConflictResolutionMode.AutoResolve);
 
-            if (emailMessage.Attachments.Count == 0)
-                return new EmailProcessingResult { Subject = emailMessage.Subject ?? string.Empty, ReceivedDate = emailMessage.DateTimeReceived, Body = bodyText, Success = true, ExtractedMetadata = extractedMetadata };
+            // Controlla il pattern sul NOME del file (senza scaricare) prima del loop.
+            // Se nessun allegato corrisponde ai pattern attesi → sposta email senza leggere nessun allegato.
+            var matchingFileAttachments = emailMessage.Attachments
+                .OfType<FileAttachment>()
+                .Where(fa => MatchesAnyPattern(fa.Name))
+                .ToList();
 
-            foreach (var attachment in emailMessage.Attachments)
+            if (emailMessage.Attachments.Count == 0 || matchingFileAttachments.Count == 0)
             {
-                if (attachment is not FileAttachment fileAttachment) { _logger.LogWarning("Attachment non e FileAttachment, skip"); continue; }
+                _logger.LogInformation(
+                    "Email {Subject}: nessun allegato corrisponde ai pattern configurati ({Count} allegati presenti), spostata senza lettura",
+                    emailMessage.Subject, emailMessage.Attachments.Count);
+                emailMessage.IsRead = true;
+                await emailMessage.Update(ConflictResolutionMode.AutoResolve);
+                return new EmailProcessingResult { Subject = emailMessage.Subject ?? string.Empty, ReceivedDate = emailMessage.DateTimeReceived, Body = bodyText, Success = true, ExtractedMetadata = extractedMetadata };
+            }
+
+            // Scarica SOLO gli allegati che corrispondono al pattern: evita download inutili di file grandi
+            foreach (var fileAttachment in matchingFileAttachments)
+            {
+                ct.ThrowIfCancellationRequested();
                 try
                 {
+                    _logger.LogDebug("Download allegato corrispondente: {FileName}", fileAttachment.Name);
                     var info = await DownloadAttachmentAsync(fileAttachment, ct);
                     attachments.Add(info);
-                    if (info.MatchesPattern) await ProcessAttachmentAsync(info, extractedMetadata, ct);
+                    await ProcessAttachmentAsync(info, extractedMetadata, ct);
                 }
                 catch (Exception ex) { _logger.LogError(ex, "Errore download allegato {Name}", fileAttachment.Name); }
             }
+
+            // Marca come letta DOPO aver scaricato tutti gli allegati:
+            // chiamare Update() prima invalida i riferimenti agli allegati in certi ambienti Exchange
+            emailMessage.IsRead = true;
+            await emailMessage.Update(ConflictResolutionMode.AutoResolve);
+
             return new EmailProcessingResult { Subject = emailMessage.Subject ?? string.Empty, ReceivedDate = emailMessage.DateTimeReceived, Body = bodyText, Success = true, Attachments = attachments, ExtractedMetadata = extractedMetadata };
         }
 
@@ -142,9 +201,12 @@ namespace BlazorDematReports.Core.Services.Email
             var fileName = fileAttachment.Name;
             _logger.LogDebug("Lettura allegato in memoria: {FileName}", fileName);
 
-            using var memStream = new MemoryStream();
-            await System.Threading.Tasks.Task.Run(() => fileAttachment.Load(memStream), ct);
-            var content = memStream.ToArray();
+            // Usare Load() senza stream + Content è più affidabile di Load(stream):
+            // Load(stream) può restituire 0 byte su certi Exchange Server (il content non viene
+            // scritto nello stream se internamente this.content è null/vuoto).
+            // Load() popola fileAttachment.Content direttamente via GetAttachment SOAP request.
+            await System.Threading.Tasks.Task.Run(() => fileAttachment.Load(), ct);
+            var content = fileAttachment.Content ?? Array.Empty<byte>();
 
             if (content.Length == 0)
                 _logger.LogWarning("Allegato {FileName} ricevuto con 0 byte da EWS", fileName);
