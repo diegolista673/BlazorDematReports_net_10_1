@@ -10,29 +10,31 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-aggiungere centro in base al file di produzione nelle tabelle ader4 e hera16
-controllare con quelle precedenti
-controllare perchè in hera ( e poi in Ader4 ) email non di dati di produzione non vengono spostate
+definire le lavorazioni attive che poi il flag è visibile in scheda lavoarzione e fasi totali lavorazione
+controllare ultima data inserita e aggiornato al (esempio unicredit )
+comtrollare totale ore e totale fte 
 
+scheda Lavorazione togliere uno dei due spinning circle
+inglobare il logo nella scheda dei dettagli cliente, procedure ec..
 
-Test in produzione su db collaudo su IIS
-testare service mail in modo controllato e testare alcune lavorazioni genova, Verona,...28 aut postepay e altre
+pensare di unire scheda lavorazione con totale fasi 8 parte tecnica + parte numerica )
+quando vado a scheda tecnica procedura da link procedure di lavoraione? 
+valorizzo solo la parte tecnica e lascio la parte numerica da valorizzare tramite datetimepiocker?
+
 
 
 pratiche di successione da vedre su oracle ? chiedere a Luca
 testare lavorazioni con data in formato yyyy-MM-dd
 
-
-Controllare le varie operazioni fatte con utenti e permessi diversi e ruoli soprattutto per elenco lavoratori, 
-schede totali e impostazioni
-
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
-testare tutti gli handler attivi su db collaudo
 
 Per quando programma è pronto per la produzione
 database in produzione salvato, importare eventuali procedure nuove , importare produzione sistema  con identity on e produzione operatori
+
 modificare documenti isoledigitali ge 2024 2025
+
+usare visual studio per inserire dati mancanti
 
 
  

@@ -30,9 +30,6 @@ namespace BlazorDematReports.Core.Services.Email
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        /// <summary>Configurazione EWS corrente (credenziali, URL, filtri, pattern allegati).</summary>
-        protected EwsEmailServiceConfig Config => _config;
-
         /// <summary>Logger iniettato, disponibile alle classi derivate.</summary>
         protected ILogger Logger => _logger;
 
@@ -105,6 +102,11 @@ namespace BlazorDematReports.Core.Services.Email
                 return new BatchEmailProcessingResult { TotalEmailsFound = 0 };
             }
 
+            // Cerca la cartella archivio una sola volta per tutto il batch
+            var batchArchiveFolder = await FindArchiveFolderOnceAsync(service);
+            if (batchArchiveFolder is null)
+                _logger.LogWarning("Cartella archivio '{Folder}' non trovata: le email non verranno spostate", _config.ArchiveFolderName);
+
             var successfulEmails = new List<EmailProcessingResult>();
             var failedEmails     = new List<EmailProcessingResult>();
 
@@ -117,7 +119,11 @@ namespace BlazorDematReports.Core.Services.Email
                     var result = await ProcessSingleEmailAsync(emailMessage, ct);
                     if (result.Success) { successfulEmails.Add(result); _logger.LogInformation("Email OK: {Subject}", result.Subject); }
                     else { failedEmails.Add(result); _logger.LogWarning("Email KO: {Subject}, {Error}", result.Subject, result.ErrorMessage); }
-                    await MoveEmailToArchiveFolderAsync(emailMessage, ct);
+                    if (batchArchiveFolder is not null)
+                    {
+                        await System.Threading.Tasks.Task.Run(() => emailMessage.Move(batchArchiveFolder.Id), ct);
+                        _logger.LogInformation("Email {Subject} spostata in {Folder}", emailMessage.Subject, _config.ArchiveFolderName);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -126,8 +132,12 @@ namespace BlazorDematReports.Core.Services.Email
                 }
             }
 
-            var batchResult = new BatchEmailProcessingResult { TotalEmailsFound = searchResults.TotalCount, SuccessfulEmails = successfulEmails, FailedEmails = failedEmails };
-            _logger.LogInformation("Batch completato: Totali={Total}, OK={Success}, KO={Failed}", batchResult.TotalEmailsFound, successfulEmails.Count, failedEmails.Count);
+            var archivedNonMatching = 0;
+            if (_config.ArchiveUnmatchedSubjectFilters is { Count: > 0 })
+                archivedNonMatching = await ArchiveNonMatchingEmailsAsync(ct);
+
+            var batchResult = new BatchEmailProcessingResult { TotalEmailsFound = searchResults.TotalCount, SuccessfulEmails = successfulEmails, FailedEmails = failedEmails, ArchivedNonMatchingEmails = archivedNonMatching };
+            _logger.LogInformation("Batch completato: Totali={Total}, OK={Success}, KO={Failed}, Archiviate={Archived}", batchResult.TotalEmailsFound, successfulEmails.Count, failedEmails.Count, archivedNonMatching);
             return batchResult;
         }
 
@@ -147,6 +157,7 @@ namespace BlazorDematReports.Core.Services.Email
             var attachments = new List<AttachmentInfo>();
             var extractedMetadata = new Dictionary<string, string>();
             ExtractMetadataFromBody(bodyText, extractedMetadata);
+            ExtractMetadataFromSubject(emailMessage.Subject ?? string.Empty, extractedMetadata);
 
             // Controlla il pattern sul NOME del file (senza scaricare) prima del loop.
             // Se nessun allegato corrisponde ai pattern attesi → sposta email senza leggere nessun allegato.
@@ -325,36 +336,138 @@ namespace BlazorDematReports.Core.Services.Email
             }
         }
 
+        /// <summary>
+        /// Estrae metadata dal subject email.
+        /// Override nelle classi derivate per mappature specifiche (es. centro dal subject).
+        /// </summary>
+        /// <param name="subject">Subject dell'email.</param>
+        /// <param name="metadata">Dizionario metadata da valorizzare.</param>
+        protected virtual void ExtractMetadataFromSubject(string subject, Dictionary<string, string> metadata)
+        {
+            // Implementazione base: nessuna estrazione dal subject
+        }
+
         #endregion
 
         #region Archive Management
 
-        /// <summary>Sposta email in cartella archivio Exchange.</summary>
-        protected virtual async System.Threading.Tasks.Task MoveEmailToArchiveFolderAsync(EmailMessage emailMessage, CancellationToken ct)
+        /// <summary>
+        /// Secondo passaggio:
+        /// (<see cref="EwsEmailServiceConfig.ArchiveUnmatchedSubjectFilters"/>) ma NON ai filtri
+        /// principali (<see cref="EwsEmailServiceConfig.SubjectFilters"/>), e le sposta in archivio
+        /// senza scaricare allegati.
+        /// </summary>
+        /// <remarks>
+        /// Il filtro NOT viene applicato lato client: EWS SearchFilter.Not con ContainsSubstring
+        /// non è affidabile su tutti i server Exchange e può restituire 0 risultati silenziosamente.
+        /// </remarks>
+        /// <param name="ct">Token di annullamento.</param>
+        /// <returns>Numero di email archiviate.</returns>
+        protected virtual async System.Threading.Tasks.Task<int> ArchiveNonMatchingEmailsAsync(CancellationToken ct)
         {
+            if (_config.ArchiveUnmatchedSubjectFilters is not { Count: > 0 })
+                return 0;
+
+            var service = GetExchangeService();
+
+            // Filtro ampio lato server: trova tutte le email HERA16 (qualunque subject)
+            var broadFilters = _config.ArchiveUnmatchedSubjectFilters
+                .Select(f => (SearchFilter)new SearchFilter.ContainsSubstring(ItemSchema.Subject, f))
+                .ToList();
+            SearchFilter broadFilter = broadFilters.Count == 1
+                ? broadFilters[0]
+                : new SearchFilter.SearchFilterCollection(LogicalOperator.Or, broadFilters);
+
+            var itemView = new ItemView(_config.MaxEmailsPerRun, 0, OffsetBasePoint.Beginning)
+            {
+                PropertySet = new PropertySet(BasePropertySet.IdOnly, ItemSchema.Subject, ItemSchema.DateTimeReceived)
+            };
+
+            FindItemsResults<Item> results;
             try
             {
-                var service       = GetExchangeService();
-                var folderView    = new FolderView(1) { Traversal = FolderTraversal.Deep };
-                var filter        = new SearchFilter.IsEqualTo(FolderSchema.DisplayName, _config.ArchiveFolderName);
-                var folderResults = await service.FindFolders(WellKnownFolderName.Root, filter, folderView);
-
-                if (folderResults.Folders is null || !folderResults.Folders.Any())
-                {
-                    _logger.LogWarning("Cartella {Folder} non trovata", _config.ArchiveFolderName);
-                    return;
-                }
-
-                var archiveFolder = folderResults.Folders.FirstOrDefault(f => f.DisplayName == _config.ArchiveFolderName);
-                if (archiveFolder is not null)
-                {
-                    await System.Threading.Tasks.Task.Run(() => emailMessage.Move(archiveFolder.Id), ct);
-                    _logger.LogInformation("Email {Subject} spostata in {Folder}", emailMessage.Subject, _config.ArchiveFolderName);
-                }
+                results = await service.FindItems(WellKnownFolderName.Inbox, broadFilter, itemView);
+                _logger.LogInformation("Email trovate con filtro ampio HERA16: {Count}", results.Items.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore spostamento email {Subject}", emailMessage.Subject);
+                _logger.LogError(ex, "Errore ricerca email non corrispondenti per archiviazione");
+                return 0;
+            }
+
+            if (results.Items.Count == 0)
+                return 0;
+
+            // Esclusione client-side: scarta le email già coperte dai SubjectFilters specifici
+            // (SearchFilter.Not su EWS non è affidabile su tutti i server Exchange)
+            var nonMatchingEmails = results.Items
+                .OfType<EmailMessage>()
+                .Where(email => !_config.SubjectFilters.Any(sf =>
+                    (email.Subject ?? string.Empty).Contains(sf, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            _logger.LogInformation(
+                "Email da archiviare senza allegati: {ToArchive} (escluse perché già processate: {Excluded})",
+                nonMatchingEmails.Count, results.Items.Count - nonMatchingEmails.Count);
+
+            if (nonMatchingEmails.Count == 0)
+                return 0;
+
+            // Ricerca cartella archivio una sola volta prima del loop
+            var archiveFolder = await FindArchiveFolderOnceAsync(service);
+            if (archiveFolder is null)
+            {
+                _logger.LogWarning(
+                    "Cartella archivio '{Folder}' non trovata: le email non corrispondenti restano in Inbox",
+                    _config.ArchiveFolderName);
+                return 0;
+            }
+
+            int archived = 0;
+            foreach (var email in nonMatchingEmails)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    // Carica solo le proprietà necessarie: nessun download di allegati
+                    await email.Load(new PropertySet(EmailMessageSchema.Subject, EmailMessageSchema.IsRead));
+                    email.IsRead = true;
+                    await email.Update(ConflictResolutionMode.AutoResolve);
+                    await System.Threading.Tasks.Task.Run(() => email.Move(archiveFolder.Id), ct);
+                    archived++;
+                    _logger.LogInformation("Email archiviata senza lettura allegati: {Subject}", email.Subject);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Errore archiviazione email non corrispondente: {Subject}", email.Subject);
+                }
+            }
+
+            _logger.LogInformation("Archiviate {Count} email non corrispondenti", archived);
+            return archived;
+        }
+
+        /// <summary>
+        /// Cerca la cartella archivio una sola volta partendo da MsgFolderRoot.
+        /// Separata da <see cref="MoveEmailToArchiveFolderAsync"/> per evitare
+        /// una ricerca ridondante per ogni email nel loop di archiviazione.
+        /// </summary>
+        private async System.Threading.Tasks.Task<Folder?> FindArchiveFolderOnceAsync(ExchangeService service)
+        {
+            try
+            {
+                var folderView    = new FolderView(10) { Traversal = FolderTraversal.Deep };
+                var filter        = new SearchFilter.IsEqualTo(FolderSchema.DisplayName, _config.ArchiveFolderName);
+                var folderResults = await service.FindFolders(WellKnownFolderName.MsgFolderRoot, filter, folderView);
+                var folder = folderResults.Folders.FirstOrDefault(f => f.DisplayName == _config.ArchiveFolderName);
+                if (folder is null)
+                    _logger.LogWarning("FindArchiveFolderOnceAsync: cartella '{Folder}' non trovata in MsgFolderRoot", _config.ArchiveFolderName);
+                return folder;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore ricerca cartella archivio '{Folder}'", _config.ArchiveFolderName);
+                return null;
             }
         }
 

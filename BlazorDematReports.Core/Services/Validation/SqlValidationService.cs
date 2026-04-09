@@ -261,27 +261,85 @@ public class SqlValidationService
                 "Specificare esplicitamente le colonne: Operatore, DataLavorazione, Documenti, Fogli, Pagine");
         }
 
-        // Verifica presenza colonne obbligatorie
-        var missingColumns = new List<string>();
-        foreach (var column in RequiredColumns)
-        {
-            if (!Regex.IsMatch(columnsSection, $@"\b{column}\b", RegexOptions.IgnoreCase))
-            {
-                missingColumns.Add(column);
-            }
-        }
+        // Verifica presenza colonne obbligatorie come nomi di output (alias AS o nome diretto)
+        var outputNames = ExtractOutputColumnNames(columnsSection);
+        var missingColumns = RequiredColumns
+            .Where(col => !outputNames.Any(name => name.Equals(col, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
 
         if (missingColumns.Any())
         {
             var missing = string.Join(", ", missingColumns);
-            _logger?.LogWarning("Colonne obbligatorie mancanti: {Columns}", missing);
+            _logger?.LogWarning("Colonne obbligatorie mancanti come nomi di output: {Columns}", missing);
             return ValidationResult.Error(
-                $"Colonne obbligatorie mancanti: {missing}. " +
-                $"La query deve includere: {string.Join(", ", RequiredColumns)}");
+                $"Colonne obbligatorie mancanti come nomi di output: {missing}. " +
+                $"Ogni colonna deve essere esposta con alias: {string.Join(", ", RequiredColumns)}. " +
+                $"Esempio: convert(date, DataLavorazione) AS DataLavorazione");
         }
 
         return ValidationResult.Success(
             $"Tutte le colonne obbligatorie presenti: {string.Join(", ", RequiredColumns)}");
+    }
+
+
+    /// <summary>
+    /// Estrae i nomi di output dalla sezione SELECT: usa l'alias (dopo AS) se presente,
+    /// altrimenti l'ultimo identificatore semplice dell'espressione.
+    /// </summary>
+    private static List<string> ExtractOutputColumnNames(string columnsSection)
+    {
+        var outputNames = new List<string>();
+
+        foreach (var col in SplitSelectColumns(columnsSection))
+        {
+            var trimmed = col.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed)) continue;
+
+            // Se c'è AS <alias> alla fine, il nome di output è l'alias
+            var asMatch = Regex.Match(trimmed, @"\bAS\s+(\w+)\s*$", RegexOptions.IgnoreCase);
+            if (asMatch.Success)
+            {
+                outputNames.Add(asMatch.Groups[1].Value);
+            }
+            else
+            {
+                // Nessun alias: prende l'ultimo identificatore (gestisce table.column)
+                var lastWord = Regex.Match(trimmed, @"(\w+)\s*$");
+                if (lastWord.Success)
+                    outputNames.Add(lastWord.Groups[1].Value);
+            }
+        }
+
+        return outputNames;
+    }
+
+
+    /// <summary>
+    /// Suddivide la lista colonne SELECT rispettando le parentesi annidate,
+    /// evitando di spezzare espressioni come convert(date, col).
+    /// </summary>
+    private static List<string> SplitSelectColumns(string columnsSection)
+    {
+        var columns = new List<string>();
+        int depth = 0;
+        int start = 0;
+
+        for (int i = 0; i < columnsSection.Length; i++)
+        {
+            char c = columnsSection[i];
+            if (c == '(') depth++;
+            else if (c == ')') depth--;
+            else if (c == ',' && depth == 0)
+            {
+                columns.Add(columnsSection.Substring(start, i - start));
+                start = i + 1;
+            }
+        }
+
+        if (start < columnsSection.Length)
+            columns.Add(columnsSection.Substring(start));
+
+        return columns;
     }
 
     /// <summary>

@@ -13,11 +13,28 @@
               Margin="Margin.Dense"
               Class="mb-4" />
 
-<MudText Typo="Typo.body1" Class="mb-2"><strong>Mapping Configurati:</strong> @State.Mappings.Count</MudText>
+<MudPaper Elevation="3" Class="mb-4 pa-0" Style="border: 2px solid var(--mud-palette-primary); border-radius: 8px; overflow: hidden;">
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="px-3 py-2"
+              Style="background-color: var(--mud-palette-primary-hover); border-bottom: 1px solid var(--mud-palette-primary);">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.subtitle1" Style="color: var(--mud-palette-primary); font-weight: 700; letter-spacing: 0.03em;">
+                Mapping Configurati
+            </MudText>
+        </MudStack>
+        <MudBadge Content="@State.Mappings.Count" Color="@(State.Mappings.Any() ? Color.Success : Color.Warning)" Overlap Bordered>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                     Color="@(State.Mappings.Any() ? Color.Success : Color.Warning)"
+                     Icon="@(State.Mappings.Any() ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Warning)">
+                @(State.Mappings.Any() ? $"{State.Mappings.Count} mapping" : "Nessuno")
+            </MudChip>
+        </MudBadge>
+    </MudStack>
+
+    <div class="pa-3">
 
 @if (!State.Mappings.Any())
 {
-    <MudAlert Severity="Severity.Info">
+    <MudAlert Severity="Severity.Warning" Dense Elevation="0" Class="mb-0">
         <MudText>Nessun mapping configurato. Aggiungi almeno un mapping per continuare.</MudText>
     </MudAlert>
 }
@@ -25,17 +42,17 @@ else
 {
     @* Desktop View: Table (nascosta su mobile) *@
     <MudHidden Breakpoint="Breakpoint.SmAndDown">
-        <MudSimpleTable Dense Bordered Striped>
+        <MudSimpleTable Dense Bordered>
             <thead>
-                <tr>
-                    <th>Fase</th>
-                    <th>Schedulazione</th>
-                    <th>Giorni Prec.</th>
+                <tr style="background-color: var(--mud-palette-primary-hover); color: var(--mud-palette-primary);">
+                    <th style="font-weight: 700; padding: 10px 12px;">Fase</th>
+                    <th style="font-weight: 700; padding: 10px 12px;">Schedulazione</th>
+                    <th style="font-weight: 700; padding: 10px 12px;">Giorni Prec.</th>
                     @if (State.TipoFonte == TipoFonteData.SQL)
                     {
-                        <th>Query</th>
+                        <th style="font-weight: 700; padding: 10px 12px;">Query</th>
                     }
-                    <th>Azioni</th>
+                    <th style="font-weight: 700; padding: 10px 12px;">Azioni</th>
                 </tr>
             </thead>
             <tbody>
@@ -162,6 +179,9 @@ else
         </MudStack>
     </MudHidden>
 }
+
+    </div>
+</MudPaper>
 
 <MudDivider Class="my-4" />
 
@@ -351,7 +371,9 @@ GROUP BY OPERATORE, DATA_LAVORAZIONE</MudText>
 
     /// <summary>Indice del mapping in fase di modifica; null se si sta aggiungendo un nuovo mapping.</summary>
     private int? _editingIndex = null;
-    
+    /// <summary>IdFaseCentro del mapping in modifica; 0 se si sta aggiungendo un nuovo mapping.</summary>
+    private int _editingIdFaseCentro = 0;
+
     private List<(string Value, string Label)> _presetCrons = new()
     {
         ("0 5 * * *", "Giornaliero 05:00"),
@@ -455,6 +477,9 @@ GROUP BY OPERATORE, DATA_LAVORAZIONE</MudText>
 
         var mapping = new ConfigurazioneFaseCentro
         {
+            // Preserva IdFaseCentro in modifica: se 0, UpdateAsync lo aggiunge a mappingsToRemove,
+            // EF traccia l'entity come Deleted e la query salvata viene persa.
+            IdFaseCentro           = _editingIndex.HasValue ? _editingIdFaseCentro : 0,
             IdProceduraLavorazione = State.IdProcedura!.Value,
             IdCentro               = State.IdCentro!.Value,
             IdFaseLavorazione      = _selectedFaseId,
@@ -484,30 +509,33 @@ GROUP BY OPERATORE, DATA_LAVORAZIONE</MudText>
     private void CaricaMappingInForm(int index)
     {
         var mapping = State.Mappings[index];
-        _editingIndex       = index;
-        _selectedFaseId     = mapping.IdFaseLavorazione;
-        _selectedCron       = mapping.CronExpression ?? "0 5 * * *";
-        _giorniPrecedenti   = mapping.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti;
-        _queryText          = mapping.TestoQueryTask;
+        _editingIndex        = index;
+        _editingIdFaseCentro = mapping.IdFaseCentro;
+        _selectedFaseId      = mapping.IdFaseLavorazione;
+        _selectedCron        = mapping.CronExpression ?? "0 5 * * *";
+        _giorniPrecedenti    = mapping.GiorniPrecedenti ?? TaskConfigurationDefaults.DefaultGiorniPrecedenti;
+        _queryText           = mapping.TestoQueryTask;
         _selectedHandlerCode = mapping.HandlerClassName;
-        _validationMessage  = null;
+        _validationMessage   = null;
         // La query era già validata al momento del salvataggio — considera valida
-        _queryValidated     = !string.IsNullOrWhiteSpace(_queryText);
+        _queryValidated      = !string.IsNullOrWhiteSpace(_queryText);
     }
 
     /// <summary>Annulla la modifica in corso e reimposta il form.</summary> 
     private void AnnullaEdit()
     {
-        _editingIndex = null;
+        _editingIndex        = null;
+        _editingIdFaseCentro = 0;
         ResetForm();
     }
 
     private void ResetForm()
     {
-        _queryText         = State.TipoFonte == TipoFonteData.SQL ? string.Empty : null;
-        _validationMessage = null;
-        _queryValidated    = false;
-        _giorniPrecedenti  = 10;
+        _queryText           = State.TipoFonte == TipoFonteData.SQL ? string.Empty : null;
+        _validationMessage   = null;
+        _queryValidated      = false;
+        _giorniPrecedenti    = 10;
+        _editingIdFaseCentro = 0;
 
         // Seleziona la prossima fase disponibile
         var currentIndex = State.FasiDisponibili.FindIndex(f => f.IdFaseLavorazione == _selectedFaseId);

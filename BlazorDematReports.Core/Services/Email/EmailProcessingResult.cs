@@ -105,8 +105,9 @@ namespace BlazorDematReports.Core.Services.Email
         public int TotalAttachmentsDownloaded => SuccessfulEmails.Sum(e => e.Attachments.Count);
 
         /// <summary>
-        /// Path file zip creato (se abilitato).
+        /// Email identificate tramite filtro ampio ma non corrispondenti al filtro specifico,
+        /// archiviate senza lettura allegati (es. email HERA16 con subject non atteso).
         /// </summary>
-        public string? ZipArchivePath { get; init; }
+        public int ArchivedNonMatchingEmails { get; init; }
     }
 }

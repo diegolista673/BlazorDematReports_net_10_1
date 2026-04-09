@@ -34,5 +34,12 @@ namespace BlazorDematReports.Core.Services.Email
 
         /// <summary>Numero massimo email da processare per esecuzione (default: 100).</summary>
         public int MaxEmailsPerRun { get; init; } = 100;
+
+        /// <summary>
+        /// Filtri subject ampi per identificare email da archiviare senza processare (OR logic).
+        /// Le email che corrispondono a questi filtri ma NON ai <see cref="SubjectFilters"/> vengono
+        /// spostate in archivio senza leggere allegati.
+        /// </summary>
+        public IReadOnlyCollection<string>? ArchiveUnmatchedSubjectFilters { get; init; }
     }
 }

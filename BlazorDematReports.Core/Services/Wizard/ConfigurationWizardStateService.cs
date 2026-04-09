@@ -94,15 +94,20 @@ public record ConfigurationWizardState
         => this with { HandlerClassName = handler };
 
     public ConfigurationWizardState WithProcedura(int? idProcedura, int? idCentro, string? nome, ImmutableList<FasiLavorazione>? fasi = null)
-        => this with
+    {
+        // Resetta i mapping solo se la procedura cambia effettivamente.
+        // In edit mode MudAutocomplete può ritriggerare ValueChanged con la stessa procedura,
+        // causando la perdita dei mapping caricati dal database.
+        bool proceduraChanged = idProcedura != IdProcedura;
+        return this with
         {
-            IdProcedura = idProcedura,
-            IdCentro = idCentro,
-            NomeProcedura = nome,
+            IdProcedura     = idProcedura,
+            IdCentro        = idCentro,
+            NomeProcedura   = nome,
             FasiDisponibili = fasi ?? FasiDisponibili,
-            // Reset mappings when changing procedure
-            Mappings = ImmutableList<ConfigurazioneFaseCentro>.Empty
+            Mappings        = proceduraChanged ? ImmutableList<ConfigurazioneFaseCentro>.Empty : Mappings
         };
+    }
 
     public ConfigurationWizardState WithMapping(ConfigurazioneFaseCentro mapping)
         => this with { Mappings = Mappings.Add(mapping) };

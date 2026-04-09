@@ -425,8 +425,42 @@
                 "ScheduleSystemJobs registra job di sistema (es. pulizia, aggiornamenti).",
                 "ScheduleMailIngestion registra job di ingestion mail ADER4 e HERA16.",
                 "In caso di errore fatale all'avvio, NLog registra l'eccezione prima dello shutdown."}));
+            s.Subsections.Add(new ManualSubSection("Autorizzazioni IIS - Cartella Log", new List<string>{
+                "NLog scrive, ruota e rimuove automaticamente i file di log. " +
+                "Per garantire il corretto funzionamento del rolling e dell'eliminazione dei file scaduti, " +
+                "l'account del pool applicativo IIS deve avere il permesso <strong>Modifica (Modify)</strong> " +
+                "sulla cartella radice dei log e su tutte le sottocartelle.",
+                "Cartella radice log (come configurata in nlog.config): <code>C:\\LogWebApp\\DematReports\\</code>",
+                "<table class='manual-table'>" +
+                "<thead><tr><th>Account</th><th>Permesso richiesto</th><th>Applicare su</th><th>Motivo</th></tr></thead><tbody>" +
+                "<tr><td>IIS AppPool\\&lt;NomePool&gt;</td><td><strong>Modifica (Modify)</strong></td>" +
+                "<td>Cartella radice + sottocartelle + file (ereditato)</td>" +
+                "<td>Crea file .log, scrittura in tempo reale, rolling archivio, eliminazione file oltre maxArchiveFiles</td></tr>" +
+                "<tr><td>SYSTEM</td><td>Controllo completo</td><td>Cartella radice + ereditato</td>" +
+                "<td>Operazioni di sistema, backup automatizzato, raccolta log schedulata</td></tr>" +
+                "<tr><td>Administrators</td><td>Controllo completo</td><td>Cartella radice + ereditato</td>" +
+                "<td>Raccolta manuale, ispezione, eliminazione batch log scaduti</td></tr>" +
+                "</tbody></table>",
+                "<strong>Attenzione:</strong> il permesso Modifica include gia Lettura + Scrittura + Eliminazione. " +
+                "NON usare solo Scrittura (Write): NLog non riuscirebbe a eliminare i file in fase di rolling " +
+                "(parametro <code>maxArchiveFiles</code> in nlog.config).",
+                "<strong>Struttura sottocartelle — i permessi si ereditano automaticamente dalla radice:</strong>",
+                "<div class='diagram-block'>C:\\LogWebApp\\DematReports\\\n" +
+                "  blazor-demat-{shortdate}.log       log principale applicativo\n" +
+                "  internal\\                          log interno NLog diagnostics\n" +
+                "  errors\\\n" +
+                "    sql\\                             SqlException, timeout, DbUpdateException\n" +
+                "    validation\\                      errori validazione / business logic\n" +
+                "    background-tasks\\                Hangfire, job falliti\n" +
+                "    critical\\                        Fatal, eccezioni non gestite\n" +
+                "  hangfire\\                          log operativo Hangfire\n" +
+                "  database\\                          query SQL tracciate\n" +
+                "  data-reading\\                      ingestion CSV e mail\n" +
+                "  archives\\                          file ruotati dal rolling NLog\n" +
+                "    errors\\  hangfire\\  database\\  data-reading\\</div>"
+            }, true));
             s.Subsections.Add(new ManualSubSection("Flusso Deploy Produzione", new List<string>{
-                "<div class='diagram-block'>[dotnet publish]\n   v\n[Copia artefatti su server IIS]\n   v\n[Variabili ambiente impostate su server]\n   v\n[iisreset / recycle app pool]\n   v\n[Startup diagnostics verifica DB + Hangfire]\n   v\n[SyncRecurringJobs: allinea job con DB]\n   v\n[App operativa]</div>"}, true));
+                "<div class='diagram-block'>[dotnet publish]\n   v\n[Copia artefatti su server IIS]\n   v\n[Variabili ambiente impostate su server]\n   v\n[Permessi Modify su C:\\LogWebApp\\DematReports (vedi sezione precedente)]\n   v\n[iisreset / recycle app pool]\n   v\n[Startup diagnostics verifica DB + Hangfire]\n   v\n[SyncRecurringJobs: allinea job con DB]\n   v\n[App operativa]</div>"}, true));
         });
 
         // 10 RISOLUZIONE DEI PROBLEMI

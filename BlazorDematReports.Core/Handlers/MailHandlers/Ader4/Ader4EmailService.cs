@@ -3,6 +3,7 @@ using BlazorDematReports.Core.Services.Interfaces.IDataService;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
 {
@@ -204,6 +205,40 @@ namespace BlazorDematReports.Core.Handlers.MailHandlers.Ader4
             ExtractMetadataField(bodyText, "Identificativo evento:", metadata, "IdEvento");
             ExtractMetadataField(bodyText, "Periodo di riferimento:", metadata, "DataLavorazione");
         }
+
+
+        /// <summary>
+        /// Estrae il centro dal subject ADER4 nel formato:
+        /// "DEMAT_EQTMN4@RMHRPRD0 - Report di produzione (Verona|Genova)".
+        /// Valorizza il metadata "Centro" usato per la suddivisione dati in staging.
+        /// </summary>
+        protected override void ExtractMetadataFromSubject(string subject, Dictionary<string, string> metadata)
+        {
+            base.ExtractMetadataFromSubject(subject, metadata);
+
+            if (string.IsNullOrWhiteSpace(subject))
+            {
+                return;
+            }
+
+            var match = Regex.Match(subject, @"\(([^)]+)\)", RegexOptions.CultureInvariant);
+            if (!match.Success)
+            {
+                Logger.LogWarning("Centro non ricavabile dal subject ADER4: {Subject}", subject);
+                return;
+            }
+
+            var centro = match.Groups[1].Value.Trim();
+            if (string.IsNullOrWhiteSpace(centro))
+            {
+                Logger.LogWarning("Centro vuoto nel subject ADER4: {Subject}", subject);
+                return;
+            }
+
+            metadata["Centro"] = centro;
+            Logger.LogDebug("Metadata: Centro={Centro}", centro);
+        }
+
 
         // Classificazione codice scatola (regole ADER4)
         private static bool IsCaptiva(string cod)

@@ -47,6 +47,11 @@ public class Hera16EmailService : BaseEwsEmailService, IEmailBatchProcessor
             Domain              = mailConfig["Domain"] ?? "postel.it",
             ExchangeUrl         = new Uri(mailConfig["ExchangeUrl"] ?? "https://webmail.postel.it/ews/exchange.asmx"),
             SubjectFilters      = [mailConfig["SubjectFilter"] ?? "DEMAT_HERA16 - Report produzione giornaliera"],
+            // BroadSubjectFilter: identifica tutte le email HERA16 (con o senza il subject specifico).
+            // Le email che corrispondono al broad ma non al SubjectFilter vengono archiviate senza leggere allegati.
+            ArchiveUnmatchedSubjectFilters = mailConfig["BroadSubjectFilter"] is { Length: > 0 } broad
+                ? [broad]
+                : null,
             // Pattern: yyyyMMdd - file di produzione giornaliera.csv
             // Ogni '?' corrisponde a un singolo carattere (8 cifre della data)
             AttachmentPatterns  = [mailConfig["AttachmentPattern"] ?? "???????? - file di produzione giornaliera.csv"],
