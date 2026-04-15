@@ -10,7 +10,7 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-eliminato il campo nomeServizio da DB
+eliminato il campo nomeServizio da DB ricordasi di eliminarlo anche in locale su pc poste
  
 
 scheda Lavorazione togliere uno dei due spinning circle
