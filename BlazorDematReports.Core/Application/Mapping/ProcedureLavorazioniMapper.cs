@@ -25,7 +25,6 @@ public partial class ProcedureLavorazioniMapper
     [MapProperty("IdproceduraClienteNavigation.IdclienteNavigation.NomeCliente", "NomeCliente")]
     [MapProperty("IdproceduraClienteNavigation.IdclienteNavigation.IdCliente", "IdCliente")]
     [MapProperty("IdproceduraClienteNavigation.IdclienteNavigation.IdCentroLavorazioneNavigation.Centro", "Centro")]
-    [MapProperty("NomeServizio", "ServizioElaborazione")]
     [MapProperty("LavorazioniFasiDataReadings", "LavorazioniFasiDataReadingsDto")]
     public partial ProcedureLavorazioniDto ProceduraToDto(ProcedureLavorazioni entity);
 
@@ -71,10 +70,7 @@ public partial class ProcedureLavorazioniMapper
     [MapProperty(
         nameof(ProcedureLavorazioniDto.LavorazioniFasiDataReadingsDto),
         nameof(ProcedureLavorazioni.LavorazioniFasiDataReadings))]
-    [MapProperty(
-        nameof(ProcedureLavorazioniDto.ServizioElaborazione),
-        nameof(ProcedureLavorazioni.NomeServizio))]
-    [MapperIgnoreTarget(nameof(ProcedureLavorazioni.Attiva))]
+
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.IdformatoDatiProduzioneNavigation))]
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.IdoperatoreNavigation))]
     [MapperIgnoreTarget(nameof(ProcedureLavorazioni.IdproceduraClienteNavigation))]

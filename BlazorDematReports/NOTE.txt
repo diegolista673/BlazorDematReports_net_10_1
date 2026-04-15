@@ -10,17 +10,10 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-definire le lavorazioni attive che poi il flag è visibile in scheda lavoarzione e fasi totali lavorazione
-controllare ultima data inserita e aggiornato al (esempio unicredit )
-comtrollare totale ore e totale fte 
+eliminato il campo nomeServizio da DB
+ 
 
 scheda Lavorazione togliere uno dei due spinning circle
-inglobare il logo nella scheda dei dettagli cliente, procedure ec..
-
-pensare di unire scheda lavorazione con totale fasi 8 parte tecnica + parte numerica )
-quando vado a scheda tecnica procedura da link procedure di lavoraione? 
-valorizzo solo la parte tecnica e lascio la parte numerica da valorizzare tramite datetimepiocker?
-
 
 
 pratiche di successione da vedre su oracle ? chiedere a Luca
@@ -28,13 +21,13 @@ testare lavorazioni con data in formato yyyy-MM-dd
 
 controllare le lavorazioni che sono in datareading true ma non hanno un job associato
 
-
-Per quando programma è pronto per la produzione
-database in produzione salvato, importare eventuali procedure nuove , importare produzione sistema  con identity on e produzione operatori
-
-modificare documenti isoledigitali ge 2024 2025
-
 usare visual studio per inserire dati mancanti
+
+aggiungere tutte le query mancanti e controllare gli handler
+
+preparare documento per deploy e prima fare test con user secerts impostati
+
+nel frattempo proseguire con analisi sonar statico
 
 
  

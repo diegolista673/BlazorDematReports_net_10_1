@@ -13,7 +13,7 @@
 
 <MudDivider Class="border-solid border-1 mud-border-primary"></MudDivider>
 
-@if (_initializing)
+@if (_isLoading && _currentModel == null)
 {
     <div class="d-flex justify-center align-center pa-8">
         <MudProgressCircular Size="Size.Large" Indeterminate="true" Color="Color.Primary" />
@@ -216,7 +216,6 @@ else
     private string? _selectedLavorazione;
     private ProcedureLavorazioniDto? _currentModel;
     private bool _isLoading = false;
-    private bool _initializing = true;
     private int? _lastLoadedId;
 
 
@@ -224,13 +223,12 @@ else
     {
         try
         {
-            _initializing = true;
             UiState?.ShowOverlay("Caricamento lavorazioni...");
-            
+
             // Carica liste per autocomplete
             ListProcedureLavorazioni = await ServiceProcedureLavorazioni.GetTableProcedureLavorazioniByUserAsync();
             SetSelectLavorazione();
-            
+
             // Se c'è un ID nel parametro, carica quella procedura
             if (IdproceduraLavorazione.HasValue)
             {
@@ -244,15 +242,14 @@ else
         }
         finally
         {
-            _initializing = false;
             UiState?.HideOverlay();
         }
     }
     
     protected override async Task OnParametersSetAsync()
     {
-        // Evita reload se stiamo già caricando o se è lo stesso ID
-        if (_isLoading || _initializing) return;
+        // Evita reload se stiamo già caricando
+        if (_isLoading) return;
         
         // Gestisce il cambio di parametro quando si naviga con un ID diverso
         if (IdproceduraLavorazione.HasValue && IdproceduraLavorazione != _lastLoadedId)

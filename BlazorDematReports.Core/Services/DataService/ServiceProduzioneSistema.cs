@@ -17,18 +17,18 @@ namespace BlazorDematReports.Core.Services.DataService
     {
         private readonly ProduzioneSistemaMapper _mapper;
 
-        // Compiled queries (nessun DefaultIfEmpty per evitare DateTime.Min se assente)
-        private static readonly Func<DematReportsContext, int, int, DateTime?> _getMinDateCompiled =
-            EF.CompileQuery((DematReportsContext ctx, int idProc, int idFase) =>
+        // Compiled queries: filtra solo per procedura, indipendentemente dalla fase
+        private static readonly Func<DematReportsContext, int, DateTime?> _getMinDateCompiled =
+            EF.CompileQuery((DematReportsContext ctx, int idProc) =>
                 ctx.ProduzioneSistemas
-                   .Where(x => x.IdProceduraLavorazione == idProc && x.IdFaseLavorazione == idFase)
+                   .Where(x => x.IdProceduraLavorazione == idProc)
                    .Select(x => (DateTime?)x.DataLavorazione)
                    .Min());
 
-        private static readonly Func<DematReportsContext, int, int, DateTime?> _getMaxDateCompiled =
-            EF.CompileQuery((DematReportsContext ctx, int idProc, int idFase) =>
+        private static readonly Func<DematReportsContext, int, DateTime?> _getMaxDateCompiled =
+            EF.CompileQuery((DematReportsContext ctx, int idProc) =>
                 ctx.ProduzioneSistemas
-                   .Where(x => x.IdProceduraLavorazione == idProc && x.IdFaseLavorazione == idFase)
+                   .Where(x => x.IdProceduraLavorazione == idProc)
                    .Select(x => (DateTime?)x.DataLavorazione)
                    .Max());
 
@@ -201,20 +201,20 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <inheritdoc/>
-        public async Task<string?> GetPrimaDataInseritaAsync(int idProceduraLavorazione, int idFaseLavorazione)
+        public async Task<string?> GetPrimaDataInseritaAsync(int idProceduraLavorazione)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
             await using var context = await contextFactory.CreateDbContextAsync();
-            var minDate = _getMinDateCompiled(context, idProceduraLavorazione, idFaseLavorazione);
+            var minDate = _getMinDateCompiled(context, idProceduraLavorazione);
             return minDate?.ToShortDateString();
         }
 
         /// <inheritdoc/>
-        public async Task<string?> GetUltimaDataInseritaAsync(int idProceduraLavorazione, int idFaseLavorazione)
+        public async Task<string?> GetUltimaDataInseritaAsync(int idProceduraLavorazione)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
             await using var context = await contextFactory.CreateDbContextAsync();
-            var maxDate = _getMaxDateCompiled(context, idProceduraLavorazione, idFaseLavorazione);
+            var maxDate = _getMaxDateCompiled(context, idProceduraLavorazione);
             return maxDate?.ToShortDateString();
         }
     }

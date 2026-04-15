@@ -4,5 +4,45 @@
 @media (max-width:1200px){ .phase-chart-container{flex:1 1 200px} }
 @media (max-width:992px){ .phase-chart-container{flex:1 1 180px} }
 @media (max-width:768px){ .phase-chart-container{flex:1 1 100%; max-width:100%; height:100px} .phase-mini-chart-wrapper, .phase-last5years-chart-wrapper, .phase-mini-chart-placeholder { width:100%; height:100px; } }
-.page-totali-fasi-card { transition: width .3s, box-shadow .3s; box-shadow:0 2px 8px rgba(0,0,0,.08); border-radius:12px; background:#fff; }
-.page-totali-fasi-paper { background:#f7f7fa; border-radius:8px; box-shadow:none; }
+
+
+/* La Card esterna (Bianca) */
+.page-totali-fasi-card {
+    transition: width .3s, box-shadow .3s, transform .2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,.05); 
+    border-radius: 12px;
+    background: #ffffff;
+    border: 2px solid #f0f0f0; 
+}
+
+/* Effetto al passaggio del mouse per rendere l'app più interattiva */
+.page-totali-fasi-paper:hover {
+    background: #e3f2fd !important;
+}
+
+
+.page-totali-fasi-paper {
+    background: #f0f7ff !important;
+    border-radius: 10px;
+    padding: 10px 8px !important; /* Più spazio verticale, meno orizzontale */
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%; /* Occupa tutto lo spazio disponibile */
+}
+
+
+.page-totali-fasi-paper h6,
+.page-totali-fasi-paper .mud-typography-h6 {
+    font-weight: 800 !important;
+    /* Spiega al browser di adattare il font: */
+    font-size: clamp(0.8rem, 2.5vw, 1.1rem) !important;
+    line-height: 1.1;
+    word-break: keep-all; /* Impedisce al numero di spezzarsi a metà */
+    white-space: nowrap; /* Forza il numero su una sola riga */
+}
+
+.page-totali-fasi-card {
+    border-top: 4px solid #1E88E5 !important; /* Una linea blu in cima alla card */
+}

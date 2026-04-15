@@ -34,31 +34,53 @@ th {
 }
 
 .mud-typography-h4.titolo {
-    
-    color:rgba(89,74,226,1)
+    color: rgba(13,71,161)
 }
 
-/*.mud-dialog {
-    max-width: 900px;
-}
 
-.mud-dialog-width-full {
-    max-width: 1200px;
-}*/
 
 html, body {
     margin: 0;
     height: 100%; /* can also use viewport units (height: 100vh) */
 }
 
-/* Override dello stile di focus di MudBlazor */
-/*.mud-button-root:focus-visible {
-    outline: 4px solid #7b68ee !important;
-    outline-offset: 4px !important;
+
+
+/* Centra le icone nella versione Mini e sistema lo spazio per le frecce */
+.sidebar-moderna .mud-nav-link {
+    padding-left: 20px !important; /* Regola questo valore per centrare l'icona nel tuo spazio */
 }
 
-.mud-button-root:focus {
-    outline: 4px solid #7b68ee !important;
-    outline-offset: 4px !important;
-}*/
+/* Nasconde la freccia di espansione quando il drawer è chiuso (Mini) */
+.mud-drawer--mini:not(.mud-drawer--open) .mud-nav-group-expand-arrow {
+    display: none;
+}
 
+/* Rende le icone più visibili e blu quando attive */
+.sidebar-moderna .mud-nav-link.active {
+    background-color: rgba(30, 136, 229, 0.1);
+    color: #1E88E5 !important;
+}
+
+.sidebar-moderna .mud-nav-link.active .mud-nav-link-icon {
+    color: #1E88E5 !important;
+}
+
+
+
+/* Centra le icone quando il drawer è in modalità Mini */
+.mud-drawer-mini .mud-nav-link {
+    padding-left: 20px !important;
+    display: flex;
+    justify-content: center;
+}
+
+/* Sposta i link a destra solo quando il drawer è APERTO */
+.mud-drawer--open .mud-nav-link {
+    padding-left: 20px !important; /* Regola questi px per lo spostamento desiderato */
+    justify-content: flex-start;
+}
+
+.mud-nav-link .mud-nav-link-icon {
+    margin-right: 12px; /* Spazio tra icona e testo quando aperto */
+}

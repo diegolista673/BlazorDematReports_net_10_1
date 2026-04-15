@@ -2,59 +2,59 @@
 @inject NavigationManager NavigationManager;
 @inject UiStateService UiState
 
-<MudNavMenu Class="mt-5">
+<MudNavMenu Class="mt-5" Margin="Margin.Dense">
 
     @*OWNER, ADMIN, SUPERVISOR *@
     <AuthorizeView Roles="ADMIN,RESPONSABILE,SUPERVISOR">
         <Authorized>
 
             <MudNavGroup Icon="@Icons.Material.Filled.Dashboard" Title="Reports Lavorazioni" tabindex="-1" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="totali-lavorazione-fasi" Icon="@Icons.Material.Filled.TableView" Match="NavLinkMatch.Prefix" tabindex="-1">Totali Lavorazione Fasi</MudNavLink>
-                <MudNavLink Href="report-completo" Icon="@Icons.Material.Filled.FormatListBulleted" Match="NavLinkMatch.Prefix" tabindex="-1">Report Completo</MudNavLink>
+                <MudNavLink Class="pl-4" Href="totali-lavorazione-fasi" Icon="@Icons.Material.Filled.TableView" Match="NavLinkMatch.Prefix" tabindex="-1">Totali Lavorazione Fasi</MudNavLink>
+                <MudNavLink Class="pl-4" Href="report-completo" Icon="@Icons.Material.Filled.FormatListBulleted" Match="NavLinkMatch.Prefix" tabindex="-1">Report Completo</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.TableChart" Title="Scheda Lavorazione" tabindex="-1" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="scheda-lavorazione" Icon="@Icons.Material.Outlined.TableChart" Match="NavLinkMatch.Prefix" tabindex="-1">Scheda Lavorazione</MudNavLink>
+                <MudNavLink Class="pl-4" Href="scheda-lavorazione" Icon="@Icons.Material.Outlined.TableChart" Match="NavLinkMatch.Prefix" tabindex="-1">Scheda Lavorazione</MudNavLink>
             </MudNavGroup>
 
 
             <MudNavGroup Icon="@Icons.Material.Filled.Business" Title="Produzione" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="carica-dati" Icon="@Icons.Material.Filled.UploadFile" Match="NavLinkMatch.Prefix" tabindex="-1">Carica Dati</MudNavLink>
-                <MudNavLink Href="gestione-operatori" Icon="@Icons.Material.Filled.People" Match="NavLinkMatch.Prefix" tabindex="-1">Gestione Operatori</MudNavLink>
-                <MudNavLink Href="produzione-operatore" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Produzione Operatore</MudNavLink>
+                <MudNavLink Class="pl-4" Href="carica-dati" Icon="@Icons.Material.Filled.UploadFile" Match="NavLinkMatch.Prefix" tabindex="-1">Carica Dati</MudNavLink>
+                <MudNavLink Class="pl-4" Href="gestione-operatori" Icon="@Icons.Material.Filled.People" Match="NavLinkMatch.Prefix" tabindex="-1">Gestione Operatori</MudNavLink>
+                <MudNavLink Class="pl-4" Href="produzione-operatore" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Produzione Operatore</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.BarChart" Title="Grafici Clienti" Expanded="false" Disabled=@IsMenuDisabled tabindex="-1">
-                <MudNavLink Href="grafico-produzione" Icon="@Icons.Material.Filled.PieChart" Match="NavLinkMatch.Prefix" tabindex="-1">Grafico Produzione</MudNavLink>
+                <MudNavLink Class="pl-4" Href="grafico-produzione" Icon="@Icons.Material.Filled.PieChart" Match="NavLinkMatch.Prefix" tabindex="-1">Grafico Produzione</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.QueryStats" Title="DataManager" Expanded="false" Disabled=@IsMenuDisabled tabindex="-1">
-                <MudNavLink Href="data-manager" Icon="@Icons.Material.Filled.TableRows" Match="NavLinkMatch.Prefix" tabindex="-1">Load Data Manager</MudNavLink>
+                <MudNavLink Class="pl-4" Href="data-manager" Icon="@Icons.Material.Filled.TableRows" Match="NavLinkMatch.Prefix" tabindex="-1">Load Data Manager</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup  Icon="@Icons.Material.Filled.Schedule" Title="Task" Expanded="false" Disabled=@IsMenuDisabled tabindex="-1">
-                <MudNavLink Href="dashboard-task" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Dashboard Task</MudNavLink>
+                <MudNavLink Class="pl-4" Href="dashboard-task" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Dashboard Task</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup  Icon="@Icons.Material.Filled.Settings" Title="Settings" tabindex="-1" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="associazione-fase-totale" Icon="@Icons.Material.Filled.CompareArrows" Match="NavLinkMatch.Prefix" tabindex="-1">Associazione Totali</MudNavLink>
-                <MudNavLink Href="centri" Icon="@Icons.Material.Filled.LocationCity" Match="NavLinkMatch.Prefix" tabindex="-1">Centri</MudNavLink>
-                <MudNavLink Href="clienti" Icon="@Icons.Material.Filled.AccountTree" Match="NavLinkMatch.Prefix" tabindex="-1">Clienti</MudNavLink>
-                <MudNavLink Href="fasi-lavorazioni" Icon="@Icons.Material.Filled.AdfScanner" Match="NavLinkMatch.Prefix" tabindex="-1">Fasi Lavorazione</MudNavLink>
-                <MudNavLink Href="config-grafico-documenti" Icon="@Icons.Material.Filled.InsertChartOutlined" Match="NavLinkMatch.Prefix" tabindex="-1">Grafico</MudNavLink>
-                <MudNavLink Href="normalizzazione-operatore" Icon="@Icons.Material.Filled.AssignmentInd" Match="NavLinkMatch.Prefix" tabindex="-1">Normalizza Operatore</MudNavLink>
-                <MudNavLink Href="operatori" Icon="@Icons.Material.Filled.People" Match="NavLinkMatch.Prefix" tabindex="-1">Operatori</MudNavLink>
-                <MudNavLink Href="procedure-clienti" Icon="@Icons.Material.Filled.AccountTree" Match="NavLinkMatch.Prefix" tabindex="-1">Procedure Clienti</MudNavLink>
-                <MudNavLink Href="procedure-lavorazioni" Icon="@Icons.Material.Filled.AccountTree" Match="NavLinkMatch.Prefix" tabindex="-1">Procedure Lavorazioni</MudNavLink>
-                <MudNavLink Href="ruoli-utenti" Icon="@Icons.Material.Filled.ManageAccounts" Match="NavLinkMatch.Prefix" tabindex="-1">Ruoli</MudNavLink>
-                <MudNavLink Href="tipologie-totali" Icon="@Icons.Material.Filled.List" Match="NavLinkMatch.Prefix" tabindex="-1">Tipo Totali</MudNavLink>
-                <MudNavLink Href="fonti-dati" Icon="@Icons.Material.Filled.Storage" Match="NavLinkMatch.Prefix" tabindex="-1">Fonti Dati</MudNavLink>
+                <MudNavLink Class="pl-4" Href="associazione-fase-totale" Icon="@Icons.Material.Filled.CompareArrows" Match="NavLinkMatch.Prefix" tabindex="-1">Associazione Totali</MudNavLink>
+                <MudNavLink Class="pl-4" Href="centri" Icon="@Icons.Material.Filled.LocationCity" Match="NavLinkMatch.Prefix" tabindex="-1">Centri</MudNavLink>
+                <MudNavLink Class="pl-4" Href="clienti" Icon="@Icons.Material.Filled.AccountTree" Match="NavLinkMatch.Prefix" tabindex="-1">Clienti</MudNavLink>
+                <MudNavLink Class="pl-4" Href="fasi-lavorazioni" Icon="@Icons.Material.Filled.AdfScanner" Match="NavLinkMatch.Prefix" tabindex="-1">Fasi Lavorazione</MudNavLink>
+                <MudNavLink Class="pl-4" Href="config-grafico-documenti" Icon="@Icons.Material.Filled.InsertChartOutlined" Match="NavLinkMatch.Prefix" tabindex="-1">Grafico</MudNavLink>
+                <MudNavLink Class="pl-4" Href="normalizzazione-operatore" Icon="@Icons.Material.Filled.AssignmentInd" Match="NavLinkMatch.Prefix" tabindex="-1">Normalizza Operatore</MudNavLink>
+                <MudNavLink Class="pl-4" Href="operatori" Icon="@Icons.Material.Filled.People" Match="NavLinkMatch.Prefix" tabindex="-1">Operatori</MudNavLink>
+                <MudNavLink Class="pl-4" Href="procedure-clienti" Icon="@Icons.Material.Filled.AccountTree" Match="NavLinkMatch.Prefix" tabindex="-1">Procedure Clienti</MudNavLink>
+                <MudNavLink Class="pl-4" Href="procedure-lavorazioni" Icon="@Icons.Material.Filled.AccountTree" Match="NavLinkMatch.Prefix" tabindex="-1">Procedure Lavorazioni</MudNavLink>
+                <MudNavLink Class="pl-4" Href="ruoli-utenti" Icon="@Icons.Material.Filled.ManageAccounts" Match="NavLinkMatch.Prefix" tabindex="-1">Ruoli</MudNavLink>
+                <MudNavLink Class="pl-4" Href="tipologie-totali" Icon="@Icons.Material.Filled.List" Match="NavLinkMatch.Prefix" tabindex="-1">Tipo Totali</MudNavLink>
+                <MudNavLink Class="pl-4" Href="fonti-dati" Icon="@Icons.Material.Filled.Storage" Match="NavLinkMatch.Prefix" tabindex="-1">Fonti Dati</MudNavLink>
             </MudNavGroup>
 
 
             <MudNavGroup Icon="@Icons.Material.Filled.BookOnline" Title="Manuali" Expanded="false" Disabled=@IsMenuDisabled style="padding-bottom:40px" tabindex="-1">
-                <MudNavLink Href="manuale-operatore" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Operatore</MudNavLink>
-                <MudNavLink Href="manuale-tecnico" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Tecnico</MudNavLink>
+                <MudNavLink Class="pl-4" Href="manuale-operatore" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Operatore</MudNavLink>
+                <MudNavLink Class="pl-4" Href="manuale-tecnico" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Tecnico</MudNavLink>
             </MudNavGroup>
 
         </Authorized>
@@ -66,26 +66,26 @@
         <Authorized>
 
             <MudNavGroup Icon="@Icons.Material.Filled.Dashboard" Title="Reports Lavorazioni" tabindex="-1" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="totali-lavorazione-fasi" Icon="@Icons.Material.Filled.TableView" Match="NavLinkMatch.Prefix" tabindex="-1">Totali Lavorazione Fasi</MudNavLink>
-                <MudNavLink Href="report-completo" Icon="@Icons.Material.Filled.FormatListBulleted" Match="NavLinkMatch.Prefix" tabindex="-1">Report Completo</MudNavLink>
+                <MudNavLink Class="pl-4" Href="totali-lavorazione-fasi" Icon="@Icons.Material.Filled.TableView" Match="NavLinkMatch.Prefix" tabindex="-1">Totali Lavorazione Fasi</MudNavLink>
+                <MudNavLink Class="pl-4" Href="report-completo" Icon="@Icons.Material.Filled.FormatListBulleted" Match="NavLinkMatch.Prefix" tabindex="-1">Report Completo</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.TableChart" Title="Scheda Lavorazione" tabindex="-1" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="scheda-lavorazione" Icon="@Icons.Material.Outlined.TableChart" Match="NavLinkMatch.Prefix" tabindex="-1">Scheda Lavorazione</MudNavLink>
+                <MudNavLink Class="pl-4" Href="scheda-lavorazione" Icon="@Icons.Material.Outlined.TableChart" Match="NavLinkMatch.Prefix" tabindex="-1">Scheda Lavorazione</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.Business" Title="Produzione" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="carica-dati" Icon="@Icons.Material.Filled.UploadFile" Match="NavLinkMatch.Prefix" tabindex="-1">Carica Dati</MudNavLink>
-                <MudNavLink Href="gestione-operatori" Icon="@Icons.Material.Filled.People" Match="NavLinkMatch.Prefix" tabindex="-1">Gestione Operatori</MudNavLink>
-                <MudNavLink Href="produzione-operatore" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Produzione Operatore</MudNavLink>
+                <MudNavLink Class="pl-4" Href="carica-dati" Icon="@Icons.Material.Filled.UploadFile" Match="NavLinkMatch.Prefix" tabindex="-1">Carica Dati</MudNavLink>
+                <MudNavLink Class="pl-4" Href="gestione-operatori" Icon="@Icons.Material.Filled.People" Match="NavLinkMatch.Prefix" tabindex="-1">Gestione Operatori</MudNavLink>
+                <MudNavLink Class="pl-4" Href="produzione-operatore" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Produzione Operatore</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.BarChart" Title="Grafici Clienti" Expanded="false" Disabled=@IsMenuDisabled tabindex="-1">
-                <MudNavLink Href="grafico-produzione" Icon="@Icons.Material.Filled.PieChart" Match="NavLinkMatch.Prefix" tabindex="-1">Grafico Produzione</MudNavLink>
+                <MudNavLink Class="pl-4" Href="grafico-produzione" Icon="@Icons.Material.Filled.PieChart" Match="NavLinkMatch.Prefix" tabindex="-1">Grafico Produzione</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.BookOnline" Title="Manuali" Expanded="false" Disabled=@IsMenuDisabled style="padding-bottom:40px" tabindex="-1">
-                <MudNavLink Href="manuale-operatore" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Operatore</MudNavLink>
+                <MudNavLink Class="pl-4" Href="manuale-operatore" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Operatore</MudNavLink>
             </MudNavGroup>
 
         </Authorized>
@@ -96,12 +96,12 @@
     <AuthorizeView Roles="USER">
         <Authorized>
             <MudNavGroup Icon="@Icons.Material.Filled.Business" Title="Produzione" Expanded="false" Disabled=@IsMenuDisabled>
-                <MudNavLink Href="carica-dati" Icon="@Icons.Material.Filled.UploadFile" Match="NavLinkMatch.Prefix" tabindex="-1">Carica Dati</MudNavLink>
-                <MudNavLink Href="produzione-operatore" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Produzione Operatore</MudNavLink>
+                <MudNavLink Class="pl-4" Href="carica-dati" Icon="@Icons.Material.Filled.UploadFile" Match="NavLinkMatch.Prefix" tabindex="-1">Carica Dati</MudNavLink>
+                <MudNavLink Class="pl-4" Href="produzione-operatore" Icon="@Icons.Material.Filled.MoreTime" Match="NavLinkMatch.Prefix" tabindex="-1">Produzione Operatore</MudNavLink>
             </MudNavGroup>
 
             <MudNavGroup Icon="@Icons.Material.Filled.BookOnline" Title="Manuali" Expanded="false" Disabled=@IsMenuDisabled style="padding-bottom:40px" tabindex="-1">
-                <MudNavLink Href="manuale-operatore" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Operatore</MudNavLink>
+                <MudNavLink Class="pl-4" Href="manuale-operatore" Icon="@Icons.Material.Filled.Book" Match="NavLinkMatch.Prefix" tabindex="-1">Manuale Operatore</MudNavLink>
             </MudNavGroup>
 
         </Authorized>

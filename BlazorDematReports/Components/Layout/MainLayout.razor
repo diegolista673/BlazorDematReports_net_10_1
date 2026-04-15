@@ -5,7 +5,7 @@
 @inject UiStateService UiState
 @inject ISnackbar Snackbar
 
-<MudThemeProvider />
+<MudThemeProvider Theme="_currentTheme" />
 <MudPopoverProvider />
 <MudDialogProvider FullWidth="true"
 MaxWidth="MaxWidth.ExtraSmall"
@@ -14,37 +14,64 @@ Position="DialogPosition.Center"
 CloseOnEscapeKey="true" />
 <MudSnackbarProvider />
 
+<style>
+        /* sfondo grigio chiaro */
+        .main-content-bg {
+            background-color: #F9FAFB;
+            min-height: 100vh;
+        }
+
+    .mud-drawer {
+        border-right: 1px solid #E0E4E8 !important;
+    }
+</style>
+
 <PageTitle>DematReports</PageTitle>
 
 <MudLayout >
-    <MudAppBar Elevation="1" >
+    <MudAppBar Elevation="1" Color="Color.Primary">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
         <MudText Typo="Typo.h5" Class="ml-3">Demat Reports</MudText>
         <MudSpacer />
         <LoginDisplay></LoginDisplay>
     </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" >
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="@DrawerVariant.Mini" MiniWidth="80px" Class="sidebar-moderna" OpenMiniOnHover="true">
         <MyNavMenu></MyNavMenu>
     </MudDrawer>
-    <MudMainContent name="main" Class="mt-4" >
-        <CascadingValue Value="this">
-            <div class="content" px="4" style="padding-bottom:100px">
+
+
+    <MudMainContent Class="main-content-bg">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-8 ">
+
+            <CascadingValue Value="this" >
                 @Body
-            </div>
-        </CascadingValue>
+            </CascadingValue>
+
+        <div style="height: 120px; width: 100%; visibility: hidden;">&nbsp;</div>
+
+        </MudContainer>
     </MudMainContent>
+
+    @* Footer Fisso *@
+    <MudAppBar Bottom="true" Fixed="true" Elevation="1" Dense="true" Class="justify-center" Style="text-align: right;top: auto; bottom: 0; height:25px">
+        <MudText Inline="true" Align="Align.Right" Style="font-size:small; text-align:end ">@FooterText</MudText>
+    </MudAppBar>
+
+
     <MudScrollToTop Style="height:80px;overflow: auto;">
         <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowUpward" />
     </MudScrollToTop>
-    <MudAppBar Elevation="1" Style="text-align: right;top: auto; bottom: 0; height:25px" Dense="true" Fixed="true" >
-        <MudText Inline = "true" Align="Align.Right" Style="font-size:small; text-align:end " >@FooterText</MudText>
-    </MudAppBar>
+
+
+
     <MudOverlay Visible="@IsOverlayVisible" LightBackground="true">
         <div class="d-flex justify-space-around ">
             <MudText Typo="Typo.h4">@OverlayMessage</MudText>
             <MudProgressCircular Size="Size.Large" Indeterminate="true" />
         </div>
     </MudOverlay>
+
     <MudOverlay Visible="@IsVisibleEditing" LightBackground="true">
         <div class="d-flex justify-space-around ">
             <MudText Typo="Typo.h4">@TextEditOverlay</MudText>
@@ -75,11 +102,26 @@ CloseOnEscapeKey="true" />
         UiState.OnEditOverlayChanged += HandleEditOverlayChanged;
     }
 
+    private MudTheme _currentTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#0D47A1",          
+            Secondary = Colors.Red.Accent4,        
+            AppbarBackground = "#0D47A1", 
+            Surface = "#FFFFFF",          
+            ActionDefault = "#546E7A"   ,
+            Background = "#F4F7F9"         // Sfondo pagina chiaro (per contrasto)
+        }
+
+    };
+
 
     void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
     }
+
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

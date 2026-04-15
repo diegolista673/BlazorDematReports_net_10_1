@@ -61,6 +61,7 @@ namespace BlazorDematReports.Core.Services.DataService
             QueryLoggingHelper.LogQueryExecution(logger);
 
             var entity = _mapper.DtoToProcedura(procedureLavorazioniDto);
+            entity.Attiva = true; // Nuova procedura sempre attiva per default
             await using var context = await contextFactory.CreateDbContextAsync();
             context.ProcedureLavorazionis.Add(entity);
             await context.SaveChangesAsync();
@@ -585,6 +586,9 @@ namespace BlazorDematReports.Core.Services.DataService
             lavorazione.Idreparti = dto.Idreparti;
             lavorazione.Note = dto.Note;
             lavorazione.LogoBase64 = dto.LogoBase64;
+            // Aggiorna Attiva solo se esplicitamente valorizzato nel DTO (evita reset accidentale)
+            if (dto.Attiva.HasValue)
+                lavorazione.Attiva = dto.Attiva.Value;
         }
 
         /// <summary>

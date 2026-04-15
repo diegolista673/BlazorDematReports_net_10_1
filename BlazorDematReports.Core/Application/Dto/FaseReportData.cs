@@ -15,6 +15,5 @@ namespace BlazorDematReports.Core.Application.Dto
         public int TotalePagine { get; set; }
         public int TotaleOre { get; set; }
         public double TotaleFteMese { get; set; }
-        public bool IsExpanded { get; set; } = false;
     }
 }

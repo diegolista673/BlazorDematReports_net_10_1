@@ -116,33 +116,24 @@ function CreateEChartPhaseLast5Years(elementId, jsonData) {
                 type: 'bar',
                 stack: 'total',
                 data: pagesData,
-                //itemStyle: {
-                //    color: '#594ae2'  // Primary color
-                //},
                 barMaxWidth: 25,
-                itemStyle: { color: '#5e60e6' }
+                itemStyle: { color: '#0d47a1' }
             },
             {
                 name: 'Fogli',
                 type: 'bar',
                 stack: 'total',
                 data: sheetsData,
-                //itemStyle: {
-                //    color: '#ff6090'  // Secondary color
-                //},
                 barMaxWidth: 25,
-                itemStyle: { color: '#e5e833' }
+                itemStyle: { color: '#1976d2' }
             },
             {
                 name: 'Doc',
                 type: 'bar',
                 stack: 'total',
                 data: documentsData,
-                //itemStyle: {
-                //    color: '#00c853'  // Success color
-                //},
                 barMaxWidth: 25,
-                itemStyle: { color: '#5ee667' }
+                itemStyle: { color: '#90caf9' }
             }
         ]
     };
@@ -232,9 +223,9 @@ function CreateEChartPhaseLast5YearsBatch(jsonBatch) {
             },
             yAxis: { type: 'value', show: false },
             series: [
-                { name: 'Pag', type: 'bar', stack: 'total', data: pagesData, barMaxWidth: 20, itemStyle: { color: '#5e60e6' } },
-                { name: 'Fogli', type: 'bar', stack: 'total', data: sheetsData, barMaxWidth: 20, itemStyle: { color: '#5ee667' } },
-                { name: 'Doc', type: 'bar', stack: 'total', data: documentsData, barMaxWidth: 20, itemStyle: { color: '#e83333' } }
+                { name: 'Pag', type: 'bar', stack: 'total', data: pagesData, barMaxWidth: 20, itemStyle: { color: '#0d47a1' } },
+                { name: 'Fogli', type: 'bar', stack: 'total', data: sheetsData, barMaxWidth: 20, itemStyle: { color: '#1976d2' } },
+                { name: 'Doc', type: 'bar', stack: 'total', data: documentsData, barMaxWidth: 20, itemStyle: { color: '#90caf9' } }
             ]
         };
         

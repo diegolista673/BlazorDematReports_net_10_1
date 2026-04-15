@@ -582,9 +582,6 @@ public partial class DematReportsContext : DbContext
             entity.Property(e => e.NomeProceduraProgramma)
                 .HasMaxLength(100)
                 .IsUnicode(false);
-            entity.Property(e => e.NomeServizio)
-                .HasMaxLength(100)
-                .IsUnicode(false);
             entity.Property(e => e.Note)
                 .HasMaxLength(1000)
                 .IsUnicode(false);

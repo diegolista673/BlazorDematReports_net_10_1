@@ -16,11 +16,11 @@ namespace BlazorDematReports.Core.Services.DataService
     {
         private readonly TaskDataReadingAggiornamentoMapper _mapper;
 
-        // Compiled query per ultimo aggiornamento (usa MAX su DataAggiornamento)
-        private static readonly Func<DematReportsContext, int, int, DateTime?> _getLastAggiornamentoCompiled =
-            EF.CompileQuery((DematReportsContext ctx, int idProc, int idFase) =>
+        // Compiled query per ultimo aggiornamento: filtra solo per procedura, indipendentemente dalla fase
+        private static readonly Func<DematReportsContext, int, DateTime?> _getLastAggiornamentoCompiled =
+            EF.CompileQuery((DematReportsContext ctx, int idProc) =>
                 ctx.TaskDataReadingAggiornamentos
-                   .Where(x => x.IdLavorazione == idProc && x.IdFase == idFase)
+                   .Where(x => x.IdLavorazione == idProc)
                    .Select(x => (DateTime?)x.DataAggiornamento)
                    .Max());
 
@@ -151,16 +151,15 @@ namespace BlazorDematReports.Core.Services.DataService
         }
 
         /// <summary>
-        /// Restituisce la data dell'ultimo aggiornamento per procedura e fase specifiche come stringa formattata.
+        /// Restituisce la data dell'ultimo aggiornamento per procedura come stringa formattata, indipendentemente dalla fase.
         /// </summary>
         /// <param name="IdProceduraLavorazione">Identificativo della procedura di lavorazione.</param>
-        /// <param name="idFaseLavorazione">Identificativo della fase di lavorazione.</param>
         /// <returns>Data dell'ultimo aggiornamento in formato stringa o null se non trovato.</returns>
-        public async Task<string?> GetUltimoAggiornamentoAsync(int IdProceduraLavorazione, int idFaseLavorazione)
+        public async Task<string?> GetUltimoAggiornamentoAsync(int IdProceduraLavorazione)
         {
             QueryLoggingHelper.LogQueryExecution(logger);
             await using var context = await contextFactory.CreateDbContextAsync();
-            var lastDate = _getLastAggiornamentoCompiled(context, IdProceduraLavorazione, idFaseLavorazione);
+            var lastDate = _getLastAggiornamentoCompiled(context, IdProceduraLavorazione);
             return lastDate?.ToShortDateString();
         }
     }

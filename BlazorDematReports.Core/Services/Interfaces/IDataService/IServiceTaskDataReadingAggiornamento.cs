@@ -26,10 +26,9 @@ namespace BlazorDematReports.Core.Services.Interfaces.IDataService
 
 
         /// <summary>
-        /// Get ultima data aggiornamento
+        /// Restituisce la data dell'ultimo aggiornamento per procedura, indipendentemente dalla fase.
         /// </summary>
-        /// <returns></returns>
-        Task<string?> GetUltimoAggiornamentoAsync(int IdProceduraLavorazione, int idFaseLavorazione);
+        Task<string?> GetUltimoAggiornamentoAsync(int IdProceduraLavorazione);
 
     }
 

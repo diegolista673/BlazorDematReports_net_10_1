@@ -9,12 +9,18 @@
             <div class="d-flex flex-column" style="width: 100%;">
                 <div class="d-flex align-center justify-space-between">
                     <MudText Typo="Typo.h6">@Phase!.FaseNome</MudText>
-                    @if (Phase?.FlagDataReading == true)
+                    @if (Phase?.ReportData?.Any() == true)
                     {
-                        <MudChip T="string" Size=Size.Small Text="Variant.Text" Color="Color.Secondary">Data Reading</MudChip>
+                        <MudIconButton Class="mr-2" Size="Size.Medium" Color="Color.Success" Icon="@Icons.Material.Filled.Download" OnClick="DownloadExcel" Title="Esporta Excel" />
                     }
                 </div>
-                <div class="d-flex align-center justify-space-between mt-2">
+                <div style="min-height: 20px;">
+                    @if (Phase?.FlagDataReading == true)
+                    {
+                        <MudText Color="Color.Secondary" Typo="Typo.body2">Data Reading</MudText>
+                    }
+                </div>
+                <div class="d-flex align-center justify-space-between mt-4">
                     @if (HasSignificantData(Phase?.ReportData))
                     {
                         <div class="phase-mini-chart-wrapper">
@@ -24,21 +30,22 @@
                     else
                     {
                         <div class="phase-mini-chart-placeholder">
-                            <MudPaper Class="d-flex align-center justify-center page-totali-fasi-paper responsive-paper" Style="width:100%;height:100%;" >
+                            <MudPaper elevation=0>
                                 <MudText Typo="Typo.caption" Color="Color.Default">Nessun dato @Anno</MudText>
                             </MudPaper>
                         </div>
+
                     }
                     @if (Phase?.ReportDataLast5Years?.Any() == true)
                     {
-                        <div class="phase-last5years-chart-wrapper">
+                        <div class="phase-last5years-chart-wrapper mt-2">
                             <div id="phase-5years-@Phase.IdFaseLavorazione" class="phase-chart-container"></div>
                         </div>
                     }
                     else
                     {
                         <div class="phase-mini-chart-placeholder">
-                            <MudPaper Class="d-flex align-center justify-center page-totali-fasi-paper responsive-paper" Style="width:100%;height:100%;" >
+                            <MudPaper  elevation =0 >
                                 <MudText Typo="Typo.caption" Color="Color.Default">Nessun dato storico</MudText>
                             </MudPaper>
                         </div>
@@ -52,108 +59,44 @@
         {
             <MudGrid Spacing="1" Class="mb-3">
                 <MudItem xs="4">
-                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper" Outlined="true">
-                        <MudText Typo="Typo.caption" Class="text-muted">Anno</MudText>
-                        <MudText Typo="Typo.h6" >@Anno</MudText>
+                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper ma-1" Outlined="true">
+                        <MudText Typo="Typo.caption" Style="color: #546e7a; font-weight: 600;">Anno</MudText>
+                        <MudText Typo="Typo.h6" Style="color: #1a202c; font-weight: 700;">@Anno</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper" Outlined="true">
-                        <MudText Typo="Typo.caption" Class="text-muted">Ore</MudText>
-                        <MudText Typo="Typo.h6" >@Phase.TotaleOre.ToString("N0")</MudText>
+                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper ma-1" Outlined="true">
+                        <MudText Typo="Typo.caption" Style="color: #546e7a; font-weight: 600;">Ore</MudText>
+                        <MudText Typo="Typo.h6" Style="color: #1a202c; font-weight: 700;">@Phase.TotaleOre.ToString("N0")</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper" Outlined="true">
-                        <MudText Typo="Typo.caption" Class="text-muted">FTE</MudText>
-                        <MudText Typo="Typo.h6" >@Phase.TotaleFteMese.ToString("0.0")</MudText>
+                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper ma-1" Outlined="true">
+                        <MudText Typo="Typo.caption" Style="color: #546e7a; font-weight: 600;">FTE</MudText>
+                        <MudText Typo="Typo.h6" Style="color: #1a202c; font-weight: 700;">@Phase.TotaleFteMese.ToString("0.0")</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper" Outlined="true">
-                        <MudText Typo="Typo.caption" Class="text-muted">Documenti</MudText>
-                        <MudText Typo="Typo.h6" >@Phase.TotaleDocumenti.ToString("N0")</MudText>
+                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper ma-1" Outlined="true">
+                        <MudText Typo="Typo.caption" Style="color: #546e7a; font-weight: 600;">Documenti</MudText>
+                        <MudText Typo="Typo.h6" Style="color: #1a202c; font-weight: 700;">@Phase.TotaleDocumenti.ToString("N0")</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper" Outlined="true">
-                        <MudText Typo="Typo.caption" Class="text-muted">Fogli</MudText>
-                        <MudText Typo="Typo.h6" >@Phase.TotaleFogli.ToString("N0")</MudText>
+                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper ma-1" Outlined="true">
+                        <MudText Typo="Typo.caption" Style="color: #546e7a; font-weight: 600;">Fogli</MudText>
+                        <MudText Typo="Typo.h6" Style="color: #1a202c; font-weight: 700;">@Phase.TotaleFogli.ToString("N0")</MudText>
                     </MudPaper>
                 </MudItem>
                 <MudItem xs="4">
-                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper" Outlined="true">
-                        <MudText Typo="Typo.caption" Class="text-muted">Pagine</MudText>
-                        <MudText Typo="Typo.h6" >@Phase.TotalePagine.ToString("N0")</MudText>
+                    <MudPaper Class="pa-2 page-totali-fasi-paper responsive-paper ma-1" Outlined="true">
+                        <MudText Typo="Typo.caption" Style="color: #546e7a; font-weight: 600;">Pagine</MudText>
+                        <MudText Typo="Typo.h6" Style="color: #1a202c; font-weight: 700;">@Phase.TotalePagine.ToString("N0")</MudText>
                     </MudPaper>
                 </MudItem>
             </MudGrid>
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
-                       FullWidth="true"
-                       StartIcon="@(Phase.IsExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                       OnClick="Toggle">
-                @(Phase.IsExpanded ? "Nascondi Dettagli" : "Visualizza Dettagli")
-            </MudButton>
-            @if (Phase.IsExpanded)
-            {
-                <MudDivider Class="my-3" />
-                <div class="d-flex justify-end mb-3">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="DownloadExcel" StartIcon="@Icons.Material.Filled.Download">Excel</MudButton>
-                </div>
-                <MudTable Items="Phase.ReportData" Dense="true" Hover="true" Bordered="true" Striped="true" Breakpoint="Breakpoint.Sm" Elevation="2" Class="mb-4">
-                    <ToolBarContent>
-                        <MudText Typo="Typo.subtitle1"><b>Report Annuale - @Phase.FaseNome</b></MudText>
-                    </ToolBarContent>
-                    <HeaderContent>
-                        <MudTh>Anno</MudTh>
-                        <MudTh>Mese</MudTh>
-                        <MudTh>Doc</MudTh>
-                        <MudTh>Fogli</MudTh>
-                        <MudTh>Pag</MudTh>
-                        <MudTh>Scarti</MudTh>
-                        <MudTh>Ore</MudTh>
-                        <MudTh>FTE</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Anno"><MudText Typo="Typo.caption">@context.Anno</MudText></MudTd>
-                        <MudTd DataLabel="Mese"><MudText Typo="Typo.caption">@CultureInfo.GetCultureInfo("it-IT").DateTimeFormat.GetMonthName(context.Mese ?? 0)</MudText></MudTd>
-                        <MudTd DataLabel="Documenti"><MudText Typo="Typo.caption">@(context.Documenti?.ToString("N0") ?? "0")</MudText></MudTd>
-                        <MudTd DataLabel="Fogli"><MudText Typo="Typo.caption">@(context.Fogli?.ToString("N0") ?? "0")</MudText></MudTd>
-                        <MudTd DataLabel="Pagine"><MudText Typo="Typo.caption">@(context.Pagine?.ToString("N0") ?? "0")</MudText></MudTd>
-                        <MudTd DataLabel="Scarti"><MudText Typo="Typo.caption">@(context.Scarti?.ToString("N0") ?? "0")</MudText></MudTd>
-                        <MudTd DataLabel="Ore"><MudText Typo="Typo.caption">@(context.TotaleOreUomo?.ToString("N0") ?? "0")</MudText></MudTd>
-                        <MudTd DataLabel="FTE"><MudText Typo="Typo.caption">@(context.FteMese?.ToString("0.0") ?? "0.0")</MudText></MudTd>
-                    </RowTemplate>
-                    <FooterContent>
-                        <MudTd></MudTd>
-                        <MudTd><b>Totale:</b></MudTd>
-                        <MudTd><b>@Phase.TotaleDocumenti.ToString("N0")</b></MudTd>
-                        <MudTd><b>@Phase.TotaleFogli.ToString("N0")</b></MudTd>
-                        <MudTd><b>@Phase.TotalePagine.ToString("N0")</b></MudTd>
-                        <MudTd><b>@(Phase.ReportData?.Sum(r => r.Scarti ?? 0).ToString("N0") ?? "0")</b></MudTd>
-                        <MudTd><b>@Phase.TotaleOre.ToString("N0")</b></MudTd>
-                        <MudTd><b>@Phase.TotaleFteMese.ToString("0.0")</b></MudTd>
-                    </FooterContent>
-                </MudTable>
-                <MudTable Items="Phase.ReportTotaliDedicati" Dense="true" Hover="true" Bordered="true" Striped="true" Breakpoint="Breakpoint.Sm" Elevation="2" Class="mt-4">
-                    <ToolBarContent>
-                        <MudText Typo="Typo.subtitle1"><b>Report Totali Speciali - @Phase.FaseNome</b></MudText>
-                    </ToolBarContent>
-                    <HeaderContent>
-                        <MudTh>Anno</MudTh>
-                        <MudTh>Mese</MudTh>
-                        <MudTh>Tipo</MudTh>
-                        <MudTh>Totale</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Anno"><MudText Typo="Typo.caption">@context.Anno</MudText></MudTd>
-                        <MudTd DataLabel="Mese"><MudText Typo="Typo.caption">@CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName((int)context.Mese!)</MudText></MudTd>
-                        <MudTd DataLabel="Tipo"><MudText Typo="Typo.caption">@context.TipoTotale</MudText></MudTd>
-                        <MudTd DataLabel="Totale"><MudText Typo="Typo.caption">@(context.Totale?.ToString("N0") ?? "0")</MudText></MudTd>
-                    </RowTemplate>
-                </MudTable>
-            }
+
+
         }
         else
         {
@@ -163,12 +106,11 @@
 </MudCard>
 
 @code {
+
     [Parameter] public FaseReportData? Phase { get; set; }
     [Parameter] public int Anno { get; set; }
-    [Parameter] public EventCallback<FaseReportData?> OnToggle { get; set; }
     [Parameter] public EventCallback<FaseReportData?> OnExcel { get; set; }
 
-    private void Toggle() => OnToggle.InvokeAsync(Phase);
     private void DownloadExcel() => OnExcel.InvokeAsync(Phase);
 
     private bool HasSignificantData(List<ReportOreDocumenti>? reportData)

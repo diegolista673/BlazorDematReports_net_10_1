@@ -76,19 +76,17 @@ namespace BlazorDematReports.Core.Services.Interfaces.IDataService
         Task<List<ProduzioneSistemaDto>> GetProduzioneSistemaDtoAsync(int? IdOperatore, DateTime? startDataLavorazione);
 
         /// <summary>
-        /// Restituisce la prima data inserita in tabella produzione sistema per una procedura e fase specifica.
+        /// Restituisce la prima data inserita in tabella produzione sistema per una procedura, indipendentemente dalla fase.
         /// </summary>
         /// <param name="IdProceduraLavorazione">Identificativo della procedura di lavorazione.</param>
-        /// <param name="idFaseLavorazione">Identificativo della fase di lavorazione.</param>
         /// <returns>Stringa rappresentante la prima data, o null se non presente.</returns>
-        Task<string?> GetPrimaDataInseritaAsync(int IdProceduraLavorazione, int idFaseLavorazione);
+        Task<string?> GetPrimaDataInseritaAsync(int IdProceduraLavorazione);
 
         /// <summary>
-        /// Restituisce l'ultima data inserita in tabella produzione sistema per una procedura e fase specifica.
+        /// Restituisce l'ultima data inserita in tabella produzione sistema per una procedura, indipendentemente dalla fase.
         /// </summary>
         /// <param name="IdProceduraLavorazione">Identificativo della procedura di lavorazione.</param>
-        /// <param name="idFaseLavorazione">Identificativo della fase di lavorazione.</param>
         /// <returns>Stringa rappresentante l'ultima data, o null se non presente.</returns>
-        Task<string?> GetUltimaDataInseritaAsync(int IdProceduraLavorazione, int idFaseLavorazione);
+        Task<string?> GetUltimaDataInseritaAsync(int IdProceduraLavorazione);
     }
 }

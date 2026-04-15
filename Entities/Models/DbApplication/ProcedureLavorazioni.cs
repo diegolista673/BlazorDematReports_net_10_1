@@ -31,7 +31,7 @@ public partial class ProcedureLavorazioni
 
     public bool? Attiva { get; set; }
 
-    public string? NomeServizio { get; set; }
+
 
     public virtual ICollection<ConfigurazioneFaseCentro> ConfigurazioneFaseCentros { get; set; } = new List<ConfigurazioneFaseCentro>();
 

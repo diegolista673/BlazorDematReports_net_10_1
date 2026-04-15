@@ -33,11 +33,9 @@ function CreateEChartPhaseMiniBar(elementId, jsonData) {
         xAxis: { type: 'category', data: labels, show: false },
         yAxis: { type: 'value', show: false },
         series: [
-            { name: 'Pag', type: 'bar', stack: 'total', data: pagesData, barMaxWidth: 12, itemStyle: { color: '#5e60e6' } },
-            { name: 'Fogli', type: 'bar', stack: 'total', data: sheetsData, barMaxWidth: 12, itemStyle: { color: '#e5e833' } },
-            { name: 'Doc', type: 'bar', stack: 'total', data: documentsData, barMaxWidth: 12, itemStyle: { color: '#5ee667' } }
-
-
+            { name: 'Pag', type: 'bar', stack: 'total', data: pagesData, barMaxWidth: 12, itemStyle: { color: '#0d47a1' } },
+            { name: 'Fogli', type: 'bar', stack: 'total', data: sheetsData, barMaxWidth: 12, itemStyle: { color: '#1976d2' } },
+            { name: 'Doc', type: 'bar', stack: 'total', data: documentsData, barMaxWidth: 12, itemStyle: { color: '#90caf9' } }
         ]
     };
     myChart.setOption(option);
@@ -76,9 +74,9 @@ function CreateEChartPhaseMiniBarBatch(jsonBatch) {
             xAxis: { type: 'category', data: labels, show: false },
             yAxis: { type: 'value', show: false },
             series: [
-                { name: 'Pag', type: 'bar', stack: 'total', data: pagesData, barMaxWidth: 12, itemStyle: { color: '#5e60e6' } },
-                { name: 'Fogli', type: 'bar', stack: 'total', data: sheetsData, barMaxWidth: 12, itemStyle: { color: '#5ee667' } },
-                { name: 'Doc', type: 'bar', stack: 'total', data: documentsData, barMaxWidth: 12, itemStyle: { color: '#e83333' } }
+                { name: 'Pag', type: 'bar', stack: 'total', data: pagesData, barMaxWidth: 12, itemStyle: { color: '#0d47a1' } },
+                { name: 'Fogli', type: 'bar', stack: 'total', data: sheetsData, barMaxWidth: 12, itemStyle: { color: '#1976d2' } },
+                { name: 'Doc', type: 'bar', stack: 'total', data: documentsData, barMaxWidth: 12, itemStyle: { color: '#90caf9' } }
             ]
         };
         myChart.setOption(option);
