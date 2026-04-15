@@ -794,7 +794,18 @@ namespace BlazorDematReports.Core.Services.DataService
                         Reparto = x.IdrepartiNavigation != null ? x.IdrepartiNavigation.Reparti : null,
                         Centro = x.IdproceduraClienteNavigation.IdclienteNavigation.IdCentroLavorazioneNavigation.Centro,
                         Idcentro = x.Idcentro,
-                        Idreparti = x.Idreparti
+                        Idreparti = x.Idreparti,
+                        LavorazioniFasiDataReadingsDto = x.LavorazioniFasiDataReadings
+                            .Select(f => new LavorazioniFasiDataReadingDto
+                            {
+                                IdlavorazioneFaseDateReading = f.IdlavorazioneFaseDateReading,
+                                IdFaseLavorazione            = f.IdFaseLavorazione,
+                                IdProceduraLavorazione       = f.IdProceduraLavorazione,
+                                FlagDataReading              = f.FlagDataReading,
+                                FaseLavorazione              = f.IdFaseLavorazioneNavigation.FaseLavorazione
+                            })
+                            .OrderBy(f => f.FaseLavorazione)
+                            .ToList()
                     })
                     .ToListAsync();
             }
@@ -809,7 +820,20 @@ namespace BlazorDematReports.Core.Services.DataService
                         NomeProcedura = x.NomeProcedura,
                         FormatoDatiProduzione = x.IdformatoDatiProduzioneNavigation != null ? x.IdformatoDatiProduzioneNavigation.FormatoDatiProduzione : null,
                         Reparto = x.IdrepartiNavigation != null ? x.IdrepartiNavigation.Reparti : null,
-                        Centro = x.IdproceduraClienteNavigation.IdclienteNavigation.IdCentroLavorazioneNavigation.Centro
+                        Centro = x.IdproceduraClienteNavigation.IdclienteNavigation.IdCentroLavorazioneNavigation.Centro,
+                        Idcentro = x.Idcentro,
+                        Idreparti = x.Idreparti,
+                        LavorazioniFasiDataReadingsDto = x.LavorazioniFasiDataReadings
+                            .Select(f => new LavorazioniFasiDataReadingDto
+                            {
+                                IdlavorazioneFaseDateReading = f.IdlavorazioneFaseDateReading,
+                                IdFaseLavorazione            = f.IdFaseLavorazione,
+                                IdProceduraLavorazione       = f.IdProceduraLavorazione,
+                                FlagDataReading              = f.FlagDataReading,
+                                FaseLavorazione              = f.IdFaseLavorazioneNavigation.FaseLavorazione
+                            })
+                            .OrderBy(f => f.FaseLavorazione)
+                            .ToList()
                     })
                     .ToListAsync();
             }
