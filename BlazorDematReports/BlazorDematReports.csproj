@@ -11,6 +11,13 @@
     <UserSecretsId>2ad40ed9-cd4a-4f74-99d0-122f1c576463</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="wwwroot\lib\amcharts_4.9.19\amcharts4\examples\**" />
+    <Content Remove="wwwroot\lib\amcharts_4.9.19\amcharts4\examples\**" />
+    <EmbeddedResource Remove="wwwroot\lib\amcharts_4.9.19\amcharts4\examples\**" />
+    <None Remove="wwwroot\lib\amcharts_4.9.19\amcharts4\examples\**" />
+  </ItemGroup>
+
 
   <ItemGroup>
     <None Remove="PROJECT_SYSTEM_PROMPT.md" />
