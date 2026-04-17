@@ -84,8 +84,7 @@
                                              For="(()=>Model!.FormatoDatiProduzione)" />
 
                             <!-- Reparto -->
-                            <MudAutocomplete @ref=RefReparto 
-                                             T="string" 
+                            <MudAutocomplete T="string" 
                                              Label="Reparto" 
                                              @bind-Value=Model!.Reparto 
                                              Margin="Margin.Dense" 
@@ -99,8 +98,7 @@
                                              For="(()=>Model!.Reparto)" />
 
                             <!-- Nome Procedura -->
-                            <MudTextField @ref=RefNomeProcedura 
-                                          T="string" 
+                            <MudTextField T="string" 
                                           Label="Lavorazione" 
                                           Variant="Variant.Text" 
                                           Margin="Margin.Dense" 
@@ -252,18 +250,7 @@
     /// Riferimento al componente MudSelect per la selezione del centro.
     /// </summary>
     MudSelect<int?>? RefCentro;
-    
-    /// <summary>
-    /// Riferimento al componente MudAutocomplete per la selezione del reparto.
-    /// </summary>
-    MudAutocomplete<string>? RefReparto;
-    
-    /// <summary>
-    /// Riferimento al componente MudTextField per l'inserimento del nome procedura.
-    /// </summary>
-    MudTextField<string>? RefNomeProcedura;
 
-    /// <summary>
     /// Indica se l'aggiunta di una fase è disabilitata.
     /// </summary>
     bool IsDisableAddFase { get; set; } = true;
@@ -598,36 +585,33 @@
         var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
         var result = await dialog.Result;
 
-        if (result != null)
+        if (result != null && !result.Canceled)
         {
-            if (!result.Canceled)
+            try
             {
-                try
+                var pl = (await serviceProcedureLavorazioni.FindByConditionAsync(x => x.IdproceduraLavorazione == idProceduraLavorazione)).FirstOrDefault();
+                if (pl != null)
                 {
-                    var pl = (await serviceProcedureLavorazioni.FindByConditionAsync(x => x.IdproceduraLavorazione == idProceduraLavorazione)).FirstOrDefault();
-                    if (pl != null)
-                    {
-                        UiState?.ShowOverlay("Eliminazione in corso...");
-                        UiState?.SetMenuDisabled(true);
+                    UiState?.ShowOverlay("Eliminazione in corso...");
+                    UiState?.SetMenuDisabled(true);
 
-                        await serviceProcedureLavorazioni.DeleteProceduraLavorazioneAsync(pl.IdproceduraLavorazione);
-                        
-                        // Integrazione nuovo scheduler
-                        await ProductionScheduler.SyncAllAsync();
-                        
-                        ListProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+                    await serviceProcedureLavorazioni.DeleteProceduraLavorazioneAsync(pl.IdproceduraLavorazione);
 
-                        UiState?.HideOverlay();
-                        UiState?.SetMenuDisabled(false);
-                        UiState?.ShowSnackbar("Procedura Lavorazione eliminata", Severity.Success);
+                    // Integrazione nuovo scheduler
+                    await ProductionScheduler.SyncAllAsync();
 
-                        base.ErrorMessage = "";
-                    }
+                    ListProcedureLavorazioniDto = await serviceProcedureLavorazioni.GetAllProcedureLavorazioniDtoByUserAsync();
+
+                    UiState?.HideOverlay();
+                    UiState?.SetMenuDisabled(false);
+                    UiState?.ShowSnackbar("Procedura Lavorazione eliminata", Severity.Success);
+
+                    base.ErrorMessage = "";
                 }
-                catch (Exception ex)
-                {
-                    await HandleExceptionFormAsync(ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                await HandleExceptionFormAsync(ex);
             }
         }
     }
@@ -816,6 +800,7 @@
     public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
+        _cts.Dispose();
         await base.DisposeAsync();
     }
 }

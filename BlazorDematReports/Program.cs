@@ -92,7 +92,10 @@ if (builder.Environment.IsEnvironment("ProductionSim")
             InitializeApp(app);
             await RunStartupDiagnosticsAsync(app, bootstrapLogger);
             MapMiddleware(app);
-            await SyncRecurringJobsAsync(app);
+
+            try { await SyncRecurringJobsAsync(app); }
+            catch (Exception ex) { bootstrapLogger.Warn(ex, "SyncAllAsync skippato: SQL Server non disponibile"); }
+
             ScheduleSystemJobs();
             ScheduleMailIngestion();
 
@@ -430,6 +433,27 @@ if (builder.Environment.IsEnvironment("ProductionSim")
 
     private static async Task RunStartupDiagnosticsAsync(WebApplication app, NLog.Logger bootstrapLogger)
     {
+        // Log diagnostico connection string (solo in Development per non esporre dati in produzione)
+        if (app.Environment.IsDevelopment())
+        {
+            var cfg = app.Configuration;
+            var csDemat    = cfg.GetConnectionString("DematReportsContext") ?? "(non configurata)";
+            var csHangfire = cfg.GetConnectionString("HangfireConnection")  ?? "(non configurata)";
+
+            // Maschera la password nella stringa di connessione prima di loggarla
+            static string MaskPassword(string cs)
+            {
+                return System.Text.RegularExpressions.Regex.Replace(
+                    cs, @"(?i)(password|pwd)=([^;]*)", "$1=***");
+            }
+
+            bootstrapLogger.Info("=== CONNECTION STRINGS (Development) ===");
+            bootstrapLogger.Info("DematReportsContext : {0}", MaskPassword(csDemat));
+            bootstrapLogger.Info("HangfireConnection  : {0}", MaskPassword(csHangfire));
+            bootstrapLogger.Info("Environment         : {0}", app.Environment.EnvironmentName);
+            bootstrapLogger.Info("========================================");
+        }
+
         using var scope = app.Services.CreateScope();
         try
         {

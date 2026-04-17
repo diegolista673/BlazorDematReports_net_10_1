@@ -384,6 +384,7 @@
     public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
+        _cts.Dispose();
         await base.DisposeAsync();
     }
 

@@ -10,11 +10,7 @@ with (firstrow = 170,
       batchsize=10000,
       maxerrors=10);
 
-eliminato il campo nomeServizio da DB ricordasi di eliminarlo anche in locale su pc poste
- 
-
-scheda Lavorazione togliere uno dei due spinning circle
-
+testare invio mail con smtp di test
 
 pratiche di successione da vedre su oracle ? chiedere a Luca
 testare lavorazioni con data in formato yyyy-MM-dd

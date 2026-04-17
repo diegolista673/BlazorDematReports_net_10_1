@@ -186,28 +186,25 @@
         var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
         var result = await dialog.Result;
 
-        if (result != null)
+        if (result != null && !result.Canceled)
         {
-            if (!result.Canceled)
+            try
             {
-                try
-                {
-                    UiState?.ShowOverlay("Eliminazione in corso...");
-                    UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
 
-                    await ServiceFasiLavorazioni.DeleteFasiLavorazioneAsync(idFase);
-                    ListFasiLavorazioneDto = await ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
+                await ServiceFasiLavorazioni.DeleteFasiLavorazioneAsync(idFase);
+                ListFasiLavorazioneDto = await ServiceFasiLavorazioni.GetFasiLavorazioneDtoAsync();
 
-                    UiState?.HideOverlay();
-                    UiState?.SetMenuDisabled(false);
-                    UiState?.ShowSnackbar("Fase eliminata", Severity.Success);
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
+                UiState?.ShowSnackbar("Fase eliminata", Severity.Success);
 
-                }
-                catch (Exception ex)
-                {
-                    ResetFormModel();
-                    await HandleExceptionFormAsync(ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                ResetFormModel();
+                await HandleExceptionFormAsync(ex);
             }
         }
 

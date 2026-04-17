@@ -25,7 +25,7 @@
 
                             <MudFocusTrap Disabled="false" DefaultFocus="DefaultFocus">
 
-                                <MudAutocomplete @ref="@RefLavorazione" T="string" @bind-Value="Model.NomeProcedura"
+                                <MudAutocomplete T="string" @bind-Value="Model.NomeProcedura"
                                                  Label="Lavorazione"
                                              SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectLavorazione,arg))"
                                                  MaxItems=null
@@ -36,7 +36,7 @@
                                                  For="(() => Model.NomeProcedura)" />
 
 
-                                <MudAutocomplete @ref="@RefFase" T="string" @bind-Value="Model.Fase"
+                                <MudAutocomplete T="string" @bind-Value="Model.Fase"
                                                  Label="Fase"
                                              SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectFase,arg))"
                                                  MaxItems=null
@@ -47,7 +47,7 @@
                                                  For="(() => Model.Fase)" />
 
 
-                                <MudAutocomplete @ref="@RefTipologia" T="string" @bind-Value="Model.TipologiaTotale"
+                                <MudAutocomplete T="string" @bind-Value="Model.TipologiaTotale"
                                                  Label="Tipologia Totale"
                                                  SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectTipologiaTotale,arg))"
                                                  MaxItems=null
@@ -145,10 +145,6 @@
 
 
 @code {
-
-    MudAutocomplete<string>? RefLavorazione;
-    MudAutocomplete<string>? RefFase;
-    MudAutocomplete<string>? RefTipologia;
 
     private readonly CancellationTokenSource _cts = new();
 
@@ -260,28 +256,24 @@
         var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
         var result = await dialog.Result;
 
-        if (result != null){
-            if (!result.Canceled)
+        if (result != null && !result.Canceled)
+        {
+            try
             {
-                try
-                {
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
 
-                    UiState?.ShowOverlay("Eliminazione in corso...");
-                    UiState?.SetMenuDisabled(true);
+                await ServiceLavorazioniFasiTipoTotale.DeleteLavorazioniFasiTipoTotaleAsync((int)IdLavorazioneFaseTipoTotale!);
+                ListLavorazioniFasiTipoTotaleDto = await ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
 
-                    await ServiceLavorazioniFasiTipoTotale.DeleteLavorazioniFasiTipoTotaleAsync((int)IdLavorazioneFaseTipoTotale!);
-                    ListLavorazioniFasiTipoTotaleDto = await ServiceLavorazioniFasiTipoTotale.GetLavorazioniFasiTipoTotaleDtoAsync();
-
-                    UiState?.HideOverlay();
-                    UiState?.SetMenuDisabled(false);
-                    UiState?.ShowSnackbar("Record eliminato", Severity.Success);
-
-                }
-                catch (Exception ex)
-                {
-                    ResetFormModel();
-                    await HandleExceptionFormAsync(ex);
-                }
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
+                UiState?.ShowSnackbar("Record eliminato", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                ResetFormModel();
+                await HandleExceptionFormAsync(ex);
             }
         }
 
@@ -291,6 +283,7 @@
     public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
+        _cts.Dispose();
         await base.DisposeAsync();
     }
 

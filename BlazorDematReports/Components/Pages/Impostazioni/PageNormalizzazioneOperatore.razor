@@ -34,7 +34,7 @@
                                 </MudTextField>
 
 
-                                <MudAutocomplete @ref="@RefOperatori" T="string" Label="Operatori" @bind-Value="Model.OperatoreNormalizzato"
+                                <MudAutocomplete T="string" Label="Operatori" @bind-Value="Model.OperatoreNormalizzato"
                                                     ToStringFunc="@(oper => oper==null ? null : oper)"
                                              SearchFunc="@((string arg,CancellationToken ct) => SearchFromSelect(base.SelectOperatore,arg))"
                                                     MaxItems=null
@@ -105,7 +105,7 @@
                                         </MudTooltip>
                                         <MudDivider Vertical="true" FlexItem="true" />
                                         <MudTooltip Text="Delete">
-                                            <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.IdNorm, @context.Item.OperatoreDaNormalizzare!,@context.Item.OperatoreNormalizzato!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
+                                            <MudIconButton OnClick="@((e) => DeleteRecordAsync(@context.Item!.IdNorm, @context.Item.OperatoreDaNormalizzare!))" Size="@Size.Small" Icon="@Icons.Material.Filled.Delete" aria-label="delete" Color="Color.Error">Delete Records</MudIconButton>
                                         </MudTooltip>
                                     </MudStack>
                                 </CellTemplate>
@@ -182,7 +182,7 @@
 
     }
 
-    async Task DeleteRecordAsync(int id, string operatoreDaNorm, string operatore)
+    async Task DeleteRecordAsync(int id, string operatoreDaNorm)
     {
         var parameters = new DialogParameters();
         parameters.Add("ContentText", "Eliminare il record: " + operatoreDaNorm + " ?");
@@ -193,29 +193,26 @@
         var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
         var result = await dialog.Result;
 
-        if (result != null)
+        if (result != null && !result.Canceled)
         {
-            if (!result.Canceled)
+            try
             {
-                try
-                {
-                    UiState?.ShowOverlay("Eliminazione in corso...");
-                    UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
 
-                    await ServiceOperatoriNormalizzati.DeleteOperatoriNormalizzatiAsync(id);
-                    ListOperatoriNormalizzatiDto = await ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
+                await ServiceOperatoriNormalizzati.DeleteOperatoriNormalizzatiAsync(id);
+                ListOperatoriNormalizzatiDto = await ServiceOperatoriNormalizzati.GetOperatoriNormalizzatiDtoAsync();
 
-                    UiState?.HideOverlay();
-                    UiState?.SetMenuDisabled(false);
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
 
-                    base.ErrorMessage = "";
+                base.ErrorMessage = "";
 
-                    UiState?.ShowSnackbar("Operatore eliminato", Severity.Success);
-                }
-                catch (Exception ex)
-                {
-                    await HandleExceptionFormAsync(ex);
-                }
+                UiState?.ShowSnackbar("Operatore eliminato", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                await HandleExceptionFormAsync(ex);
             }
         }
 
@@ -226,7 +223,7 @@
     {
         try
         {
-            if (!string.IsNullOrEmpty(item.OperatoreDaNormalizzare) & (!string.IsNullOrEmpty(item.OperatoreNormalizzato)))
+            if (!string.IsNullOrEmpty(item.OperatoreDaNormalizzare) && !string.IsNullOrEmpty(item.OperatoreNormalizzato))
             {
                 await ServiceOperatoriNormalizzati.UpdateOperatoriNormalizzatiAsync(item);
                 UiState?.ShowSnackbar("Update eseguitoo", Severity.Success);

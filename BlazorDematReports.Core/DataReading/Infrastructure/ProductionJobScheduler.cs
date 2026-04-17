@@ -219,18 +219,31 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <summary>Disabilita un task e rimuove il relativo recurring job Hangfire (se presente).</summary>
         public async Task DisableAsync(int idTaskDaEseguire)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-            var task = await context.TaskDaEseguires
-                .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
+            try
+            {
+                await using var context = await _contextFactory.CreateDbContextAsync();
+                var task = await context.TaskDaEseguires
+                    .FirstOrDefaultAsync(x => x.IdTaskDaEseguire == idTaskDaEseguire);
 
-            if (task is null)
-                return;
+                if (task is null)
+                    return;
 
-            task.Enabled = false;
-            await context.SaveChangesAsync();
+                task.Enabled = false;
+                await context.SaveChangesAsync();
 
-            if (!string.IsNullOrEmpty(task.IdTaskHangFire))
-                _adapter.RemoveIfExists(task.IdTaskHangFire);
+                if (!string.IsNullOrEmpty(task.IdTaskHangFire))
+                    _adapter.RemoveIfExists(task.IdTaskHangFire);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                _logger?.LogError(ex, "DisableAsync: impossibile connettersi a SQL Server per il task {TaskId}", idTaskDaEseguire);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "DisableAsync: errore inatteso per il task {TaskId}", idTaskDaEseguire);
+                throw;
+            }
         }
 
         /// <summary>Rimuove un recurring job Hangfire direttamente dalla chiave.</summary>
@@ -248,39 +261,52 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// </summary>
         public async Task SyncAllAsync()
         {
-            await using var context = await _contextFactory.CreateDbContextAsync();
-
-            var enabled = await context.TaskDaEseguires
-                .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                .Include(t => t.IdConfigurazioneDatabaseNavigation)
-                .Where(t => t.Enabled)
-                .ToListAsync();
-
-            foreach (var t in enabled)
+            try
             {
-                var expectedKey = BuildHangfireKey(t);
-                var cron        = ResolveCron(t);
-                var oldKey      = t.IdTaskHangFire;
+                await using var context = await _contextFactory.CreateDbContextAsync();
 
-                bool keyChanged = oldKey != expectedKey
-                    || (!string.IsNullOrWhiteSpace(oldKey) && oldKey.StartsWith("temp-"));
+                var enabled = await context.TaskDaEseguires
+                    .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
+                    .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
+                    .Include(t => t.IdConfigurazioneDatabaseNavigation)
+                    .Where(t => t.Enabled)
+                    .ToListAsync();
 
-                if (keyChanged)
+                foreach (var t in enabled)
                 {
-                    if (!string.IsNullOrWhiteSpace(oldKey))
-                        _adapter.RemoveIfExists(oldKey);
+                    var expectedKey = BuildHangfireKey(t);
+                    var cron        = ResolveCron(t);
+                    var oldKey      = t.IdTaskHangFire;
 
-                    t.IdTaskHangFire = expectedKey;
+                    bool keyChanged = oldKey != expectedKey
+                        || (!string.IsNullOrWhiteSpace(oldKey) && oldKey.StartsWith("temp-"));
+
+                    if (keyChanged)
+                    {
+                        if (!string.IsNullOrWhiteSpace(oldKey))
+                            _adapter.RemoveIfExists(oldKey);
+
+                        t.IdTaskHangFire = expectedKey;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(t.CronExpression))
+                        t.CronExpression = cron;
+
+                    _adapter.AddOrUpdate(t.IdTaskHangFire, t.IdTaskDaEseguire, cron);
                 }
 
-                if (string.IsNullOrWhiteSpace(t.CronExpression))
-                    t.CronExpression = cron;
-
-                _adapter.AddOrUpdate(t.IdTaskHangFire, t.IdTaskDaEseguire, cron);
+                await context.SaveChangesAsync();
             }
-
-            await context.SaveChangesAsync();
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                _logger?.LogError(ex, "SyncAllAsync: impossibile connettersi a SQL Server. Verificare che il server sia avviato e raggiungibile");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "SyncAllAsync: errore inatteso durante la sincronizzazione dei job");
+                throw;
+            }
         }
 
         /// <summary>
@@ -290,67 +316,79 @@ namespace BlazorDematReports.Core.DataReading.Infrastructure
         /// <returns>Numero totale di job rimossi o aggiunti.</returns>
         public async Task<int> CleanupOrphansAsync()
         {
-            await using var context  = await _contextFactory.CreateDbContextAsync();
-            var existingKeys = _adapter.GetRecurringJobKeys().ToHashSet();
-
-            var enabledTasks = await context.TaskDaEseguires
-                .AsSplitQuery()
-                .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
-                .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
-                .Include(t => t.IdConfigurazioneDatabaseNavigation)
-                .Where(t => t.Enabled)
-                .ToListAsync();
-
-            var validKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var t in enabledTasks)
+            try
             {
-                validKeys.Add(BuildHangfireKey(t));
+                await using var context  = await _contextFactory.CreateDbContextAsync();
+                var existingKeys = _adapter.GetRecurringJobKeys().ToHashSet();
 
-                // Mantiene anche la chiave corrente (non temporanea) durante la transizione
-                if (!string.IsNullOrWhiteSpace(t.IdTaskHangFire) && !t.IdTaskHangFire.StartsWith("temp-"))
-                    validKeys.Add(t.IdTaskHangFire!);
-            }
+                var enabledTasks = await context.TaskDaEseguires
+                    .AsSplitQuery()
+                    .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdProceduraLavorazioneNavigation)
+                    .Include(t => t.IdLavorazioneFaseDateReadingNavigation)!.ThenInclude(f => f.IdFaseLavorazioneNavigation)
+                    .Include(t => t.IdConfigurazioneDatabaseNavigation)
+                    .Where(t => t.Enabled)
+                    .ToListAsync();
 
-            int removed = 0;
-            foreach (var key in existingKeys)
-            {
-                if (key.StartsWith("system:", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                var validKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                if (!validKeys.Contains(key))
+                foreach (var t in enabledTasks)
                 {
-                    _adapter.RemoveIfExists(key);
-                    removed++;
-                }
-            }
+                    validKeys.Add(BuildHangfireKey(t));
 
-            int added = 0;
-            foreach (var task in enabledTasks)
-            {
-                var expected = BuildHangfireKey(task);
-                var cron     = ResolveCron(task);
-
-                if (task.IdTaskHangFire != expected ||
-                    (!string.IsNullOrWhiteSpace(task.IdTaskHangFire) && task.IdTaskHangFire.StartsWith("temp-")))
-                {
-                    task.IdTaskHangFire = expected;
+                    if (!string.IsNullOrWhiteSpace(t.IdTaskHangFire) && !t.IdTaskHangFire.StartsWith("temp-"))
+                        validKeys.Add(t.IdTaskHangFire!);
                 }
 
-                if (string.IsNullOrWhiteSpace(task.CronExpression))
-                    task.CronExpression = cron;
-
-                if (!existingKeys.Contains(expected))
+                int removed = 0;
+                foreach (var key in existingKeys)
                 {
-                    _adapter.AddOrUpdate(expected, task.IdTaskDaEseguire, task.CronExpression!);
-                    added++;
+                    if (key.StartsWith("system:", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    if (!validKeys.Contains(key))
+                    {
+                        _adapter.RemoveIfExists(key);
+                        removed++;
+                    }
                 }
+
+                int added = 0;
+                foreach (var task in enabledTasks)
+                {
+                    var expected = BuildHangfireKey(task);
+                    var cron     = ResolveCron(task);
+
+                    if (task.IdTaskHangFire != expected ||
+                        (!string.IsNullOrWhiteSpace(task.IdTaskHangFire) && task.IdTaskHangFire.StartsWith("temp-")))
+                    {
+                        task.IdTaskHangFire = expected;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(task.CronExpression))
+                        task.CronExpression = cron;
+
+                    if (!existingKeys.Contains(expected))
+                    {
+                        _adapter.AddOrUpdate(expected, task.IdTaskDaEseguire, task.CronExpression!);
+                        added++;
+                    }
+                }
+
+                if (removed > 0 || added > 0)
+                    await context.SaveChangesAsync();
+
+                return removed + added;
             }
-
-            if (removed > 0 || added > 0)
-                await context.SaveChangesAsync();
-
-            return removed + added;
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                _logger?.LogError(ex, "CleanupOrphansAsync: impossibile connettersi a SQL Server. Verificare che il server sia avviato e raggiungibile");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "CleanupOrphansAsync: errore inatteso durante il cleanup degli orphan job");
+                throw;
+            }
         }
     }
 }

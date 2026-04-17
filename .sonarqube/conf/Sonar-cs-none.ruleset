@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RuleSet xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Rules for SonarQube" Description="This rule set was automatically generated from SonarQube" ToolsVersion="14.0">
   <Rules AnalyzerId="SonarScannerFor.NET" RuleNamespace="SonarScannerFor.NET">
+    <Rule Id="S6603" Action="None" />
+    <Rule Id="S6602" Action="None" />
+    <Rule Id="S3416" Action="None" />
+    <Rule Id="S8380" Action="None" />
+    <Rule Id="S8381" Action="None" />
+    <Rule Id="S2612" Action="None" />
+    <Rule Id="S1694" Action="None" />
+    <Rule Id="S8368" Action="None" />
+    <Rule Id="S8367" Action="None" />
+    <Rule Id="S2190" Action="None" />
+    <Rule Id="S3267" Action="None" />
     <Rule Id="S8487" Action="None" />
     <Rule Id="S8483" Action="None" />
     <Rule Id="S8484" Action="None" />
@@ -143,7 +154,6 @@
     <Rule Id="S4225" Action="None" />
     <Rule Id="S4220" Action="None" />
     <Rule Id="S3376" Action="None" />
-    <Rule Id="S3267" Action="None" />
     <Rule Id="S3264" Action="None" />
     <Rule Id="S3257" Action="None" />
     <Rule Id="S3256" Action="None" />
@@ -152,7 +162,6 @@
     <Rule Id="S3251" Action="None" />
     <Rule Id="S3011" Action="None" />
     <Rule Id="S3010" Action="None" />
-    <Rule Id="S2190" Action="None" />
     <Rule Id="S2178" Action="None" />
     <Rule Id="S2166" Action="None" />
     <Rule Id="S2077" Action="None" />
@@ -280,7 +289,6 @@
     <Rule Id="S1699" Action="None" />
     <Rule Id="S1698" Action="None" />
     <Rule Id="S1696" Action="None" />
-    <Rule Id="S1694" Action="None" />
     <Rule Id="S1450" Action="None" />
     <Rule Id="S1215" Action="None" />
     <Rule Id="S1210" Action="None" />
@@ -305,7 +313,6 @@
     <Rule Id="S2857" Action="None" />
     <Rule Id="S2757" Action="None" />
     <Rule Id="S2737" Action="None" />
-    <Rule Id="S2612" Action="None" />
     <Rule Id="S1994" Action="None" />
     <Rule Id="S1871" Action="None" />
     <Rule Id="S1659" Action="None" />
@@ -353,7 +360,6 @@
     <Rule Id="S6966" Action="None" />
     <Rule Id="S6962" Action="None" />
     <Rule Id="S6961" Action="None" />
-    <Rule Id="S6603" Action="None" />
     <Rule Id="S5753" Action="None" />
     <Rule Id="S4663" Action="None" />
     <Rule Id="S4426" Action="None" />
@@ -368,7 +374,6 @@
     <Rule Id="S1155" Action="None" />
     <Rule Id="S6965" Action="None" />
     <Rule Id="S6964" Action="None" />
-    <Rule Id="S6602" Action="None" />
     <Rule Id="S5547" Action="None" />
     <Rule Id="S5542" Action="None" />
     <Rule Id="S4545" Action="None" />
@@ -427,7 +432,6 @@
     <Rule Id="S4635" Action="None" />
     <Rule Id="S4507" Action="None" />
     <Rule Id="S4502" Action="None" />
-    <Rule Id="S3416" Action="None" />
     <Rule Id="S3415" Action="None" />
     <Rule Id="S2699" Action="None" />
     <Rule Id="S2696" Action="None" />

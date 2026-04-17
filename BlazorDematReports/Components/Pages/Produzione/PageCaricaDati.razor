@@ -281,30 +281,26 @@
         var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
         var result = await dialog.Result;
 
-        if (result != null)
+        if (result != null && !result.Canceled)
         {
-            if (!result.Canceled)
+            try
             {
-                try
-                {
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
 
-                    UiState?.ShowOverlay("Eliminazione in corso...");
-                    UiState?.SetMenuDisabled(true);
+                await serviceProduzioneSistema.DeleteProduzioneSistemaAsync(idProduzione);
 
-                    await serviceProduzioneSistema.DeleteProduzioneSistemaAsync(idProduzione);
+                ListProduzioneSistemaDto = await serviceProduzioneSistema.GetProduzioneSistemaDtoAsync(IdOperatore, DataLavorazione);
 
-                    ListProduzioneSistemaDto = await serviceProduzioneSistema.GetProduzioneSistemaDtoAsync(IdOperatore, DataLavorazione);
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
+                UiState?.ShowSnackbar("Lavorazione eliminata", Severity.Success);
 
-                    UiState?.HideOverlay();
-                    UiState?.SetMenuDisabled(false);
-                    UiState?.ShowSnackbar("Lavorazione eliminata", Severity.Success);
-
-                    base.ErrorMessage = "";
-                }
-                catch (Exception ex)
-                {
-                    await HandleExceptionFormAsync(ex);
-                }
+                base.ErrorMessage = "";
+            }
+            catch (Exception ex)
+            {
+                await HandleExceptionFormAsync(ex);
             }
         }
 
@@ -533,6 +529,7 @@
     public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
+        _cts.Dispose();
         await base.DisposeAsync();
     }
 

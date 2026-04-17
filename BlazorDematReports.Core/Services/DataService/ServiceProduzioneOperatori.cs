@@ -102,10 +102,10 @@ namespace BlazorDematReports.Core.Services.DataService
 
             await using var context = await contextFactory.CreateDbContextAsync();
 
-            var ProduzioneOperatori = await context.ProduzioneOperatoris.Where(x => x.IdProceduraLavorazione == ProduzioneOperatoriDto.IdProceduraLavorazione &
-                                                                                    x.IdFaseLavorazione == ProduzioneOperatoriDto.IdFaseLavorazione &
-                                                                                    x.IdTurno == ProduzioneOperatoriDto.IdTurno &
-                                                                                    x.IdOperatore == ProduzioneOperatoriDto.IdOperatore &
+            var ProduzioneOperatori = await context.ProduzioneOperatoris.Where(x => x.IdProceduraLavorazione == ProduzioneOperatoriDto.IdProceduraLavorazione &&
+                                                                                    x.IdFaseLavorazione == ProduzioneOperatoriDto.IdFaseLavorazione &&
+                                                                                    x.IdTurno == ProduzioneOperatoriDto.IdTurno &&
+                                                                                    x.IdOperatore == ProduzioneOperatoriDto.IdOperatore &&
                                                                                     x.DataLavorazione == ProduzioneOperatoriDto.DataLavorazione).FirstOrDefaultAsync();
 
             ProduzioneOperatori!.TempoLavOreCent = ProduzioneOperatoriDto.TempoLavOreCent;
@@ -128,9 +128,7 @@ namespace BlazorDematReports.Core.Services.DataService
 
             var lstReportProduzioneCompleta = new List<ReportProduzioneCompleta>();
 
-            try
-            {
-                await using var context = await contextFactory.CreateDbContextAsync();
+            await using var context = await contextFactory.CreateDbContextAsync();
 
                 string sql = @"
                     SELECT 
@@ -250,11 +248,6 @@ namespace BlazorDematReports.Core.Services.DataService
 
                 // Aggiunta degli esiti di lettura dati
                 return await AddEsitoReportProduzioneCompleta(lstReportProduzioneCompleta, startDataLavorazione, endDataLavorazione);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
         }
 
         /// <summary>

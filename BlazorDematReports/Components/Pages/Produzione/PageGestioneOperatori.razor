@@ -110,28 +110,28 @@
                             <CellTemplate>
 
                                 @* ore > 0; doc = 0; datareading = true*@ 
-                                @if ((@context.Item.TempoLavOreCent > 0) & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & (@context.Item.FlagDataReading == true ))
+                                @if ((@context.Item.TempoLavOreCent > 0) && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 && (@context.Item.FlagDataReading == true ))
                                 {
                                     <MudTooltip Text="Documenti incompleti con lettura dati prevista">
                                         <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
                                     </MudTooltip>
                                 }
                                 @* ore = 0; doc > 0; datareading = true  *@
-                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == true )
+                                @if (@context.Item.TempoLavOreCent == 0 && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 && @context.Item.FlagDataReading == true )
                                 {
                                     <MudTooltip Text="Ore incomplete ">
                                         <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
                                     </MudTooltip>
                                 }
                                 @* ore > 0; doc > 0; datareading = true  *@
-                                @if (@context.Item.TempoLavOreCent > 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == true )
+                                @if (@context.Item.TempoLavOreCent > 0 && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 && @context.Item.FlagDataReading == true )
                                 {
                                     <MudTooltip Text="Ore e Documenti completi">
                                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
                                     </MudTooltip>
                                 }
                                 @* ore = 0; doc = 0; datareading = true  *@
-                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & @context.Item.FlagDataReading == true )
+                                @if (@context.Item.TempoLavOreCent == 0 && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 && @context.Item.FlagDataReading == true )
                                 {
                                     <MudTooltip Text="Ore e documenti incomplete con lettura dati prevista">
                                         <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
@@ -141,28 +141,28 @@
 
 
                                 @* ore > 0; doc = 0; datareading = false  *@
-                                @if (@context.Item.TempoLavOreCent > 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & @context.Item.FlagDataReading == false )
+                                @if (@context.Item.TempoLavOreCent > 0 && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 && @context.Item.FlagDataReading == false )
                                 {
                                     <MudTooltip Text="Ore complete, documenti non necessari se lettura dati non prevista">
                                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
                                     </MudTooltip>
                                 }
                                 @* ore = 0; doc > 0; datareading = false  *@
-                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == false )
+                                @if (@context.Item.TempoLavOreCent == 0 && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 && @context.Item.FlagDataReading == false )
                                 {
                                     <MudTooltip Text="Ore incomplete ">
                                         <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
                                     </MudTooltip>
                                 }
                                 @* ore > 0; doc > 0; datareading = false  *@
-                                @if (@context.Item.TempoLavOreCent > 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 & @context.Item.FlagDataReading == false )
+                                @if (@context.Item.TempoLavOreCent > 0 && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) > 0 && @context.Item.FlagDataReading == false )
                                 {
                                     <MudTooltip Text="Ore e Documenti completi">
                                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
                                     </MudTooltip>
                                 }
                                 @* ore = 0; doc = 0; datareading = false  *@
-                                @if (@context.Item.TempoLavOreCent == 0 & (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 & @context.Item.FlagDataReading == false )
+                                @if (@context.Item.TempoLavOreCent == 0 && (@context.Item.Documenti + @context.Item.Fogli + @context.Item.Pagine) == 0 && @context.Item.FlagDataReading == false )
                                 {
                                     <MudTooltip Text="Ore incomplete">
                                         <MudIcon Icon="@Icons.Material.Filled.Clear" Color="Color.Error" Size="Size.Small" />
@@ -541,8 +541,8 @@
 
     protected async Task SetTabellaProduzioneSistemaAsync(ReportProduzioneCompleta ps)
     {
-        if ((ps.Documenti == 0 & ps.Fogli == 0 & ps.Pagine == 0 & ps.Scarti == 0) & 
-            (ValueBeforeEdit!.Documenti == 0 & ValueBeforeEdit.Fogli == 0 & ValueBeforeEdit.Pagine == 0 & ValueBeforeEdit.Scarti == 0))
+        if ((ps.Documenti == 0 && ps.Fogli == 0 && ps.Pagine == 0 && ps.Scarti == 0) &&
+            (ValueBeforeEdit!.Documenti == 0 && ValueBeforeEdit.Fogli == 0 && ValueBeforeEdit.Pagine == 0 && ValueBeforeEdit.Scarti == 0))
         {
             return;
         }
@@ -621,8 +621,8 @@
 
         if (SelectOption.Type == 2)
         {
-            LstReportGiornalieroView = LstReportGiornalieroView.Where(x => ((x.TempoLavOreCent > 0) && (x.Documenti == 0 && x.Fogli == 0 && x.Pagine == 0) & x.FlagDataReading == true) ||
-                                                                             ((x.TempoLavOreCent == 0) && (x.Documenti > 0 || x.Fogli > 0 || x.Pagine > 0) & x.FlagDataReading == true)
+            LstReportGiornalieroView = LstReportGiornalieroView.Where(x => ((x.TempoLavOreCent > 0) && (x.Documenti == 0 && x.Fogli == 0 && x.Pagine == 0) && x.FlagDataReading == true) ||
+                                                                             ((x.TempoLavOreCent == 0) && (x.Documenti > 0 || x.Fogli > 0 || x.Pagine > 0) && x.FlagDataReading == true)
                                                                            ).OrderBy(x => x.DataLavorazione).ThenBy(x => x.Operatore).ToList();
 
             LstReportTotaliDedicatiGiornalieroView = Enumerable.Empty<ReportGiornalieroTotaliDedicati>();
@@ -633,6 +633,7 @@
     public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
+        _cts.Dispose();
         await base.DisposeAsync();
     }
 

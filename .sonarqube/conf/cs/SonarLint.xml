@@ -24,6 +24,30 @@
   </Settings>
   <Rules>
     <Rule>
+      <Key>S8380</Key>
+    </Rule>
+    <Rule>
+      <Key>S8381</Key>
+    </Rule>
+    <Rule>
+      <Key>S2612</Key>
+    </Rule>
+    <Rule>
+      <Key>S1694</Key>
+    </Rule>
+    <Rule>
+      <Key>S8368</Key>
+    </Rule>
+    <Rule>
+      <Key>S8367</Key>
+    </Rule>
+    <Rule>
+      <Key>S2190</Key>
+    </Rule>
+    <Rule>
+      <Key>S3267</Key>
+    </Rule>
+    <Rule>
       <Key>S6960</Key>
     </Rule>
     <Rule>
@@ -211,9 +235,6 @@
       <Key>S3376</Key>
     </Rule>
     <Rule>
-      <Key>S3267</Key>
-    </Rule>
-    <Rule>
       <Key>S3264</Key>
     </Rule>
     <Rule>
@@ -224,9 +245,6 @@
     </Rule>
     <Rule>
       <Key>S3010</Key>
-    </Rule>
-    <Rule>
-      <Key>S2190</Key>
     </Rule>
     <Rule>
       <Key>S2178</Key>
@@ -566,9 +584,6 @@
       <Key>S1696</Key>
     </Rule>
     <Rule>
-      <Key>S1694</Key>
-    </Rule>
-    <Rule>
       <Key>S1450</Key>
     </Rule>
     <Rule>
@@ -624,9 +639,6 @@
     </Rule>
     <Rule>
       <Key>S2737</Key>
-    </Rule>
-    <Rule>
-      <Key>S2612</Key>
     </Rule>
     <Rule>
       <Key>S1994</Key>

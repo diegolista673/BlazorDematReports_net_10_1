@@ -288,31 +288,28 @@
         var dialog = await DialogService!.ShowAsync<Dialog>("Elimina Record", parameters, options);
         var result = await dialog.Result;
 
-        if (result != null)
+        if (result != null && !result.Canceled)
         {
-            if (!result.Canceled)
+            try
             {
-                try
-                {
-                    UiState?.ShowOverlay("Eliminazione in corso...");
-                    UiState?.SetMenuDisabled(true);
+                UiState?.ShowOverlay("Eliminazione in corso...");
+                UiState?.SetMenuDisabled(true);
 
-                    await ServiceOperatori.DeleteOperatoreAsync(idOperatore);
-                    ListOperatoriDto = await ServiceOperatori.GetOperatoriDtoAsync();
-                
-                    Model!.CentriVisibiliDto = await ServiceCentri.GetCentriVisibiliDtoByUserAsync();
+                await ServiceOperatori.DeleteOperatoreAsync(idOperatore);
+                ListOperatoriDto = await ServiceOperatori.GetOperatoriDtoAsync();
 
-                    UiState?.HideOverlay();
-                    UiState?.SetMenuDisabled(false);
-                    UiState?.ShowSnackbar("Operatore eliminat", Severity.Success);
+                Model!.CentriVisibiliDto = await ServiceCentri.GetCentriVisibiliDtoByUserAsync();
 
-                    base.ErrorMessage = "";
+                UiState?.HideOverlay();
+                UiState?.SetMenuDisabled(false);
+                UiState?.ShowSnackbar("Operatore eliminat", Severity.Success);
 
-                }
-                catch (Exception ex)
-                {
-                    await HandleExceptionFormAsync(ex);
-                }
+                base.ErrorMessage = "";
+
+            }
+            catch (Exception ex)
+            {
+                await HandleExceptionFormAsync(ex);
             }
         }
 
@@ -352,6 +349,7 @@
     public override async ValueTask DisposeAsync()
     {
         _cts.Cancel();
+        _cts.Dispose();
         await base.DisposeAsync();
     }
 

@@ -1,0 +1,7 @@
+::deep .main-content-bg {
+    background-color: white !important;
+}
+
+::deep .mud-container {
+    background-color: white !important;
+}

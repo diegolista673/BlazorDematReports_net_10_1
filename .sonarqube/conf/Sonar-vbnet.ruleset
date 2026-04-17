@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RuleSet xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="Rules for SonarQube" Description="This rule set was automatically generated from SonarQube" ToolsVersion="14.0">
   <Rules AnalyzerId="SonarScannerFor.NET" RuleNamespace="SonarScannerFor.NET">
+    <Rule Id="S2612" Action="Warning" />
     <Rule Id="S2068" Action="Warning" />
     <Rule Id="S6547" Action="Warning" />
     <Rule Id="S6549" Action="Warning" />
@@ -133,7 +134,6 @@
     <Rule Id="S5445" Action="Warning" />
     <Rule Id="S3949" Action="Warning" />
     <Rule Id="S6418" Action="Warning" />
-    <Rule Id="S2612" Action="Warning" />
     <Rule Id="S2053" Action="Warning" />
     <Rule Id="S2302" Action="None" />
     <Rule Id="S3871" Action="Warning" />

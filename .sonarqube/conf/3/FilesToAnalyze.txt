@@ -868,7 +868,9 @@ C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\nlog.confi
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\appsettings.Development.json
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\appsettings.Email.example.json
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\appsettings.json
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\appsettings.Production-NoActiveDirectory.json
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\appsettings.Production.json
+C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\appsettings.ProductionSim.json
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\libman.json
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\Components\Pages\Account\Login.cshtml
 C:\Users\SMARTW\source\repos\BlazorDematReports_10\BlazorDematReports\Components\Pages\Account\Logout.cshtml
