@@ -253,7 +253,7 @@ public class SqlValidationService
         // Controllo più semplice: verifica se c'è una virgola prima del primo asterisco
         // Se SELECT *, l'asterisco sarà il primo elemento dopo SELECT
         var trimmedColumns = columnsSection.Trim();
-        if (trimmedColumns.StartsWith("*") || Regex.IsMatch(trimmedColumns, @"^\s*\*\s*$"))
+        if (trimmedColumns.StartsWith("*") || Regex.IsMatch(trimmedColumns, @"^\s*\*\s*$", RegexOptions.None, TimeSpan.FromMilliseconds(100)))
         {
             _logger?.LogWarning("SELECT * rilevato nella query");
             return ValidationResult.Error(
@@ -296,7 +296,7 @@ public class SqlValidationService
             if (string.IsNullOrWhiteSpace(trimmed)) continue;
 
             // Se c'è AS <alias> alla fine, il nome di output è l'alias
-            var asMatch = Regex.Match(trimmed, @"\bAS\s+(\w+)\s*$", RegexOptions.IgnoreCase);
+            var asMatch = Regex.Match(trimmed, @"\bAS\s+(\w+)\s*$", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
             if (asMatch.Success)
             {
                 outputNames.Add(asMatch.Groups[1].Value);
@@ -304,7 +304,7 @@ public class SqlValidationService
             else
             {
                 // Nessun alias: prende l'ultimo identificatore (gestisce table.column)
-                var lastWord = Regex.Match(trimmed, @"(\w+)\s*$");
+                var lastWord = Regex.Match(trimmed, @"(\w+)\s*$", RegexOptions.None, TimeSpan.FromMilliseconds(100));
                 if (lastWord.Success)
                     outputNames.Add(lastWord.Groups[1].Value);
             }

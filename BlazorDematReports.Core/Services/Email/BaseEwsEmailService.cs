@@ -328,7 +328,7 @@ namespace BlazorDematReports.Core.Services.Email
             if (string.IsNullOrWhiteSpace(bodyText) || string.IsNullOrWhiteSpace(searchPattern))
                 return;
 
-            var match = Regex.Match(bodyText, Regex.Escape(searchPattern) + @"\s*(\S+)");
+            var match = Regex.Match(bodyText, Regex.Escape(searchPattern) + @"\s*(\S+)", RegexOptions.None, TimeSpan.FromMilliseconds(100));
             if (match.Success)
             {
                 metadata[metadataKey] = match.Groups[1].Value;

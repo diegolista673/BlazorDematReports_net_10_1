@@ -353,7 +353,7 @@ namespace Entities.Helpers
             // Rimuovi pattern come <MethodNameAsync>d__X generati dal compilatore C#
             if (methodName.StartsWith("<") && methodName.Contains(">"))
             {
-                var match = Regex.Match(methodName, @"<(.+?)>");
+                var match = Regex.Match(methodName, @"<(.+?)>", RegexOptions.None, TimeSpan.FromMilliseconds(100));
                 if (match.Success)
                 {
                     return match.Groups[1].Value;
@@ -413,7 +413,7 @@ namespace Entities.Helpers
 
                 foreach (var pattern in patterns)
                 {
-                    var match = Regex.Match(sourceCode, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                    var match = Regex.Match(sourceCode, pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
                     if (match.Success)
                     {
                         if (pattern.Contains("inheritdoc"))
@@ -441,13 +441,13 @@ namespace Entities.Helpers
                 return string.Empty;
 
             // Rimuovi markup XML
-            var cleaned = Regex.Replace(summaryText, @"<[^>]*>", " ");
+            var cleaned = Regex.Replace(summaryText, @"<[^>]*>", " ", RegexOptions.None, TimeSpan.FromMilliseconds(100));
             // Rimuovi prefissi ///
-            cleaned = Regex.Replace(cleaned, @"///\s*", " ");
+            cleaned = Regex.Replace(cleaned, @"///\s*", " ", RegexOptions.None, TimeSpan.FromMilliseconds(100));
             // Normalizza spazi
-            cleaned = Regex.Replace(cleaned, @"\s+", " ");
+            cleaned = Regex.Replace(cleaned, @"\s+", " ", RegexOptions.None, TimeSpan.FromMilliseconds(100));
             // Rimuovi caratteri di controllo
-            cleaned = Regex.Replace(cleaned, @"[\r\n\t]", " ");
+            cleaned = Regex.Replace(cleaned, @"[\r\n\t]", " ", RegexOptions.None, TimeSpan.FromMilliseconds(100));
 
             return cleaned.Trim();
         }

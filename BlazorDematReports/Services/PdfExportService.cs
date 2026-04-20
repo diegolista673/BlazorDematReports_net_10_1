@@ -60,13 +60,13 @@ namespace BlazorDematReports.Services
                         paragraph.SpacingBefore = 10;
                         paragraph.SpacingAfter = 10;
                     }
-                    else if (System.Text.RegularExpressions.Regex.IsMatch(line.Trim(), @"^\d+\.\s+[A-Z]"))
+                    else if (System.Text.RegularExpressions.Regex.IsMatch(line.Trim(), @"^\d+\.\s+[A-Z]", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(100)))
                     {
                         paragraph.Font = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 11);
                         paragraph.SpacingBefore = 8;
                         paragraph.SpacingAfter = 8;
                     }
-                    else if (System.Text.RegularExpressions.Regex.IsMatch(line.Trim(), @"^\d+\.\d+\s+"))
+                    else if (System.Text.RegularExpressions.Regex.IsMatch(line.Trim(), @"^\d+\.\d+\s+", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(100)))
                     {
                         paragraph.Font = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10);
                         paragraph.SpacingBefore = 6;
